@@ -150,6 +150,13 @@ test('rafraîchissement : refresh_token envoyé, nouveau refresh token gardé', 
   await assert.rejects(auth.refreshAccount(expired.transport, CLIENT, 'VIEUX'), (e) => e.code === 'SESSION_EXPIRED');
 });
 
+test('OAuth : toujours le tenant « consumers », jamais « common » ni un ID d’annuaire', () => {
+  for (const url of [AUTH.deviceCode, AUTH.token]) {
+    assert.match(url, /^https:\/\/login\.microsoftonline\.com\/consumers\/oauth2\/v2\.0\//);
+  }
+  assert.equal(AUTH.scope, 'XboxLive.signin offline_access');
+});
+
 test('ID client : format GUID attendu', () => {
   assert.equal(auth.isClientId(CLIENT), true);
   assert.equal(auth.isClientId(` ${CLIENT.toUpperCase()} `), true);

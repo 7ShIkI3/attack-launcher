@@ -79,7 +79,7 @@ function microsoftError(data) {
   if (error === 'temporarily_unavailable') return new AuthError('MS_UNAVAILABLE', 'Microsoft est momentanément indisponible : réessaie dans un instant.');
   if (error === 'unauthorized_client' || error === 'invalid_client') {
     return new AuthError('BAD_CLIENT_ID',
-      "L'app Azure refuse cette connexion : vérifie l'ID client et que « Autoriser les flux de clients publics » est sur Oui, pour les comptes Microsoft personnels.");
+      "L'app Azure refuse cette connexion : vérifie l'ID client et que « Autoriser les flux de clients publics » est sur Oui (Authentification → paramètres avancés).");
   }
   return new AuthError('MS_ERROR', `Erreur Microsoft (${error || 'inconnue'}).`);
 }
@@ -175,7 +175,7 @@ async function minecraftLogin(transport, { uhs, xstsToken }, { now = Date.now } 
   const invalidApp = /invalid app registration/i.test(`${data?.errorMessage || ''} ${data?.error || ''} ${data?.raw || ''}`);
   if (status === 403 || invalidApp) {
     throw new AuthError('APP_NOT_APPROVED',
-      "Ton app Azure n'est pas encore validée par Mojang : remplis le formulaire https://aka.ms/mce-reviewappid et attends leur accord.");
+      "Ton app Azure n'est pas encore validée par Mojang : remplis le formulaire https://aka.ms/mce-reviewappid et attends leur accord (puis jusqu'à 24 h).");
   }
   if (status === 429) throw new AuthError('RATE_LIMITED', 'Trop de connexions Minecraft d’affilée : réessaie dans quelques minutes.');
   if (status !== 200 || !data?.access_token) throw new AuthError('MC_ERROR', `Les services Minecraft ont refusé la connexion (HTTP ${status}).`);

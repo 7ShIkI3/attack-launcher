@@ -41,16 +41,32 @@ Mojang »** (voir ci-dessous).
 
 Mojang exige que chaque launcher utilise **sa propre application Azure, validée par Mojang**. Tant qu'elle
 n'est pas validée, la connexion échoue à l'étape Minecraft (erreur 403 « Invalid app registration »).
+Procédure reprise de celle, éprouvée, de [HeliosLauncher](https://github.com/dscalzi/HeliosLauncher/blob/master/docs/MicrosoftAuth.md)
+et de [minecraft.wiki](https://minecraft.wiki/w/Microsoft_authentication).
 
-1. Sur [portal.azure.com](https://portal.azure.com) : **Inscriptions d'applications** → **Nouvelle inscription**.
-2. Nom : « ATTACK Launcher » ; types de comptes : **Comptes Microsoft personnels uniquement** ; pas d'URI de redirection.
-3. Dans **Authentification** : **Autoriser les flux de clients publics** = **Oui**, puis **Enregistrer**.
-4. Copie l'**ID d'application (client)** (format `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`) dans
-   **Réglages → ID client Azure** du launcher, ou dans la variable d'environnement `ATTACK_MS_CLIENT_ID`.
-   Ce n'est **pas un secret** : aucune clé secrète n'est nécessaire (client public).
-5. Demande l'accès de cette app à l'API Minecraft avec le formulaire Mojang :
-   [aka.ms/mce-reviewappid](https://aka.ms/mce-reviewappid), puis attends leur réponse (plusieurs jours
-   à quelques semaines).
+1. **Annuaire obligatoire.** On ne peut plus créer d'app hors d'un annuaire Microsoft Entra. Si le portail ne t'en
+   propose pas, crée un **compte Azure gratuit** : une carte bancaire est demandée pour vérifier ton identité,
+   **sans aucun prélèvement**.
+2. Sur [portal.azure.com](https://portal.azure.com) : **Microsoft Entra ID** → **Inscriptions d'applications** →
+   **Nouvelle inscription**. Nom : « ATTACK Launcher » ; types de comptes : **Comptes dans un annuaire
+   organisationnel et comptes Microsoft personnels** ; pas d'URI de redirection à la création.
+3. **Authentification** → **Ajouter une plateforme** → **Applications mobiles et de bureau**, avec l'URI
+   `https://login.microsoftonline.com/common/oauth2/nativeclient`.
+4. Toujours dans **Authentification**, **Paramètres avancés** : **Autoriser les flux de clients publics** = **Oui**
+   (indispensable pour la connexion par code), puis **Enregistrer**. **Aucun secret client** n'est nécessaire.
+5. Sur la page **Vue d'ensemble**, copie l'**ID d'application (client)** (format `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
+   dans **Réglages → ID client Azure** du launcher, ou dans la variable d'environnement `ATTACK_MS_CLIENT_ID`.
+   Ce n'est **pas un secret**.
+6. Remplis le formulaire Mojang [aka.ms/mce-reviewappid](https://aka.ms/mce-reviewappid). Il demande l'**ID client**
+   **et** l'**ID de l'annuaire (tenant)**, tous deux sur la page **Vue d'ensemble**. Après l'accord, compte
+   **jusqu'à 24 h** avant que la connexion fonctionne.
+
+> **Soyons francs :** l'accord de Mojang peut être lent, et il peut **ne jamais arriver** pour un petit projet.
+> Tant qu'il n'est pas obtenu, rien n'est cassé : sans compte connecté, **JOUER** garde la voie du launcher
+> officiel (profil « ATTACK Client » présélectionné).
+
+Côté code, toutes les requêtes OAuth passent par le tenant `consumers`
+(`login.microsoftonline.com/consumers/...`), jamais par `common` ni par l'ID de l'annuaire.
 
 ### Lancement direct
 
