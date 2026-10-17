@@ -9,11 +9,13 @@
 // 4. latest.yml correct : la 0.2.0 détecte, télécharge et propose la 0.2.1 (capture de la bannière), puis le clic
 //    sur « Redémarrer » installe la 0.2.1 en silence et la relance.
 // Résultat dans <dossier>/report.json. Sans --keep, l'app de test est ensuite désinstallée et ses dossiers supprimés.
+// Les installateurs déjà construits avec le même code et la même config sont réutilisés ; ATTACK_UPDATE_TEST_PORT fixe
+// le port du serveur (l'adresse du flux est inscrite dans les installateurs).
 const fs = require('node:fs');
 const http = require('node:http');
 const crypto = require('node:crypto');
 const path = require('node:path');
-const { spawnSync, execFileSync } = require('node:child_process');
+const { spawn, spawnSync, execFileSync } = require('node:child_process');
 const builder = require('electron-builder');
 const asar = require('@electron/asar');
 const pkg = require('../package.json');
@@ -36,7 +38,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const say = (message) => console.log(`[update-test] ${message}`);
 
 /** Serveur de mise à jour local : sert les fichiers (à plat) de `server.root` et note chaque requête. */
-function startServer(requests) {
+function startServer(requests, port = 0) {
   const server = http.createServer((req, res) => {
     const name = decodeURIComponent(new URL(req.url, 'http://127.0.0.1').pathname).replace(/^\/+/, '');
     const file = path.join(server.root, name);
@@ -50,7 +52,7 @@ function startServer(requests) {
     if (req.method === 'HEAD') res.end();
     else fs.createReadStream(file).pipe(res);
   });
-  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server)));
+  return new Promise((resolve) => server.listen(port, '127.0.0.1', () => resolve(server)));
 }
 
 /** Installateur NSIS de test : même code et même config que la release, nom et appId à part, flux generic local. */
@@ -74,12 +76,37 @@ async function buildVersion(version, outDir, feedUrl) {
   delete config.portable;
   // fichier à part : un objet passé directement serait fusionné avec le "build" de package.json (publish github)
   const configFile = path.join(path.dirname(outDir), `builder-${version}.json`);
+  const artifacts = ['latest.yml', setupName(version), `${setupName(version)}.blockmap`];
+  // empreinte du code embarqué et de la config : un installateur identique déjà construit est réutilisé
+  const stamp = crypto.createHash('sha256').update(JSON.stringify(config)).update(sourceHash()).digest('hex');
+  const stampFile = path.join(outDir, 'update-test-stamp.txt');
+  if (readLog(stampFile) === stamp && artifacts.every((file) => fs.existsSync(path.join(outDir, file)))) {
+    say(`${version} déjà construite avec ce code : réutilisée`);
+    return;
+  }
   fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
   say(`construction de la ${version}…`);
   await builder.build({ projectDir: ROOT, targets: builder.Platform.WINDOWS.createTarget('nsis', builder.Arch.x64), config: configFile, publish: 'never' });
-  for (const file of ['latest.yml', setupName(version), `${setupName(version)}.blockmap`]) {
+  for (const file of artifacts) {
     if (!fs.existsSync(path.join(outDir, file))) throw new Error(`${file} absent de ${outDir}`);
   }
+  fs.writeFileSync(stampFile, stamp);
+}
+
+/** SHA-256 de tout ce qui part dans l'app : src/, assets/, package.json et package-lock.json. */
+function sourceHash() {
+  const hash = crypto.createHash('sha256');
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else hash.update(path.relative(ROOT, full)).update(fs.readFileSync(full));
+    }
+  };
+  walk(path.join(ROOT, 'src'));
+  walk(path.join(ROOT, 'assets'));
+  for (const file of ['package.json', 'package-lock.json']) hash.update(fs.readFileSync(path.join(ROOT, file)));
+  return hash.digest('hex');
 }
 
 function installedVersion(installDir) {
@@ -101,10 +128,23 @@ function readLog(file) {
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
 }
 
-/** Lance l'app de test installée dans des dossiers isolés et attend sa fermeture (elle se ferme seule en mode capture). */
+/**
+ * Lance l'app de test installée dans des dossiers isolés et attend sa fermeture (elle se ferme seule en mode capture).
+ * Asynchrone : le serveur de mise à jour tourne dans ce même processus et doit pouvoir répondre pendant ce temps.
+ */
 function runApp(installDir, env, timeoutMs) {
-  const result = spawnSync(path.join(installDir, EXE), [], { env: { ...process.env, ...env }, stdio: 'ignore', timeout: timeoutMs });
-  return result.status;
+  return new Promise((resolve) => {
+    const child = spawn(path.join(installDir, EXE), [], { env: { ...process.env, ...env }, stdio: 'ignore' });
+    const timer = setTimeout(() => child.kill(), timeoutMs);
+    child.once('error', () => {
+      clearTimeout(timer);
+      resolve(null);
+    });
+    child.once('exit', (code) => {
+      clearTimeout(timer);
+      resolve(code);
+    });
+  });
 }
 
 async function waitFor(check, timeoutMs, stepMs = 1000) {
@@ -159,7 +199,7 @@ async function main() {
   fs.writeFileSync(path.join(dirs.userData, 'settings.json'), JSON.stringify({ gameDir: path.join(work, '.attack'), lang: 'fr' }));
 
   const requests = [];
-  const server = await startServer(requests);
+  const server = await startServer(requests, Number(process.env.ATTACK_UPDATE_TEST_PORT) || 0);
   const feedUrl = `http://127.0.0.1:${server.address().port}/`;
   say(`serveur de mise à jour : ${feedUrl}`);
   const report = { feedUrl, steps: {} };
@@ -194,7 +234,7 @@ async function main() {
     say('scénario 1 : latest.yml au SHA-512 falsifié…');
     server.root = dirs.badFeed;
     const badShots = path.join(dirs.shots, 'sha512-faux');
-    const badExit = runApp(dirs.install, { ...env, ATTACK_SCREENSHOT_DIR: badShots, ATTACK_SCREENSHOT_UPDATE: '1' }, 300000);
+    const badExit = await runApp(dirs.install, { ...env, ATTACK_SCREENSHOT_DIR: badShots, ATTACK_SCREENSHOT_UPDATE: '1' }, 300000);
     const badLog = readLog(appLog);
     report.steps.tampered = {
       exitCode: badExit,
@@ -210,7 +250,7 @@ async function main() {
     server.root = dirs.goodFeed;
     fs.rmSync(relaunchUserData, { recursive: true, force: true });
     const goodShots = path.join(dirs.shots, 'mise-a-jour');
-    const goodExit = runApp(dirs.install, { ...env, ATTACK_SCREENSHOT_DIR: goodShots, ATTACK_SCREENSHOT_UPDATE: 'install' }, 300000);
+    const goodExit = await runApp(dirs.install, { ...env, ATTACK_SCREENSHOT_DIR: goodShots, ATTACK_SCREENSHOT_UPDATE: 'install' }, 300000);
     const goodLog = readLog(appLog).slice(badLog.length);
     const upgraded = await waitFor(() => installedVersion(dirs.install) === NEW, 180000);
     const relaunched = await waitFor(() => testAppRunning(), 60000);

@@ -379,8 +379,13 @@ function createWindow() {
   const sendState = () => win.webContents.send('window:state', { maximized: win.isMaximized() });
   win.on('maximize', sendState);
   win.on('unmaximize', sendState);
-  // mode capture (tests) : la fenêtre s'affiche sans prendre le focus (ni celui d'une partie en cours)
-  win.once('ready-to-show', () => (process.env.ATTACK_SCREENSHOT_DIR ? win.showInactive() : win.show()));
+  if (process.env.ATTACK_SCREENSHOT_DIR) {
+    // mode capture (tests) : fenêtre sans focus et transparente aux clics, pour qu'on ne la prenne pas pour le vrai launcher
+    win.setIgnoreMouseEvents(true);
+    win.once('ready-to-show', () => win.showInactive());
+  } else {
+    win.once('ready-to-show', () => win.show());
+  }
   win.on('closed', () => {
     win = null;
   });
