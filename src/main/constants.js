@@ -20,7 +20,10 @@ const PROFILE_NAME = 'ATTACK Client';
 const MOD_FILE = 'attack-client.jar';
 const STATE_FILE = 'attack-launcher.json';
 
-/** Seuls hôtes contactés : Mojang, Forge et GitHub (releases du projet). Les redirections sont vérifiées aussi. */
+/**
+ * Seuls hôtes contactés : Mojang, Forge, GitHub (releases du projet) et la connexion Microsoft / Xbox / Minecraft.
+ * Les redirections sont vérifiées aussi.
+ */
 const ALLOWED_HOSTS = new Set([
   'piston-meta.mojang.com',
   'piston-data.mojang.com',
@@ -33,7 +36,28 @@ const ALLOWED_HOSTS = new Set([
   'github.com',
   'objects.githubusercontent.com',
   'release-assets.githubusercontent.com',
+  'login.microsoftonline.com',
+  'user.auth.xboxlive.com',
+  'xsts.auth.xboxlive.com',
+  'api.minecraftservices.com',
+  'textures.minecraft.net',
 ]);
+
+/** Manifeste officiel des runtimes Java de Mojang (celui du launcher officiel). */
+const JAVA_RUNTIME_MANIFEST =
+  'https://piston-meta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json';
+
+/** Connexion Microsoft (comptes personnels) puis Xbox Live, XSTS et services Minecraft. */
+const AUTH = {
+  deviceCode: 'https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode',
+  token: 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token',
+  scope: 'XboxLive.signin offline_access',
+  xboxUser: 'https://user.auth.xboxlive.com/user/authenticate',
+  xsts: 'https://xsts.auth.xboxlive.com/xsts/authorize',
+  mcLogin: 'https://api.minecraftservices.com/authentication/login_with_xbox',
+  entitlements: 'https://api.minecraftservices.com/entitlements/mcstore',
+  profile: 'https://api.minecraftservices.com/minecraft/profile',
+};
 
 /** Arguments Java par défaut du launcher officiel ; seul -Xmx est réglé par le launcher ATTACK. */
 const DEFAULT_JVM_ARGS =
@@ -57,4 +81,6 @@ module.exports = {
   STATE_FILE,
   ALLOWED_HOSTS,
   DEFAULT_JVM_ARGS,
+  JAVA_RUNTIME_MANIFEST,
+  AUTH,
 };

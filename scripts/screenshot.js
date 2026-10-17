@@ -3,7 +3,8 @@
 //   node scripts/screenshot.js <dossier-captures> [dossier-.minecraft] [dossier-de-jeu]
 // Sans dossiers d'installation, l'app montre l'état « à installer ». Rien n'est écrit dans le vrai .minecraft.
 // ATTACK_SCREENSHOT_INSTALL=1 clique d'abord sur INSTALLER (installation réelle dans les dossiers donnés),
-// ATTACK_DEV=1 active le mode développeur (jar local), ATTACK_LANG=en passe l'interface en anglais.
+// ATTACK_DEV=1 active le mode développeur (jar local), ATTACK_LANG=en passe l'interface en anglais,
+// ATTACK_OFFLINE=<pseudo> ajoute un compte hors ligne actif et ATTACK_SCREENSHOT_PLAY=1 clique sur JOUER.
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -23,6 +24,14 @@ fs.writeFileSync(path.join(userData, 'settings.json'), JSON.stringify({
   lang: process.env.ATTACK_LANG || 'fr',
   devMode: Boolean(process.env.ATTACK_DEV),
 }));
+// ATTACK_OFFLINE=<pseudo> : compte hors ligne factice actif (mode développeur), pour tester JOUER sans Microsoft
+if (process.env.ATTACK_OFFLINE) {
+  const { offlineUuid } = require('../src/main/accounts');
+  const id = offlineUuid(process.env.ATTACK_OFFLINE);
+  fs.writeFileSync(path.join(userData, 'accounts.json'), JSON.stringify({
+    version: 1, active: id, accounts: [{ id, name: process.env.ATTACK_OFFLINE, type: 'offline' }],
+  }));
+}
 const result = spawnSync(electron, ['.'], {
   cwd: path.join(__dirname, '..'),
   stdio: 'inherit',
