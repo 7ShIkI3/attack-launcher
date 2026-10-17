@@ -205,8 +205,8 @@
     $('dev-dir-row').classList.toggle('hidden', !settings.devMode);
     $('dev-dir').value = settings.devJarDir;
     $('client-id').value = settings.msClientId;
-    $('client-id').placeholder = !settings.msClientId && accountsView.clientIdFromEnv
-      ? t('settings.clientIdEnv') : '00000000-0000-0000-0000-000000000000';
+    $('client-id').placeholder = settings.msClientId ? '00000000-0000-0000-0000-000000000000'
+      : accountsView.clientIdFromEnv ? t('settings.clientIdEnv') : t('settings.clientIdDefault');
     if (info) $('about').textContent = t('settings.about', { version: info.version, dir: info.minecraftDir });
   }
 

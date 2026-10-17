@@ -11,10 +11,23 @@ const RAM_MIN = 1024;
 const RAM_MAX = 16384;
 const CLIENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** ID client Azure effectif : celui des réglages, sinon la variable ATTACK_MS_CLIENT_ID. */
+/**
+ * App Azure officielle d'ATTACK Launcher (annuaire de 7ShIkI3). Un ID client n'est pas un secret : il identifie
+ * l'app aupres de Microsoft, comme le font tous les launchers open source.
+ */
+const DEFAULT_MS_CLIENT_ID = 'b904aac8-33e3-4ee6-a905-912a72de4859';
+
+/** D'ou vient l'ID client effectif : 'settings' (Reglages), 'env' (ATTACK_MS_CLIENT_ID) ou 'default' (app officielle). */
+function clientIdSource(settings, env = process.env) {
+  if (settings.msClientId) return 'settings';
+  return CLIENT_ID.test((env.ATTACK_MS_CLIENT_ID || '').trim()) ? 'env' : 'default';
+}
+
+/** ID client Azure effectif : celui des Reglages, sinon la variable ATTACK_MS_CLIENT_ID, sinon l'app officielle. */
 function clientId(settings, env = process.env) {
-  const fromEnv = (env.ATTACK_MS_CLIENT_ID || '').trim();
-  return settings.msClientId || (CLIENT_ID.test(fromEnv) ? fromEnv.toLowerCase() : '');
+  const source = clientIdSource(settings, env);
+  if (source === 'settings') return settings.msClientId;
+  return source === 'env' ? env.ATTACK_MS_CLIENT_ID.trim().toLowerCase() : DEFAULT_MS_CLIENT_ID;
 }
 
 function defaults(env = process.env) {
@@ -74,4 +87,4 @@ async function save(file, settings) {
   await fsp.writeFile(file, `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
 }
 
-module.exports = { LANGS, RAM_MIN, RAM_MAX, defaults, sanitize, clientId, load, save };
+module.exports = { LANGS, RAM_MIN, RAM_MAX, DEFAULT_MS_CLIENT_ID, defaults, sanitize, clientId, clientIdSource, load, save };

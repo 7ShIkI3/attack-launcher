@@ -30,7 +30,7 @@ Minecraft Java (achat ou Game Pass) et récupère ton pseudo et ta skin. Tu peux
 choisir le compte actif et te déconnecter.
 
 - Le jeton de renouvellement (refresh token) est **chiffré par Windows** (DPAPI, via `safeStorage`) dans
-  `%APPDATA%ATTACK Launcheraccounts.json` : seul ton compte Windows peut le relire. Il est renouvelé tout seul.
+  `%APPDATA%\ATTACK Launcher\accounts.json` : seul ton compte Windows peut le relire. Il est renouvelé tout seul.
 - Aucun jeton n'apparaît dans les journaux : la ligne de commande enregistrée masque `--accessToken`.
 
 Messages d'erreur courants : pas de profil Xbox (connecte-toi une fois sur xbox.com), compte enfant
@@ -38,6 +38,10 @@ Messages d'erreur courants : pas de profil Xbox (connecte-toi une fois sur xbox.
 Mojang »** (voir ci-dessous).
 
 ### Créer l'app Azure (une seule fois, pour qui publie le launcher)
+
+**Les joueurs n'ont rien à configurer** : le launcher utilise par défaut l'app Azure officielle d'ATTACK Launcher
+(ID client `b904aac8-33e3-4ee6-a905-912a72de4859`). Les étapes ci-dessous servent seulement si tu publies ta propre
+version du launcher ; son ID se met alors dans **Réglages → ID client Azure** ou dans `ATTACK_MS_CLIENT_ID`.
 
 Mojang exige que chaque launcher utilise **sa propre application Azure, validée par Mojang**. Tant qu'elle
 n'est pas validée, la connexion échoue à l'étape Minecraft (erreur 403 « Invalid app registration »).
