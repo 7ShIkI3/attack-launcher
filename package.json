@@ -1,8 +1,8 @@
 {
   "name": "attack-launcher",
   "productName": "ATTACK Launcher",
-  "version": "0.2.0",
-  "description": "Launcher d'ATTACK Client (Minecraft 1.8.9 PvP) : installe Forge et le mod, connexion Microsoft et lancement direct du jeu.",
+  "version": "0.3.0",
+  "description": "Launcher d'ATTACK Client (Minecraft 1.8.9 PvP) : installe Forge et le mod, connexion Microsoft, lancement direct du jeu et mise à jour automatique.",
   "main": "src/main/main.js",
   "private": true,
   "license": "MIT",
@@ -15,8 +15,9 @@
     "install-test": "node scripts/install-test.js",
     "launch-test": "node scripts/launch-test.js",
     "screenshot": "node scripts/screenshot.js",
-    "dist": "electron-builder --win nsis portable",
-    "pack": "electron-builder --win --dir"
+    "update-test": "node scripts/update-test.js",
+    "dist": "electron-builder --win nsis portable --publish never",
+    "pack": "electron-builder --win --dir --publish never"
   },
   "engines": {
     "node": ">=20"
@@ -32,6 +33,14 @@
       "src/**/*",
       "assets/**/*",
       "package.json"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "7ShIkI3",
+        "repo": "attack-launcher",
+        "releaseType": "release"
+      }
     ],
     "win": {
       "icon": "build/icon.png",
@@ -50,6 +59,9 @@
     "portable": {
       "artifactName": "ATTACK-Launcher-Portable-${version}.${ext}"
     }
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
   },
   "devDependencies": {
     "electron": "^44.9.0",

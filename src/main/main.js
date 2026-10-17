@@ -1,6 +1,6 @@
 'use strict';
 // Processus principal Electron : fenêtre sans cadre, IPC nommés (et seulement ceux-là), installation,
-// comptes Microsoft et lancement du jeu (direct avec un compte, sinon par le launcher officiel).
+// comptes Microsoft, lancement du jeu (direct avec un compte, sinon par le launcher officiel) et mise à jour du launcher.
 const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, clipboard } = require('electron');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
@@ -16,6 +16,7 @@ const auth = require('./auth');
 const runtime = require('./runtime');
 const game = require('./game');
 const http = require('./http');
+const updates = require('./updates');
 const { AccountStore } = require('./accounts');
 const { defaultMinecraftDir } = require('./paths');
 
@@ -37,6 +38,9 @@ let settings = settingsStore.defaults();
 let installing = false;
 let login = null; // connexion en cours : { cancelled, verificationUri, userCode }
 let accounts = null;
+let launching = false; // lancement direct en préparation (Java, connexion)
+const games = new Set(); // parties lancées directement et encore ouvertes
+let updater = null; // contrôleur des mises à jour du launcher
 const transport = auth.createTransport();
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
@@ -63,6 +67,56 @@ function handle(channel, fn) {
     if (event.senderFrame?.url !== INDEX_URL) throw new Error('Origine IPC refusée');
     return fn(event, ...args);
   });
+}
+
+/** Journal des mises à jour : <userData>/logs/updater.log (l'ancien passe en .old au-delà de 1 Mo). */
+function createUpdateLog() {
+  const file = path.join(app.getPath('userData'), 'logs', 'updater.log');
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    if (fs.statSync(file).size > 1048576) fs.renameSync(file, `${file}.old`);
+  } catch {
+    // pas encore de journal
+  }
+  const write = (level) => (...parts) => {
+    try {
+      fs.appendFileSync(file, `${new Date().toISOString()} [${level}] ${parts.map(String).join(' ')}\n`);
+    } catch {
+      // journal indisponible : la mise à jour continue
+    }
+  };
+  return { info: write('info'), warn: write('warn'), error: write('error'), debug: () => {} };
+}
+
+/** Raison de ne rien faire côté mise à jour : installation, lancement ou partie en cours (même par le launcher officiel). */
+async function busyReason() {
+  if (installing || launching) return 'install';
+  if (games.size > 0 || (await game.detectRunningGame())) return 'game';
+  return null;
+}
+
+function setupUpdates() {
+  const log = createUpdateLog();
+  const mode = updates.updateMode({ isPackaged: app.isPackaged });
+  let autoUpdater = null;
+  let createToken = () => null;
+  if (mode !== 'off') {
+    // releases GitHub publiques : aucun jeton ; le SHA-512 de latest.yml est vérifié après chaque téléchargement
+    const electronUpdater = require('electron-updater');
+    autoUpdater = electronUpdater.autoUpdater;
+    autoUpdater.logger = log;
+    createToken = () => new electronUpdater.CancellationToken();
+  }
+  updater = new updates.UpdateController({
+    updater: autoUpdater,
+    mode,
+    currentVersion: app.getVersion(),
+    busy: busyReason,
+    onState: (state) => send('update:state', state),
+    log: (message) => log.info(message),
+    createToken,
+  });
+  updater.start();
 }
 
 function publicError(error) {
@@ -119,6 +173,7 @@ function registerIpc() {
   handle('install:run', async (event) => {
     if (installing) return { ok: false, code: 'BUSY', message: 'Installation déjà en cours' };
     installing = true;
+    updater?.activityStarted('install');
     try {
       const summary = await installer.install({
         minecraftDir,
@@ -133,6 +188,7 @@ function registerIpc() {
       return publicError(error);
     } finally {
       installing = false;
+      updater?.activityEnded();
     }
   });
 
@@ -192,6 +248,7 @@ function registerIpc() {
 
   // --- jeu ---
   handle('game:play', async (event) => {
+    updater?.activityStarted('game');
     try {
       const status = await installer.status({ minecraftDir, gameDir: settings.gameDir });
       if (!status.installed) return { ok: false, code: 'NOT_INSTALLED', message: 'Installation incomplète' };
@@ -219,6 +276,11 @@ function registerIpc() {
     return shell.openPath(settings.gameDir);
   });
   handle('shell:openRepo', () => shell.openExternal(REPO_URL));
+
+  // --- mise à jour du launcher ---
+  handle('update:state', () => updater?.state || { phase: 'off' });
+  handle('update:install', () => (updater ? updater.install() : { ok: false, code: 'NO_UPDATE' }));
+  handle('update:openReleases', () => shell.openExternal(updates.RELEASES_URL));
 
   handle('dialog:pickFolder', async (_event, current) => {
     const result = await dialog.showOpenDialog(win, {
@@ -257,22 +319,35 @@ async function playDirect(event, account) {
       event.sender.send('install:progress', { step, done, total, percent: total ? Math.round((done / total) * 100) : 100 });
     }
   };
-  let java = settings.javaPath;
-  if (!java) {
-    progress('java', 0, 1);
-    java = (await runtime.installRuntime({ runtimeDir, onProgress: ({ done, total }) => progress('java', done, total) })).java;
+  launching = true;
+  let result;
+  let identity;
+  try {
+    let java = settings.javaPath;
+    if (!java) {
+      progress('java', 0, 1);
+      java = (await runtime.installRuntime({ runtimeDir, onProgress: ({ done, total }) => progress('java', done, total) })).java;
+    }
+    progress('auth', 0, 1);
+    identity = await accounts.launchIdentity(account.id, refreshWith);
+    progress('launch', 0, 1);
+    result = await game.launchGame({
+      java,
+      minecraftDir,
+      gameDir: settings.gameDir,
+      versionId: C.FORGE_VERSION_ID,
+      identity,
+      ramMb: settings.ramMb,
+      launcherVersion: app.getVersion(),
+    });
+  } finally {
+    launching = false;
   }
-  progress('auth', 0, 1);
-  const identity = await accounts.launchIdentity(account.id, refreshWith);
-  progress('launch', 0, 1);
-  const result = await game.launchGame({
-    java,
-    minecraftDir,
-    gameDir: settings.gameDir,
-    versionId: C.FORGE_VERSION_ID,
-    identity,
-    ramMb: settings.ramMb,
-    launcherVersion: app.getVersion(),
+  // partie en cours : aucune mise à jour tant que le jeu n'est pas fermé
+  games.add(result.child);
+  result.child.once('exit', () => {
+    games.delete(result.child);
+    updater?.activityEnded();
   });
   progress('launch', 1, 1);
   return { ok: true, mode: 'direct', name: identity.name, logFile: result.logFile };
@@ -304,7 +379,8 @@ function createWindow() {
   const sendState = () => win.webContents.send('window:state', { maximized: win.isMaximized() });
   win.on('maximize', sendState);
   win.on('unmaximize', sendState);
-  win.once('ready-to-show', () => win.show());
+  // mode capture (tests) : la fenêtre s'affiche sans prendre le focus (ni celui d'une partie en cours)
+  win.once('ready-to-show', () => (process.env.ATTACK_SCREENSHOT_DIR ? win.showInactive() : win.show()));
   win.on('closed', () => {
     win = null;
   });
@@ -317,10 +393,23 @@ async function captureScreens() {
   const dir = path.resolve(process.env.ATTACK_SCREENSHOT_DIR);
   await fsp.mkdir(dir, { recursive: true });
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const js = (code) => win.webContents.executeJavaScript(code);
   await wait(1200);
+  if (process.env.ATTACK_SCREENSHOT_UPDATE) {
+    // attend la fin de la vérification de mise à jour, capture la bannière, puis clique sur Redémarrer si demandé
+    const phase = () => js("document.getElementById('update-banner').dataset.phase || ''");
+    const final = ['ready', 'available', 'none', 'error', 'off'];
+    for (let i = 0; i < 360 && !final.includes(await phase()); i++) await wait(500);
+    await wait(400);
+    const shown = await phase();
+    await fsp.writeFile(path.join(dir, `update-${app.getVersion()}-${shown || 'aucune'}.png`), (await win.webContents.capturePage()).toPNG());
+    if (process.env.ATTACK_SCREENSHOT_UPDATE === 'install' && shown === 'ready') {
+      await js("document.getElementById('update-action').click()");
+      return; // le launcher se ferme, l'installateur prend le relais puis le relance
+    }
+  }
   if (process.env.ATTACK_SCREENSHOT_INSTALL) {
     // parcours complet depuis l'interface : clic sur INSTALLER, capture en cours, puis à la fin
-    const js = (code) => win.webContents.executeJavaScript(code);
     await js("document.getElementById('play-button').click()");
     await wait(1500);
     await fsp.writeFile(path.join(dir, 'installing.png'), (await win.webContents.capturePage()).toPNG());
@@ -330,7 +419,6 @@ async function captureScreens() {
   }
   if (process.env.ATTACK_SCREENSHOT_PLAY) {
     // clic sur JOUER (compte actif) : capture une fois le lancement terminé
-    const js = (code) => win.webContents.executeJavaScript(code);
     await js("document.getElementById('play-button').click()");
     await wait(300);
     for (let i = 0; i < 600 && (await js('document.getElementById("play-button").disabled')); i++) await wait(500);
@@ -372,7 +460,14 @@ if (!app.requestSingleInstanceLock()) {
     accounts = await new AccountStore(path.join(app.getPath('userData'), 'accounts.json'), cipher).load();
     registerIpc();
     createWindow();
+    setupUpdates();
     refreshActiveAccount();
   });
   app.on('window-all-closed', () => app.quit());
+  // mise à jour prête : la fermeture ne l'installe que si aucune partie ni installation ne tourne
+  app.on('before-quit', (event) => {
+    if (!updater?.needsQuitCheck()) return;
+    event.preventDefault();
+    updater.prepareQuit().finally(() => app.quit());
+  });
 }

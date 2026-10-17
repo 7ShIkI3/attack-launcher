@@ -28,6 +28,16 @@
     </div>
   </header>
 
+  <!-- Mise à jour du launcher : prête à installer (Setup) ou à télécharger soi-même (portable) -->
+  <div class="update-banner hidden" id="update-banner" role="status" data-phase="">
+    <svg class="update-icon" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>
+    <span class="update-text" id="update-text"></span>
+    <button class="btn accent small" id="update-action"></button>
+    <button class="update-close" id="update-dismiss" data-i18n-title="update.later" aria-label="Plus tard">
+      <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg>
+    </button>
+  </div>
+
   <div class="shell">
     <nav class="sidebar">
       <button class="nav-item active" data-page="home">

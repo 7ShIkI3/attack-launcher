@@ -76,6 +76,11 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.3.0', date: '2026-10-17',
+      fr: 'Mise à jour automatique : le launcher télécharge ses nouvelles versions en arrière-plan (jamais pendant une partie) et les installe au redémarrage. Version portable : un simple avis.',
+      en: 'Automatic updates: the launcher downloads new versions in the background (never during a game) and installs them on restart. Portable version: a simple notice.',
+    },
+    {
       version: 'Launcher 0.2.0', date: '2026-10-17',
       fr: 'Connexion Microsoft intégrée (plusieurs comptes) et lancement direct du jeu avec Java 8 officiel, sans passer par le launcher Minecraft.',
       en: 'Built-in Microsoft sign-in (multiple accounts) and direct game launch with official Java 8, without the Minecraft launcher.',
