@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ATTACK Launcher</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="titlebar">
+    <div class="brand">
+      <span class="brand-logo" id="titlebar-logo"></span>
+      <span class="brand-name">ATTACK</span>
+      <span class="brand-sub">LAUNCHER</span>
+    </div>
+    <div class="window-controls">
+      <button class="wc" id="wc-min" data-i18n-title="window.minimize" aria-label="Réduire">
+        <svg viewBox="0 0 12 12"><path d="M2 6.5h8"/></svg>
+      </button>
+      <button class="wc" id="wc-max" data-i18n-title="window.maximize" aria-label="Agrandir">
+        <svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" rx="1"/></svg>
+      </button>
+      <button class="wc wc-close" id="wc-close" data-i18n-title="window.close" aria-label="Fermer">
+        <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="shell">
+    <nav class="sidebar">
+      <button class="nav-item active" data-page="home">
+        <svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>
+        <span data-i18n="nav.home">Accueil</span>
+      </button>
+      <button class="nav-item" data-page="mods">
+        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>
+        <span data-i18n="nav.mods">Mods</span>
+      </button>
+      <button class="nav-item" data-page="settings">
+        <svg viewBox="0 0 24 24"><path d="M5 7h9M18 7h1M5 17h1M10 17h9"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+        <span data-i18n="nav.settings">Réglages</span>
+      </button>
+      <div class="nav-spacer"></div>
+      <button class="nav-item nav-account" data-page="account">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 20c1.2-3.5 4-5 7-5s5.8 1.5 7 5"/></svg>
+        <span data-i18n="nav.account">Compte</span>
+        <em class="soon" data-i18n="common.soon">Bientôt</em>
+      </button>
+    </nav>
+
+    <main class="content">
+      <!-- Accueil -->
+      <section class="page active" id="page-home">
+        <div class="home-grid">
+          <div class="hero">
+            <div class="hero-logo" id="hero-logo"></div>
+            <h1 class="hero-title">ATTACK <span>CLIENT</span></h1>
+            <p class="hero-sub" id="hero-sub">Minecraft 1.8.9 · Forge</p>
+            <button class="play" id="play-button" disabled>
+              <span class="play-label" id="play-label">…</span>
+              <span class="play-hint" id="play-hint"></span>
+            </button>
+            <div class="progress hidden" id="progress">
+              <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+              <div class="progress-text"><span id="progress-step"></span><span id="progress-percent"></span></div>
+            </div>
+            <p class="message hidden" id="message"></p>
+            <ul class="status-list" id="status-list"></ul>
+            <div class="hero-links">
+              <button class="link" id="repair-button" data-i18n="home.repair">Vérifier / réparer l'installation</button>
+              <span class="dot">·</span>
+              <button class="link" id="open-dir-button" data-i18n="home.openDir">Ouvrir le dossier de jeu</button>
+            </div>
+          </div>
+          <aside class="card changelog">
+            <h2 data-i18n="home.changelog">Nouveautés</h2>
+            <ol id="changelog"></ol>
+            <button class="link small" id="repo-button" data-i18n="home.repo">Voir le projet sur GitHub</button>
+          </aside>
+        </div>
+      </section>
+
+      <!-- Mods -->
+      <section class="page" id="page-mods">
+        <div class="page-head">
+          <div>
+            <h1 data-i18n="mods.title">Mods inclus</h1>
+            <p class="muted" data-i18n="mods.subtitle">Tout est déjà dans ATTACK Client : active et règle chaque mod en jeu, depuis le menu ATTACK.</p>
+          </div>
+          <span class="count" id="mods-count"></span>
+        </div>
+        <div class="chips" id="mods-filters"></div>
+        <div class="mods-grid" id="mods-grid"></div>
+      </section>
+
+      <!-- Réglages -->
+      <section class="page" id="page-settings">
+        <div class="page-head">
+          <div>
+            <h1 data-i18n="settings.title">Réglages</h1>
+            <p class="muted" data-i18n="settings.subtitle">Enregistrés automatiquement, appliqués au profil au prochain clic sur JOUER.</p>
+          </div>
+          <span class="saved hidden" id="saved" data-i18n="settings.saved">Enregistré</span>
+        </div>
+
+        <div class="card setting">
+          <div class="setting-text">
+            <h3 data-i18n="settings.ram">Mémoire allouée</h3>
+            <p class="muted" data-i18n="settings.ramHelp">2 à 3 Go suffisent pour la 1.8.9. Plus n'augmente pas les FPS.</p>
+          </div>
+          <div class="setting-control ram">
+            <input type="range" id="ram" min="1024" max="8192" step="256">
+            <output id="ram-value">2 Go</output>
+          </div>
+          <p class="warn hidden" id="ram-warn" data-i18n="settings.ramWarn">Plus de la moitié de la mémoire de ce PC : Windows risque de ralentir.</p>
+        </div>
+
+        <div class="card setting">
+          <div class="setting-text">
+            <h3 data-i18n="settings.gameDir">Dossier de jeu</h3>
+            <p class="muted" data-i18n="settings.gameDirHelp">Mods, réglages, captures et mondes d'ATTACK Client, séparés de ton .minecraft.</p>
+          </div>
+          <div class="setting-control path">
+            <input type="text" id="game-dir" readonly>
+            <button class="btn" id="game-dir-change" data-i18n="common.change">Changer</button>
+            <button class="btn ghost" id="game-dir-reset" data-i18n="common.reset">Par défaut</button>
+          </div>
+        </div>
+
+        <div class="card setting">
+          <div class="setting-text">
+            <h3>Java</h3>
+            <p class="muted" data-i18n="settings.javaHelp">Le launcher officiel fournit Java 8 pour la 1.8.9 : garde ce choix sauf besoin précis.</p>
+          </div>
+          <div class="setting-control">
+            <div class="segmented" id="java-mode">
+              <button data-value="bundled" data-i18n="settings.javaBundled">Fourni par Minecraft</button>
+              <button data-value="custom" data-i18n="settings.javaCustom">Personnalisé</button>
+            </div>
+          </div>
+          <div class="setting-control path hidden" id="java-custom">
+            <input type="text" id="java-path" readonly data-i18n-placeholder="settings.javaPlaceholder" placeholder="Chemin de javaw.exe">
+            <button class="btn" id="java-browse" data-i18n="common.browse">Parcourir</button>
+          </div>
+        </div>
+
+        <div class="card setting">
+          <div class="setting-text">
+            <h3 data-i18n="settings.lang">Langue</h3>
+          </div>
+          <div class="setting-control">
+            <div class="segmented" id="lang">
+              <button data-value="fr">Français</button>
+              <button data-value="en">English</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card setting">
+          <div class="setting-text">
+            <h3 data-i18n="settings.dev">Mode développeur</h3>
+            <p class="muted" data-i18n="settings.devHelp">Installe le dernier jar compilé localement (attack-client-*.jar) au lieu de la release GitHub.</p>
+          </div>
+          <div class="setting-control">
+            <label class="switch"><input type="checkbox" id="dev-mode"><span></span></label>
+          </div>
+          <div class="setting-control path hidden" id="dev-dir-row">
+            <input type="text" id="dev-dir" readonly>
+            <button class="btn" id="dev-dir-change" data-i18n="common.change">Changer</button>
+          </div>
+        </div>
+        <p class="muted footnote" id="about"></p>
+      </section>
+
+      <!-- Compte (étape 2) -->
+      <section class="page" id="page-account">
+        <div class="account">
+          <div class="account-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 20c1.2-3.5 4-5 7-5s5.8 1.5 7 5"/></svg>
+          </div>
+          <h1 data-i18n="account.title">Connexion Microsoft</h1>
+          <p class="muted" data-i18n="account.text">La connexion intégrée arrive bientôt. En attendant, connecte-toi dans le launcher Minecraft officiel : JOUER l'ouvre avec le profil ATTACK Client déjà sélectionné.</p>
+          <button class="btn" disabled data-i18n="account.button">Se connecter (bientôt)</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="logo.js"></script>
+  <script src="i18n.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
