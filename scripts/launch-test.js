@@ -10,7 +10,8 @@ const { launchGame } = require('../src/main/game');
 const { offlineUuid } = require('../src/main/accounts');
 const C = require('../src/main/constants');
 
-const TITLE_SCREEN = /Sound engine started/;
+// Fin du chargement de Forge : l'écran titre s'affiche juste après (le 1er « Sound engine started » arrive avant).
+const TITLE_SCREEN = /Forge Mod Loader has successfully loaded (\d+) mods/;
 // Forge écrit un faux « Crash Report » (Loading screen debug info) au démarrage : on cherche le vrai marqueur.
 const CRASH = /#@!@# Game crashed!|Exception in thread "main"|Could not find or load main class/;
 
@@ -39,10 +40,12 @@ async function main() {
   for (;;) {
     await new Promise((r) => setTimeout(r, 1000));
     const log = fs.readFileSync(logFile, 'utf8');
-    if (TITLE_SCREEN.test(log)) {
-      const loaded = /Forge Mod Loader has successfully loaded (\d+) mods/.exec(log);
-      console.log(`ÉCRAN TITRE atteint en ${((Date.now() - started) / 1000).toFixed(1)} s` +
-        (loaded ? ` (Forge : ${loaded[1]} mods chargés)` : ''));
+    const loaded = TITLE_SCREEN.exec(log);
+    if (loaded) {
+      const attack = /FMLFileResourcePack:ATTACK Client/.test(log);
+      console.log(`ÉCRAN TITRE atteint en ${((Date.now() - started) / 1000).toFixed(1)} s (Forge : ${loaded[1]} mods chargés, ` +
+        `ATTACK Client ${attack ? 'chargé' : 'ABSENT'})`);
+      if (!attack) throw new Error('ATTACK Client ne figure pas parmi les mods chargés');
       break;
     }
     if (CRASH.test(log) || exited !== null) throw new Error(`Le jeu s'est arrêté (code ${exited}) : voir ${logFile}`);
