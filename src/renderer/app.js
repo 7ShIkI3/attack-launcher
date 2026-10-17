@@ -388,6 +388,45 @@
     if (valid) save({ msClientId: value });
   });
 
+  // --- mise à jour du launcher ---
+  let update = { phase: 'off' };
+  let updateNote = ''; // message affiché à la place du texte (ex. partie en cours)
+  let dismissedVersion = null;
+
+  function renderUpdate() {
+    const banner = $('update-banner');
+    banner.dataset.phase = update.phase;
+    const shown = ['ready', 'available'].includes(update.phase) && update.version !== dismissedVersion;
+    banner.classList.toggle('hidden', !shown);
+    if (!shown) return;
+    const ready = update.phase === 'ready';
+    $('update-text').textContent = updateNote || t(ready ? 'update.ready' : 'update.available', { version: update.version });
+    $('update-action').textContent = t(ready ? 'update.restart' : 'update.releases');
+  }
+
+  api.onUpdateState((state) => {
+    if (state.phase !== update.phase || state.version !== update.version) updateNote = '';
+    update = state;
+    renderUpdate();
+  });
+  $('update-action').addEventListener('click', async () => {
+    if (update.phase === 'available') {
+      api.update.openReleases();
+      return;
+    }
+    $('update-action').disabled = true;
+    const result = await api.update.install();
+    $('update-action').disabled = false;
+    if (!result.ok) {
+      updateNote = t(`update.${result.code}`);
+      renderUpdate();
+    }
+  });
+  $('update-dismiss').addEventListener('click', () => {
+    dismissedVersion = update.version;
+    renderUpdate();
+  });
+
   function applyLanguage() {
     window.I18n.setLang(settings.lang);
     renderStatus();
@@ -395,6 +434,7 @@
     renderMods();
     renderSettings();
     renderAccounts();
+    renderUpdate();
   }
 
   api.onWindowState(({ maximized }) => document.body.classList.toggle('maximized', maximized));
@@ -403,6 +443,7 @@
     [info, settings] = await Promise.all([api.info(), api.getSettings()]);
     $('hero-sub').textContent = `Minecraft ${info.mcVersion} · Forge ${info.forgeVersion.split('-')[1]}`;
     accountsView = await api.accounts.list();
+    update = await api.update.state();
     applyLanguage();
     await refreshStatus();
   }

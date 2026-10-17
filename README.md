@@ -19,6 +19,27 @@ Avec un compte Microsoft connecté, **JOUER** lance directement le jeu ; sans co
    - **avec un compte connecté** (page **Compte**) : **JOUER** lance directement ATTACK Client ;
    - **sans compte** : **JOUER** ouvre le launcher officiel avec le profil « ATTACK Client » en tête de liste.
 
+## Mises à jour
+
+Le launcher se met à jour tout seul depuis la page [Releases](https://github.com/7ShIkI3/attack-launcher/releases)
+de ce dépôt (le mod ATTACK Client, lui, est mis à jour à chaque installation ou réparation, comme avant).
+
+- **Version installée (`Setup.exe`)** : au démarrage, puis toutes les 6 h, le launcher regarde s'il existe une
+  version plus récente et la télécharge en arrière-plan. Une bannière **« Mise à jour X.Y.Z prête — Redémarrer »**
+  apparaît alors en haut de la fenêtre : **Redémarrer** ferme le launcher, installe la nouvelle version sans fenêtre
+  d'installation et le relance. Si tu fermes le launcher sans cliquer, la mise à jour s'installe à la fermeture.
+- **Jamais pendant une partie ni pendant une installation** : rien n'est vérifié, téléchargé ni installé tant
+  qu'ATTACK Client tourne (lancé par ce launcher **ou** par le launcher officiel) ou qu'une installation est en cours.
+  Un téléchargement commencé s'arrête si tu lances une partie, et reprend une fois le jeu fermé.
+- **Version portable** : un `.exe` portable ne peut pas se remplacer lui-même. Elle affiche seulement
+  **« Nouvelle version disponible »** avec un bouton vers la page Releases : télécharge la nouvelle version à la main.
+- **Sécurité** : le fichier téléchargé est vérifié par son empreinte **SHA-512**, publiée dans `latest.yml` avec la
+  release ; un fichier qui ne correspond pas est rejeté et supprimé. Le dépôt est public : **aucun jeton GitHub**
+  n'est embarqué dans l'app.
+- Journal des mises à jour : `%APPDATA%\ATTACK Launcher\logs\updater.log`.
+- La mise à jour automatique existe **depuis la 0.3.0** : avec une 0.2.0 ou plus ancienne, télécharge la 0.3.0
+  à la main une dernière fois.
+
 ## Connexion Microsoft
 
 Page **Compte** → **Ajouter un compte Microsoft**. Le launcher affiche un **code** et ouvre la page
@@ -120,6 +141,9 @@ Get-FileHash .\ATTACK-Launcher-Setup-x.y.z.exe -Algorithm SHA256
   les releases GitHub de ce dépôt, et pour la connexion : `login.microsoftonline.com`,
   `user.auth.xboxlive.com`, `xsts.auth.xboxlive.com`, `api.minecraftservices.com`, `textures.minecraft.net`.
   Toute autre adresse, y compris après une redirection, est refusée.
+- La mise à jour du launcher passe par `electron-updater`, uniquement vers les releases de ce dépôt
+  (`github.com` et ses serveurs de fichiers), sans jeton ; le nouvel installateur est vérifié par son SHA-512
+  (`latest.yml`) avant d'être lancé.
 - Chaque fichier est vérifié : SHA-1 publié par Mojang ou par Maven (`.sha1`), SHA-256 pour le mod.
   Un fichier au mauvais hash est supprimé.
 - L'installateur Forge est **lu comme une archive ZIP** (on y prend `install_profile.json` et le jar
@@ -141,12 +165,13 @@ npm start
 
 | Commande | Rôle |
 | --- | --- |
-| `npm test` | tests unitaires (`node:test`, sans réseau) : manifestes, install_profile, chemins Maven, profils, téléchargements, connexion Microsoft simulée, comptes, ligne de commande Java, runtime |
+| `npm test` | tests unitaires (`node:test`, sans réseau) : manifestes, install_profile, chemins Maven, profils, téléchargements, connexion Microsoft simulée, comptes, ligne de commande Java, runtime, mises à jour |
 | `npm run install-test` | installation **réelle** complète dans un dossier temporaire, puis contre-vérification de tous les hash |
 | `npm run launch-test -- <dossier>` | lancement direct **réel** avec un compte hors ligne factice, jusqu'à l'écran titre |
 | `npm run screenshot -- <dossier>` | ouvre l'app dans des dossiers isolés et capture chaque page |
 | `npm run icons` | régénère les icônes PNG à partir des polygones du logo |
-| `npm run dist` | construit `dist/ATTACK-Launcher-Setup-*.exe` (NSIS) et `dist/ATTACK-Launcher-Portable-*.exe` |
+| `npm run update-test -- <dossier>` | mise à jour **réelle** 0.2.0 → 0.2.1 sans GitHub : app de test à part (« ATTACK Launcher UpdateTest »), serveur local, SHA-512 falsifié rejeté, bannière capturée, Redémarrer, puis désinstallation |
+| `npm run dist` | construit `dist/ATTACK-Launcher-Setup-*.exe` (NSIS) avec `latest.yml` et `.blockmap`, et `dist/ATTACK-Launcher-Portable-*.exe` ; ne publie rien |
 
 La logique (`src/main/*.js` sauf `main.js` et `preload.js`) n'utilise pas Electron : elle se teste avec Node seul.
 
@@ -165,9 +190,22 @@ Le launcher prend le jar `attack-client*.jar` de la **dernière release** GitHub
 SHA-256 : celui que GitHub calcule pour chaque fichier de release, ou à défaut un fichier
 `attack-client-x.y.z.jar.sha256` joint à la release. Sans SHA-256, l'installation est refusée.
 
+### Publier une version du launcher
+
+1. Monte `version` dans `package.json` (par exemple `0.3.1`), puis `npm run dist`.
+2. Crée une release GitHub **publiée** (ni brouillon, ni préversion) au tag `v0.3.1` et joins-y, depuis `dist/` :
+   - `ATTACK-Launcher-Setup-0.3.1.exe` ;
+   - `ATTACK-Launcher-Setup-0.3.1.exe.blockmap` : permet aux versions suivantes de ne télécharger que ce qui a changé ;
+   - `latest.yml` : version, nom et SHA-512 de l'installateur, lus par les launchers déjà installés ;
+   - comme avant : `ATTACK-Launcher-Portable-0.3.1.exe`, le jar du mod et `SHA256SUMS`.
+3. **Chaque** release doit contenir `latest.yml` et le `Setup.exe` qu'il désigne (avec son `.blockmap`), même une
+   release qui ne change que le mod (joins alors à nouveau ceux de la version actuelle du launcher) : les launchers
+   lisent la **dernière** release. Sans eux, ils notent une erreur dans `updater.log` et ne proposent rien, sans
+   autre conséquence.
+
 ## Dépendances
 
-Aucune dépendance à l'exécution. Outils de développement : `electron` et `electron-builder`.
+À l'exécution : `electron-updater` (mise à jour du launcher). Outils de développement : `electron` et `electron-builder`.
 
 ## Licences et mentions
 

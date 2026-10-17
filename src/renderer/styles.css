@@ -42,6 +42,8 @@ body {
   overflow: hidden;
   user-select: none;
   -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
 }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:disabled { cursor: default; }
@@ -52,6 +54,7 @@ h1, h2, h3 { font-family: 'Montserrat', 'Inter', sans-serif; font-weight: 700; m
 
 /* --- Barre de titre --- */
 .titlebar {
+  flex: none;
   height: var(--titlebar);
   display: flex;
   align-items: center;
@@ -76,8 +79,21 @@ h1, h2, h3 { font-family: 'Montserrat', 'Inter', sans-serif; font-weight: 700; m
 .wc-close:hover { background: var(--accent); }
 .wc-close:hover svg { stroke: #fff; }
 
+/* --- Bannière de mise à jour du launcher --- */
+.update-banner {
+  flex: none; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 7px 14px;
+  background: linear-gradient(90deg, rgba(229, 57, 53, 0.05), rgba(229, 57, 53, 0.18), rgba(229, 57, 53, 0.05));
+  border-bottom: 1px solid rgba(229, 57, 53, 0.45); font-size: 13px; font-weight: 600;
+}
+.update-icon { width: 16px; height: 16px; fill: none; stroke: var(--accent-light); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.btn.small { padding: 5px 12px; font-size: 12px; }
+.update-close { width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; display: grid; place-items: center; }
+.update-close svg { width: 10px; height: 10px; fill: none; stroke: var(--muted); stroke-width: 1.4; }
+.update-close:hover { background: rgba(255, 255, 255, 0.06); }
+.update-close:hover svg { stroke: var(--text); }
+
 /* --- Structure --- */
-.shell { display: grid; grid-template-columns: 84px 1fr; height: calc(100% - var(--titlebar)); }
+.shell { display: grid; grid-template-columns: 84px 1fr; flex: 1; min-height: 0; }
 .sidebar {
   display: flex; flex-direction: column; gap: 6px; padding: 14px 10px;
   background: rgba(20, 20, 24, 0.7); border-right: 1px solid var(--border);

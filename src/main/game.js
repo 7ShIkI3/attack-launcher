@@ -4,11 +4,11 @@
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { spawn, execFile } = require('node:child_process');
 const mojang = require('./mojang');
 const { mavenPath, safeJoin } = require('./maven');
 const { readEntries, readEntry } = require('./zip');
-const { DEFAULT_JVM_ARGS } = require('./constants');
+const { DEFAULT_JVM_ARGS, FORGE_VERSION_ID } = require('./constants');
 
 const HIDDEN = '<masqué>';
 
@@ -174,4 +174,29 @@ async function launchGame(options) {
   return { pid: child.pid, logFile, child };
 }
 
-module.exports = { HIDDEN, readVersion, resolveVersion, libraryPlan, extractNatives, buildCommand, redact, launchGame };
+/** Lignes de commande des processus Java en cours (Windows), sans barre de progression parasite. */
+const JAVA_PROCESSES_PS = "$ProgressPreference='SilentlyContinue'; " +
+  "Get-CimInstance Win32_Process -Filter \"Name='javaw.exe' OR Name='java.exe'\" | ForEach-Object { $_.CommandLine }";
+
+/** Vrai si une de ces lignes de commande est une partie ATTACK Client (--version de Forge 1.8.9, quel que soit le launcher). */
+function isGameCommandLine(output, versionId = FORGE_VERSION_ID) {
+  return String(output || '').split(/\r?\n/).some((line) => line.includes(versionId));
+}
+
+/**
+ * Une partie tourne-t-elle, lancée par ce launcher ou par le launcher officiel ?
+ * Faux si la détection échoue : on ne bloque pas les mises à jour pour toujours.
+ */
+function detectRunningGame({ run = execFile, platform = process.platform } = {}) {
+  if (platform !== 'win32') return Promise.resolve(false);
+  const encoded = Buffer.from(JAVA_PROCESSES_PS, 'utf16le').toString('base64');
+  return new Promise((resolve) => {
+    run('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], { windowsHide: true, timeout: 15000 },
+      (error, stdout) => resolve(!error && isGameCommandLine(stdout)));
+  });
+}
+
+module.exports = {
+  HIDDEN, readVersion, resolveVersion, libraryPlan, extractNatives, buildCommand, redact, launchGame,
+  JAVA_PROCESSES_PS, isGameCommandLine, detectRunningGame,
+};

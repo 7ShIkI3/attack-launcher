@@ -33,9 +33,15 @@ contextBridge.exposeInMainWorld('attack', {
     remove: invoke('accounts:remove'),
     addOffline: invoke('accounts:addOffline'),
   },
+  update: {
+    state: invoke('update:state'),
+    install: invoke('update:install'),
+    openReleases: invoke('update:openReleases'),
+  },
   onProgress: subscribe('install:progress'),
   onAuthEvent: subscribe('auth:event'),
   onAccountsChanged: subscribe('accounts:changed'),
+  onUpdateState: subscribe('update:state'),
   onWindowState: subscribe('window:state'),
   window: {
     minimize: invoke('window:minimize'),
