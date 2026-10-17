@@ -109,5 +109,23 @@ test('état d’installation sur un dossier vide', async () => {
     { minecraft: status.minecraft, forge: status.forge, mod: status.mod, profile: status.profile, installed: status.installed },
     { minecraft: false, forge: false, mod: false, profile: false, installed: false },
   );
+  assert.equal(status.modVersion, null);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('version du mod affichée : celle du jar, sans « v » en double', async () => {
+  const url = 'https://github.com/7ShIkI3/attack-launcher/releases/download/v0.3.0/attack-client-2.1.0.jar';
+  assert.equal(mod.installedVersion({ source: 'release', version: 'v0.3.0', file: url }), '2.1.0');
+  assert.equal(mod.installedVersion({ source: 'dev', version: '2.0.0', file: 'C:\\mod\\build\\libs\\attack-client-2.0.0.jar' }), '2.0.0');
+  assert.equal(mod.installedVersion({ source: 'release', version: 'v2.1.0', file: 'https://github.com/x/attack-client.jar' }), '2.1.0');
+  assert.equal(mod.installedVersion(null), null);
+
+  // installation faite avant le correctif : l'état garde le tag du launcher comme version
+  const dir = tempDir();
+  const gameDir = path.join(dir, 'game');
+  fs.mkdirSync(gameDir, { recursive: true });
+  fs.writeFileSync(path.join(gameDir, 'attack-launcher.json'), JSON.stringify({ mod: { source: 'release', version: 'v0.3.0', file: url } }));
+  const status = await installer.status({ minecraftDir: path.join(dir, 'mc'), gameDir });
+  assert.equal(status.modVersion, '2.1.0');
   fs.rmSync(dir, { recursive: true, force: true });
 });
