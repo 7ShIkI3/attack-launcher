@@ -97,13 +97,20 @@ test('compte hors ligne : UUID v3 « OfflinePlayer », jeton « 0 », pseudo val
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('ID client Azure : réglage validé, sinon variable ATTACK_MS_CLIENT_ID', () => {
+test('ID client Azure : réglage validé, sinon variable ATTACK_MS_CLIENT_ID, sinon app officielle', () => {
   const base = settings.defaults({ APPDATA: 'C:\\x' });
   const id = 'AAAAAAAA-bbbb-cccc-dddd-eeeeeeeeeeee';
   assert.equal(settings.sanitize({ msClientId: id }, base).msClientId, id.toLowerCase());
   assert.equal(settings.sanitize({ msClientId: 'nimporte quoi' }, base).msClientId, '');
   assert.equal(settings.clientId(base, { ATTACK_MS_CLIENT_ID: id }), id.toLowerCase());
-  assert.equal(settings.clientId(base, { ATTACK_MS_CLIENT_ID: 'faux' }), '');
+  assert.equal(settings.clientIdSource(base, { ATTACK_MS_CLIENT_ID: id }), 'env');
+  // variable absente ou invalide : app officielle d'ATTACK Launcher
+  assert.equal(settings.clientId(base, { ATTACK_MS_CLIENT_ID: 'faux' }), settings.DEFAULT_MS_CLIENT_ID);
+  assert.equal(settings.clientId(base, {}), settings.DEFAULT_MS_CLIENT_ID);
+  assert.equal(settings.clientIdSource(base, {}), 'default');
+  assert.match(settings.DEFAULT_MS_CLIENT_ID, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  // le réglage passe avant tout
   assert.equal(settings.clientId({ ...base, msClientId: '11111111-2222-3333-4444-555555555555' }, { ATTACK_MS_CLIENT_ID: id }),
     '11111111-2222-3333-4444-555555555555');
+  assert.equal(settings.clientIdSource({ ...base, msClientId: '11111111-2222-3333-4444-555555555555' }, {}), 'settings');
 });

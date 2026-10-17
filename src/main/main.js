@@ -90,7 +90,8 @@ function accountsView() {
   return {
     accounts: accounts.list(),
     hasClientId: Boolean(settingsStore.clientId(settings)),
-    clientIdFromEnv: !settings.msClientId && Boolean(settingsStore.clientId(settings)),
+    clientIdFromEnv: settingsStore.clientIdSource(settings) === 'env',
+    clientIdDefault: settingsStore.clientIdSource(settings) === 'default',
     devMode: settings.devMode,
     encryption: safeStorage.isEncryptionAvailable(),
   };
