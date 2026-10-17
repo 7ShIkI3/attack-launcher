@@ -46,7 +46,6 @@
       <button class="nav-item nav-account" data-page="account">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 20c1.2-3.5 4-5 7-5s5.8 1.5 7 5"/></svg>
         <span data-i18n="nav.account">Compte</span>
-        <em class="soon" data-i18n="common.soon">Bientôt</em>
       </button>
     </nav>
 
@@ -72,6 +71,8 @@
               <button class="link" id="repair-button" data-i18n="home.repair">Vérifier / réparer l'installation</button>
               <span class="dot">·</span>
               <button class="link" id="open-dir-button" data-i18n="home.openDir">Ouvrir le dossier de jeu</button>
+              <span class="dot">·</span>
+              <button class="link" id="logs-button" data-i18n="home.logs">Journaux du jeu</button>
             </div>
           </div>
           <aside class="card changelog">
@@ -171,18 +172,78 @@
             <button class="btn" id="dev-dir-change" data-i18n="common.change">Changer</button>
           </div>
         </div>
+        <div class="card setting">
+          <div class="setting-text">
+            <h3 data-i18n="settings.clientId">ID client Azure</h3>
+            <p class="muted" data-i18n="settings.clientIdHelp">Identifiant de ton app Azure pour la connexion Microsoft (ce n'est pas un secret). Voir la page Compte.</p>
+          </div>
+          <div class="setting-control path">
+            <input type="text" id="client-id" spellcheck="false" placeholder="00000000-0000-0000-0000-000000000000">
+            <button class="btn" id="client-id-save" data-i18n="common.save">Enregistrer</button>
+          </div>
+          <p class="warn hidden" id="client-id-warn" data-i18n="settings.clientIdInvalid">Format attendu : 8-4-4-4-12 caractères hexadécimaux.</p>
+        </div>
         <p class="muted footnote" id="about"></p>
       </section>
 
-      <!-- Compte (étape 2) -->
+      <!-- Comptes -->
       <section class="page" id="page-account">
-        <div class="account">
-          <div class="account-icon">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 20c1.2-3.5 4-5 7-5s5.8 1.5 7 5"/></svg>
+        <div class="page-head">
+          <div>
+            <h1 data-i18n="account.title">Comptes</h1>
+            <p class="muted" data-i18n="account.subtitle">Avec un compte connecté, JOUER lance directement ATTACK Client, sans le launcher officiel.</p>
           </div>
-          <h1 data-i18n="account.title">Connexion Microsoft</h1>
-          <p class="muted" data-i18n="account.text">La connexion intégrée arrive bientôt. En attendant, connecte-toi dans le launcher Minecraft officiel : JOUER l'ouvre avec le profil ATTACK Client déjà sélectionné.</p>
-          <button class="btn" disabled data-i18n="account.button">Se connecter (bientôt)</button>
+        </div>
+
+        <!-- ID client Azure manquant : marche à suivre -->
+        <div class="card setup hidden" id="azure-setup">
+          <h3 data-i18n="azure.title">Connexion Microsoft à configurer</h3>
+          <p class="muted" data-i18n="azure.intro">Mojang exige que chaque launcher utilise sa propre application Azure, validée par Mojang. Une seule fois :</p>
+          <ol>
+            <li data-i18n="azure.step1">Sur portal.azure.com, ouvre « Inscriptions d'applications » puis « Nouvelle inscription ».</li>
+            <li data-i18n="azure.step2">Types de comptes : « Comptes Microsoft personnels uniquement ». Pas d'URI de redirection.</li>
+            <li data-i18n="azure.step3">Dans « Authentification », mets « Autoriser les flux de clients publics » sur Oui, puis enregistre.</li>
+            <li data-i18n="azure.step4">Copie l'« ID d'application (client) » dans Réglages → ID client Azure.</li>
+            <li data-i18n="azure.step5">Demande l'accès de cette app à l'API Minecraft avec le formulaire Mojang, et attends leur accord.</li>
+          </ol>
+          <div class="setup-actions">
+            <button class="btn" id="azure-portal" data-i18n="azure.portal">Ouvrir le portail Azure</button>
+            <button class="btn" id="azure-form" data-i18n="azure.form">Formulaire Mojang</button>
+            <button class="btn accent" id="azure-settings" data-i18n="azure.settings">Saisir l'ID client</button>
+          </div>
+          <p class="muted small-note" data-i18n="azure.meanwhile">En attendant, JOUER ouvre le launcher officiel avec le profil ATTACK Client.</p>
+        </div>
+
+        <div class="accounts-list" id="accounts-list"></div>
+
+        <!-- Connexion en cours (code d'appareil) -->
+        <div class="card device hidden" id="device">
+          <p class="muted" id="device-text" data-i18n="login.instructions">Sur la page Microsoft qui vient de s'ouvrir, saisis ce code :</p>
+          <div class="device-code" id="device-code">--------</div>
+          <p class="muted device-uri" id="device-uri"></p>
+          <div class="setup-actions">
+            <button class="btn" id="device-copy" data-i18n="login.copy">Copier le code</button>
+            <button class="btn" id="device-open" data-i18n="login.open">Ouvrir la page</button>
+            <button class="btn ghost" id="device-cancel" data-i18n="login.cancel">Annuler</button>
+          </div>
+          <p class="device-stage" id="device-stage"></p>
+        </div>
+
+        <p class="message hidden" id="account-message"></p>
+
+        <div class="account-actions">
+          <button class="btn accent" id="login-button" data-i18n="login.add">Ajouter un compte Microsoft</button>
+        </div>
+
+        <div class="card setting offline hidden" id="offline-card">
+          <div class="setting-text">
+            <h3 data-i18n="offline.title">Compte hors ligne (mode développeur)</h3>
+            <p class="muted" data-i18n="offline.help">Pseudo seul, pour tester le lancement en solo. Les serveurs en ligne le refuseront.</p>
+          </div>
+          <div class="setting-control path">
+            <input type="text" id="offline-name" maxlength="16" data-i18n-placeholder="offline.placeholder" placeholder="Pseudo">
+            <button class="btn" id="offline-add" data-i18n="offline.add">Ajouter</button>
+          </div>
         </div>
       </section>
     </main>

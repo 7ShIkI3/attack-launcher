@@ -39,6 +39,11 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.2.0', date: '2026-10-17',
+      fr: 'Connexion Microsoft intégrée (plusieurs comptes) et lancement direct du jeu avec Java 8 officiel, sans passer par le launcher Minecraft.',
+      en: 'Built-in Microsoft sign-in (multiple accounts) and direct game launch with official Java 8, without the Minecraft launcher.',
+    },
+    {
       version: 'Launcher 0.1.0', date: '2026-10-17',
       fr: 'Premier launcher : installe Minecraft 1.8.9, Forge et ATTACK Client en un clic, dans un dossier de jeu séparé, et ajoute le profil au launcher officiel.',
       en: 'First launcher: installs Minecraft 1.8.9, Forge and ATTACK Client in one click, in a separate game folder, and adds the profile to the official launcher.',

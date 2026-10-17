@@ -11,6 +11,7 @@
   let status = null;
   let busy = false;
   let modFilter = 'all';
+  let accountsView = { accounts: [], hasClientId: false, devMode: false };
 
   function el(tag, props = {}, children = []) {
     const node = document.createElement(tag);
@@ -65,7 +66,9 @@
     const button = $('play-button');
     button.disabled = busy || !status;
     $('play-label').textContent = busy ? t('home.installing') : status?.installed ? t('home.play') : t('home.install');
-    $('play-hint').textContent = busy ? '' : status?.installed ? t('home.playHint') : t('home.installHint');
+    const player = launchAccount();
+    $('play-hint').textContent = busy ? '' : !status?.installed ? t('home.installHint')
+      : player ? t('home.playAs', { name: player.name }) : t('home.playHint');
   }
 
   async function refreshStatus() {
@@ -76,7 +79,9 @@
   function errorText(result) {
     const key = `error.${result.code}`;
     const text = t(key);
-    return text === key ? t('error.generic', { message: result.message }) : text;
+    if (text !== key) return text;
+    // messages d'erreur du processus principal : déjà rédigés en français
+    return window.I18n.lang === 'fr' && result.message ? result.message : t('error.generic', { message: result.message });
   }
 
   async function runInstall() {
@@ -110,15 +115,24 @@
       return;
     }
     $('play-button').disabled = true;
+    const direct = Boolean(launchAccount());
+    if (direct) {
+      setMessage('');
+      $('progress-bar').style.width = '0%';
+      $('progress').classList.remove('hidden');
+    }
     const result = await api.play();
     $('play-button').disabled = false;
-    if (result.ok) setMessage(result.detected ? t('home.launched') : t('home.launchedUnknown'), 'ok');
+    if (direct) setTimeout(() => $('progress').classList.add('hidden'), result.ok ? 1200 : 0);
+    if (result.ok && result.mode === 'direct') setMessage(t('home.launchedDirect', { name: result.name }), 'ok');
+    else if (result.ok) setMessage(result.detected ? t('home.launched') : t('home.launchedUnknown'), 'ok');
     else if (result.code === 'NOT_INSTALLED') await refreshStatus();
     else setMessage(errorText(result), 'error');
   });
   $('repair-button').addEventListener('click', () => !busy && runInstall());
   $('open-dir-button').addEventListener('click', () => api.openGameDir());
   $('repo-button').addEventListener('click', () => api.openRepo());
+  $('logs-button').addEventListener('click', () => api.openLogs());
 
   function renderChangelog() {
     const list = $('changelog');
@@ -166,6 +180,7 @@
     clearTimeout(savedTimer);
     savedTimer = setTimeout(() => $('saved').classList.add('hidden'), 1600);
     if ('gameDir' in patch || 'devMode' in patch || 'devJarDir' in patch) refreshStatus();
+    if ('devMode' in patch || 'msClientId' in patch) refreshAccounts();
   }
 
   function formatRam(mb) {
@@ -189,6 +204,9 @@
     $('dev-mode').checked = settings.devMode;
     $('dev-dir-row').classList.toggle('hidden', !settings.devMode);
     $('dev-dir').value = settings.devJarDir;
+    $('client-id').value = settings.msClientId;
+    $('client-id').placeholder = !settings.msClientId && accountsView.clientIdFromEnv
+      ? t('settings.clientIdEnv') : '00000000-0000-0000-0000-000000000000';
     if (info) $('about').textContent = t('settings.about', { version: info.version, dir: info.minecraftDir });
   }
 
@@ -224,12 +242,159 @@
     if (dir) save({ devJarDir: dir });
   });
 
+  // --- comptes ---
+  /** Compte utilisé par JOUER : le compte actif (hors ligne seulement en mode développeur). */
+  function launchAccount() {
+    const active = accountsView.accounts.find((a) => a.active);
+    return active && (active.type === 'msa' || settings?.devMode) ? active : null;
+  }
+
+  /** Tête du joueur (visage + calque du chapeau) dessinée depuis la skin, en pixels nets. */
+  function avatar(account) {
+    const box = el('div', { class: 'avatar', text: account.name.slice(0, 1).toUpperCase() });
+    if (!account.skin) return box;
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 8;
+      canvas.height = 8;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(image, 8, 8, 8, 8, 0, 0, 8, 8);
+      ctx.drawImage(image, 40, 8, 8, 8, 0, 0, 8, 8);
+      box.replaceChildren(canvas);
+    };
+    image.src = account.skin;
+    return box;
+  }
+
+  function accountMessage(text, kind = '') {
+    const node = $('account-message');
+    node.textContent = text || '';
+    node.className = `message ${kind}`;
+    node.classList.toggle('hidden', !text);
+  }
+
+  function renderAccounts() {
+    const view = accountsView;
+    $('azure-setup').classList.toggle('hidden', view.hasClientId);
+    $('login-button').disabled = !view.hasClientId || loggingIn;
+    $('offline-card').classList.toggle('hidden', !view.devMode);
+    const list = $('accounts-list');
+    if (view.accounts.length === 0) {
+      list.replaceChildren(el('p', { class: 'empty', text: t('account.none') }));
+    } else {
+      list.replaceChildren(...view.accounts.map((account) => {
+        const actions = [];
+        if (!account.active) {
+          const use = el('button', { class: 'btn', text: t('account.use') });
+          use.addEventListener('click', async () => {
+            accountsView = await api.accounts.select(account.id);
+            renderAccounts();
+            renderStatus();
+          });
+          actions.push(use);
+        }
+        const remove = el('button', { class: 'btn ghost danger', text: t('account.remove') });
+        remove.addEventListener('click', async () => {
+          accountsView = await api.accounts.remove(account.id);
+          renderAccounts();
+          renderStatus();
+        });
+        actions.push(remove);
+        return el('div', { class: `card account-card${account.active ? ' active' : ''}` }, [
+          avatar(account),
+          el('div', { class: 'account-info' }, [
+            el('b', { text: account.name }),
+            el('span', { class: 'badge', text: t(account.type === 'msa' ? 'account.msa' : 'account.offline') }),
+            ...(account.active ? [' ', el('span', { class: 'badge on', text: t('account.active') })] : []),
+          ]),
+          el('div', { class: 'setup-actions' }, actions),
+        ]);
+      }));
+    }
+  }
+
+  async function refreshAccounts() {
+    accountsView = await api.accounts.list();
+    renderAccounts();
+    renderStatus();
+    renderSettings();
+  }
+
+  let loggingIn = false;
+  $('login-button').addEventListener('click', async () => {
+    if (loggingIn) return;
+    loggingIn = true;
+    accountMessage('');
+    $('device-code').textContent = '--------';
+    $('device-uri').textContent = '';
+    $('device-stage').textContent = t('login.starting');
+    $('device').classList.remove('hidden');
+    renderAccounts();
+    const result = await api.accounts.login();
+    loggingIn = false;
+    $('device').classList.add('hidden');
+    if (result.ok) accountMessage(t('login.done', { name: result.name }), 'ok');
+    else if (result.code !== 'CANCELLED') accountMessage(errorText(result), 'error');
+    await refreshAccounts();
+  });
+  api.onAuthEvent((event) => {
+    if (event.stage === 'code') {
+      $('device-code').textContent = event.userCode;
+      $('device-uri').textContent = event.verificationUri;
+      $('device-stage').textContent = t('login.waiting');
+    } else if (event.stage === 'xbox') {
+      $('device-stage').textContent = t('login.xbox');
+    }
+  });
+  api.onAccountsChanged((view) => {
+    accountsView = view;
+    renderAccounts();
+    renderStatus();
+    if (view.refreshError) accountMessage(t('account.refreshError', { message: errorText(view.refreshError) }), 'error');
+  });
+  $('device-copy').addEventListener('click', async () => {
+    await api.accounts.copyCode();
+    $('device-copy').textContent = t('login.copied');
+    setTimeout(() => {
+      $('device-copy').textContent = t('login.copy');
+    }, 1500);
+  });
+  $('device-open').addEventListener('click', () => api.accounts.openVerification());
+  $('device-cancel').addEventListener('click', () => api.accounts.cancel());
+  $('azure-portal').addEventListener('click', () => api.openAzureHelp(0));
+  $('azure-form').addEventListener('click', () => api.openAzureHelp(1));
+  $('azure-settings').addEventListener('click', () => {
+    showPage('settings');
+    $('client-id').focus();
+  });
+  $('offline-add').addEventListener('click', async () => {
+    const result = await api.accounts.addOffline($('offline-name').value.trim());
+    if (result.ok) {
+      $('offline-name').value = '';
+      accountMessage('');
+      accountsView = result;
+      renderAccounts();
+      renderStatus();
+    } else {
+      accountMessage(errorText(result), 'error');
+    }
+  });
+  $('client-id-save').addEventListener('click', () => {
+    const value = $('client-id').value.trim();
+    const valid = value === '' || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+    $('client-id-warn').classList.toggle('hidden', valid);
+    if (valid) save({ msClientId: value });
+  });
+
   function applyLanguage() {
     window.I18n.setLang(settings.lang);
     renderStatus();
     renderChangelog();
     renderMods();
     renderSettings();
+    renderAccounts();
   }
 
   api.onWindowState(({ maximized }) => document.body.classList.toggle('maximized', maximized));
@@ -237,6 +402,7 @@
   async function init() {
     [info, settings] = await Promise.all([api.info(), api.getSettings()]);
     $('hero-sub').textContent = `Minecraft ${info.mcVersion} · Forge ${info.forgeVersion.split('-')[1]}`;
+    accountsView = await api.accounts.list();
     applyLanguage();
     await refreshStatus();
   }

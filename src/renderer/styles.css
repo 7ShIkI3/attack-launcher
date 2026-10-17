@@ -241,12 +241,38 @@ input[type='range']::-webkit-slider-thumb {
 .saved { color: var(--good); font-size: 12px; padding-top: 10px; }
 .footnote { font-size: 11.5px; margin-top: 18px; }
 
-/* --- Compte --- */
-.account { max-width: 460px; margin: 12vh auto 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.account-icon { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; background: var(--card); border: 1px solid var(--border); }
-.account-icon svg { width: 36px; height: 36px; fill: none; stroke: var(--muted); stroke-width: 1.6; }
-.account h1 { font-size: 22px; }
-.account p { line-height: 1.55; margin: 0 0 8px; }
+/* --- Comptes --- */
+.setup { padding: 20px 22px; margin-bottom: 16px; max-width: 860px; border-color: rgba(229, 57, 53, 0.35); }
+.setup h3 { font-size: 15px; margin-bottom: 6px; }
+.setup p { margin: 0 0 10px; font-size: 12.5px; line-height: 1.5; }
+.setup ol { margin: 0 0 14px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.5; }
+.setup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.small-note { margin: 12px 0 0 !important; font-size: 12px !important; }
+.btn.accent { background: var(--accent); border-color: transparent; color: #fff; }
+.btn.accent:hover:not(:disabled) { background: #ef5350; }
+.btn.danger:hover:not(:disabled) { background: rgba(229, 57, 53, 0.18); color: #ff8a80; }
+.accounts-list { display: flex; flex-direction: column; gap: 10px; max-width: 860px; margin-bottom: 14px; }
+.account-card { display: flex; align-items: center; gap: 14px; padding: 12px 16px; }
+.account-card.active { border-color: rgba(229, 57, 53, 0.55); box-shadow: 0 0 0 1px rgba(229, 57, 53, 0.25) inset; }
+.avatar { width: 44px; height: 44px; border-radius: 9px; flex: none; image-rendering: pixelated; background: var(--field);
+  display: grid; place-items: center; font-family: "Montserrat"; font-weight: 700; color: var(--accent-light); overflow: hidden; }
+.avatar canvas { width: 44px; height: 44px; image-rendering: pixelated; }
+.account-info { flex: 1; min-width: 0; }
+.account-info b { display: block; font-size: 14.5px; }
+.badge { display: inline-block; margin-top: 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); border: 1px solid var(--border); padding: 2px 7px; border-radius: 99px; }
+.badge.on { color: #fff; background: var(--accent); border-color: transparent; }
+.account-card .setup-actions { flex: none; }
+.empty { color: var(--muted); font-size: 13px; padding: 4px 2px; }
+.device { padding: 22px; max-width: 860px; margin-bottom: 14px; text-align: center; }
+.device p { margin: 0; }
+.device-code { font-family: "Montserrat"; font-weight: 700; font-size: 44px; letter-spacing: 0.22em; margin: 12px 0 4px;
+  color: #fff; user-select: text; }
+.device-uri { font-size: 12.5px; margin-bottom: 14px !important; user-select: text; }
+.device .setup-actions { justify-content: center; }
+.device-stage { margin-top: 14px !important; font-size: 12.5px; color: var(--accent-light); }
+.account-actions { margin-bottom: 18px; }
+#account-message { margin: 0 0 14px; max-width: 860px; }
 
 @media (max-width: 1040px) {
   .home-grid { grid-template-columns: 1fr; }

@@ -1,6 +1,7 @@
 'use strict';
-// Processus principal Electron : fenêtre sans cadre, IPC nommés (et seulement ceux-là), installation et lancement.
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+// Processus principal Electron : fenêtre sans cadre, IPC nommés (et seulement ceux-là), installation,
+// comptes Microsoft et lancement du jeu (direct avec un compte, sinon par le launcher officiel).
+const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, clipboard } = require('electron');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const os = require('node:os');
@@ -11,22 +12,45 @@ const installer = require('./installer');
 const settingsStore = require('./settings');
 const profiles = require('./profiles');
 const launch = require('./launch');
+const auth = require('./auth');
+const runtime = require('./runtime');
+const game = require('./game');
+const http = require('./http');
+const { AccountStore } = require('./accounts');
 const { defaultMinecraftDir } = require('./paths');
 
 const ROOT = path.join(__dirname, '..', '..');
 const INDEX_HTML = path.join(ROOT, 'src', 'renderer', 'index.html');
 const INDEX_URL = pathToFileURL(INDEX_HTML).href;
 const REPO_URL = `https://github.com/${C.GITHUB_REPO}`;
+const AZURE_HELP_URLS = ['https://portal.azure.com/', 'https://aka.ms/mce-reviewappid'];
 
 // Dossiers isolés pour les tests (capture d'écran, essais) : jamais utilisés par une installation normale.
 if (process.env.ATTACK_USER_DATA) app.setPath('userData', path.resolve(process.env.ATTACK_USER_DATA));
 const minecraftDir = process.env.ATTACK_MINECRAFT_DIR ? path.resolve(process.env.ATTACK_MINECRAFT_DIR) : defaultMinecraftDir();
+const runtimeDir = process.env.ATTACK_RUNTIME_DIR
+  ? path.resolve(process.env.ATTACK_RUNTIME_DIR)
+  : path.join(process.env.LOCALAPPDATA || os.homedir(), 'ATTACK Launcher', 'runtime');
 
 let win = null;
 let settings = settingsStore.defaults();
 let installing = false;
+let login = null; // connexion en cours : { cancelled, verificationUri, userCode }
+let accounts = null;
+const transport = auth.createTransport();
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
+
+/** Chiffrement du refresh token par Windows (DPAPI, lié à la session de l'utilisateur). */
+const cipher = {
+  encrypt(text) {
+    if (!safeStorage.isEncryptionAvailable()) throw new auth.AuthError('NO_ENCRYPTION', 'Chiffrement Windows indisponible : impossible de garder la connexion.');
+    return safeStorage.encryptString(text);
+  },
+  decrypt(buffer) {
+    return safeStorage.decryptString(buffer);
+  },
+};
 
 function profileIcon() {
   const file = path.join(ROOT, 'assets', 'profile-icon.png');
@@ -43,6 +67,33 @@ function handle(channel, fn) {
 
 function publicError(error) {
   return { ok: false, code: error.code || 'ERROR', message: error.message };
+}
+
+function send(channel, payload) {
+  if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
+}
+
+/** Skin du profil en data: URL (la page n'a pas le droit de charger d'images externes). */
+async function skinDataUrl(url) {
+  if (!url) return null;
+  try {
+    const buffer = await http.fetchBuffer(url.replace(/^http:/, 'https:'), { retries: 1 });
+    return `data:image/png;base64,${buffer.toString('base64')}`;
+  } catch {
+    return null;
+  }
+}
+
+const refreshWith = (refreshToken) => auth.refreshAccount(transport, settingsStore.clientId(settings), refreshToken);
+
+function accountsView() {
+  return {
+    accounts: accounts.list(),
+    hasClientId: Boolean(settingsStore.clientId(settings)),
+    clientIdFromEnv: !settings.msClientId && Boolean(settingsStore.clientId(settings)),
+    devMode: settings.devMode,
+    encryption: safeStorage.isEncryptionAvailable(),
+  };
 }
 
 function registerIpc() {
@@ -84,20 +135,89 @@ function registerIpc() {
     }
   });
 
-  handle('game:play', async () => {
+  // --- comptes ---
+  handle('accounts:list', () => accountsView());
+
+  handle('accounts:login', async () => {
+    if (login) return { ok: false, code: 'BUSY', message: 'Connexion déjà en cours' };
+    const current = { cancelled: false };
+    login = current;
     try {
-      const status = await installer.status({ minecraftDir, gameDir: settings.gameDir });
-      if (!status.installed) return { ok: false, code: 'NOT_INSTALLED', message: 'Installation incomplète' };
-      // réglages actuels (RAM, Java, dossier) + profil présélectionné dans le launcher officiel
-      await profiles.updateProfiles(minecraftDir, (data) => profiles.markLastUsed(profiles.mergeProfile(data, {
-        gameDir: settings.gameDir, ramMb: settings.ramMb, javaPath: settings.javaPath, icon: profileIcon(),
-      })));
-      const plan = launch.openLauncher();
-      return { ok: true, detected: Boolean(plan.detected) };
+      const result = await auth.loginWithDeviceCode(transport, settingsStore.clientId(settings), {
+        onCode: ({ userCode, verificationUri, expiresIn }) => {
+          current.userCode = userCode;
+          current.verificationUri = verificationUri;
+          send('auth:event', { stage: 'code', userCode, verificationUri, expiresIn });
+          openVerification(verificationUri);
+        },
+        onStage: (stage) => send('auth:event', { stage }),
+        isCancelled: () => current.cancelled,
+      });
+      const skin = await skinDataUrl(result.profile.skinUrl);
+      await accounts.saveMicrosoft(result, { skin });
+      return { ok: true, name: result.profile.name };
+    } catch (error) {
+      return publicError(error);
+    } finally {
+      login = null;
+    }
+  });
+  handle('accounts:cancel', () => {
+    if (login) login.cancelled = true;
+  });
+  handle('accounts:openVerification', () => login?.verificationUri && openVerification(login.verificationUri));
+  handle('accounts:copyCode', () => login?.userCode && clipboard.writeText(login.userCode));
+  handle('accounts:select', async (_event, id) => {
+    await accounts.setActive(String(id));
+    return accountsView();
+  });
+  handle('accounts:remove', async (_event, id) => {
+    await accounts.remove(String(id));
+    return accountsView();
+  });
+  handle('accounts:addOffline', async (_event, name) => {
+    if (!settings.devMode) return { ok: false, code: 'DEV_ONLY', message: 'Réservé au mode développeur' };
+    try {
+      await accounts.addOffline(String(name || ''));
+      return { ok: true, ...accountsView() };
     } catch (error) {
       return publicError(error);
     }
   });
+  handle('shell:openAzureHelp', (_event, index) => {
+    const url = AZURE_HELP_URLS[Number(index)];
+    if (url) shell.openExternal(url);
+  });
+
+  // --- jeu ---
+  handle('game:play', async (event) => {
+    try {
+      const status = await installer.status({ minecraftDir, gameDir: settings.gameDir });
+      if (!status.installed) return { ok: false, code: 'NOT_INSTALLED', message: 'Installation incomplète' };
+      const account = accounts.active();
+      // un compte hors ligne ne sert qu'en mode développeur
+      if (account && (account.type === 'msa' || settings.devMode)) return await playDirect(event, account);
+      // sans compte : profil présélectionné dans le launcher officiel
+      await profiles.updateProfiles(minecraftDir, (data) => profiles.markLastUsed(profiles.mergeProfile(data, {
+        gameDir: settings.gameDir, ramMb: settings.ramMb, javaPath: settings.javaPath, icon: profileIcon(),
+      })));
+      const plan = launch.openLauncher();
+      return { ok: true, mode: 'official', detected: Boolean(plan.detected) };
+    } catch (error) {
+      return publicError(error);
+    }
+  });
+  handle('game:openLogs', async () => {
+    const dir = path.join(settings.gameDir, 'logs', 'launcher');
+    await fsp.mkdir(dir, { recursive: true });
+    return shell.openPath(dir);
+  });
+
+  handle('shell:openGameDir', async () => {
+    await fsp.mkdir(settings.gameDir, { recursive: true });
+    return shell.openPath(settings.gameDir);
+  });
+  handle('shell:openRepo', () => shell.openExternal(REPO_URL));
 
   handle('dialog:pickFolder', async (_event, current) => {
     const result = await dialog.showOpenDialog(win, {
@@ -114,15 +234,47 @@ function registerIpc() {
     return result.canceled ? null : result.filePaths[0];
   });
 
-  handle('shell:openGameDir', async () => {
-    await fsp.mkdir(settings.gameDir, { recursive: true });
-    return shell.openPath(settings.gameDir);
-  });
-  handle('shell:openRepo', () => shell.openExternal(REPO_URL));
-
   handle('window:minimize', () => win?.minimize());
   handle('window:maximize', () => (win?.isMaximized() ? win.unmaximize() : win?.maximize()));
   handle('window:close', () => win?.close());
+}
+
+/** N'ouvre que la page de validation Microsoft renvoyée par le serveur (https, domaine Microsoft). */
+function openVerification(uri) {
+  try {
+    const { protocol, hostname } = new URL(uri);
+    if (protocol === 'https:' && /(^|\.)(microsoft\.com|microsoftonline\.com|live\.com)$/.test(hostname)) shell.openExternal(uri);
+  } catch {
+    // adresse invalide : l'utilisateur peut la recopier depuis l'écran
+  }
+}
+
+/** Lancement direct : Java officiel (ou personnalisé), identité du compte, jeu. */
+async function playDirect(event, account) {
+  const progress = (step, done, total) => {
+    if (!event.sender.isDestroyed()) {
+      event.sender.send('install:progress', { step, done, total, percent: total ? Math.round((done / total) * 100) : 100 });
+    }
+  };
+  let java = settings.javaPath;
+  if (!java) {
+    progress('java', 0, 1);
+    java = (await runtime.installRuntime({ runtimeDir, onProgress: ({ done, total }) => progress('java', done, total) })).java;
+  }
+  progress('auth', 0, 1);
+  const identity = await accounts.launchIdentity(account.id, refreshWith);
+  progress('launch', 0, 1);
+  const result = await game.launchGame({
+    java,
+    minecraftDir,
+    gameDir: settings.gameDir,
+    versionId: C.FORGE_VERSION_ID,
+    identity,
+    ramMb: settings.ramMb,
+    launcherVersion: app.getVersion(),
+  });
+  progress('launch', 1, 1);
+  return { ok: true, mode: 'direct', name: identity.name, logFile: result.logFile };
 }
 
 function createWindow() {
@@ -175,6 +327,15 @@ async function captureScreens() {
     await wait(300);
     await fsp.writeFile(path.join(dir, 'installed.png'), (await win.webContents.capturePage()).toPNG());
   }
+  if (process.env.ATTACK_SCREENSHOT_PLAY) {
+    // clic sur JOUER (compte actif) : capture une fois le lancement terminé
+    const js = (code) => win.webContents.executeJavaScript(code);
+    await js("document.getElementById('play-button').click()");
+    await wait(300);
+    for (let i = 0; i < 600 && (await js('document.getElementById("play-button").disabled')); i++) await wait(500);
+    await wait(300);
+    await fsp.writeFile(path.join(dir, 'played.png'), (await win.webContents.capturePage()).toPNG());
+  }
   for (const page of ['home', 'mods', 'settings', 'account']) {
     await win.webContents.executeJavaScript(`window.showPage && window.showPage(${JSON.stringify(page)})`);
     await wait(500);
@@ -182,6 +343,18 @@ async function captureScreens() {
     await fsp.writeFile(path.join(dir, `${page}.png`), image.toPNG());
   }
   app.quit();
+}
+
+/** Au démarrage : rafraîchit le compte actif en silence (nouveau jeton, refresh token tenu à jour). */
+async function refreshActiveAccount() {
+  const account = accounts.active();
+  if (!account || account.type !== 'msa' || !settingsStore.clientId(settings)) return;
+  try {
+    await accounts.refresh(account.id, refreshWith);
+    send('accounts:changed', accountsView());
+  } catch (error) {
+    send('accounts:changed', { ...accountsView(), refreshError: { code: error.code || 'ERROR', message: error.message } });
+  }
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -195,8 +368,10 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.whenReady().then(async () => {
     settings = await settingsStore.load(settingsFile());
+    accounts = await new AccountStore(path.join(app.getPath('userData'), 'accounts.json'), cipher).load();
     registerIpc();
     createWindow();
+    refreshActiveAccount();
   });
   app.on('window-all-closed', () => app.quit());
 }

@@ -1,8 +1,8 @@
 {
   "name": "attack-launcher",
   "productName": "ATTACK Launcher",
-  "version": "0.1.0",
-  "description": "Launcher d'ATTACK Client (Minecraft 1.8.9 PvP) : installe Forge et le mod, puis ouvre le launcher officiel.",
+  "version": "0.2.0",
+  "description": "Launcher d'ATTACK Client (Minecraft 1.8.9 PvP) : installe Forge et le mod, connexion Microsoft et lancement direct du jeu.",
   "main": "src/main/main.js",
   "private": true,
   "license": "MIT",
@@ -13,6 +13,7 @@
     "test": "node --test test/*.test.js",
     "icons": "node scripts/make-icons.js",
     "install-test": "node scripts/install-test.js",
+    "launch-test": "node scripts/launch-test.js",
     "screenshot": "node scripts/screenshot.js",
     "dist": "electron-builder --win nsis portable",
     "pack": "electron-builder --win --dir"

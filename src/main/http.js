@@ -28,11 +28,13 @@ function assertAllowed(url, allowedHosts = ALLOWED_HOSTS) {
 }
 
 /** fetch qui suit les redirections à la main : chaque adresse est vérifiée AVANT d'être contactée. */
-async function fetchChecked(url, headers, allowedHosts) {
+async function fetchChecked(url, headers, allowedHosts, { method = 'GET', body } = {}) {
   let current = url;
   for (let hop = 0; hop <= 5; hop++) {
     assertAllowed(current, allowedHosts);
-    const response = await fetch(current, { headers: { 'User-Agent': USER_AGENT, ...headers }, redirect: 'manual' });
+    const init = { method, headers: { 'User-Agent': USER_AGENT, ...headers }, redirect: 'manual' };
+    if (body !== undefined && method !== 'GET') init.body = body;
+    const response = await fetch(current, init);
     const location = response.headers.get('location');
     if (response.status < 300 || response.status >= 400 || !location) return response;
     await response.body?.cancel();
@@ -156,6 +158,7 @@ async function pool(items, limit, fn) {
 module.exports = {
   HttpError,
   assertAllowed,
+  fetchChecked,
   request,
   hashBuffer,
   hashFile,
