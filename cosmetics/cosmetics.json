@@ -1,6 +1,8 @@
 {
   "schema": 1,
-  "admins": [],
+  "admins": [
+    { "name": "Attometre", "uuid": "9a124d77-593a-4003-846c-312bfa57563e" }
+  ],
   "capes": {
     "n2t48": [
       { "name": "Attometre", "uuid": "9a124d77-593a-4003-846c-312bfa57563e" }
