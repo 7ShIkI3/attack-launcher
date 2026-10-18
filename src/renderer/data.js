@@ -76,6 +76,11 @@
 
   const CHANGELOG = [
     {
+      version: 'ATTACK Client 2.2', date: '2026-10-18',
+      fr: 'Nouvelle cape animée N2T-48, réservée aux admins ATTACK et aux joueurs choisis : tout le monde la voit dans le menu Cosmétiques, et les joueurs ATTACK la voient sur ceux qui la portent. Livrée avec le launcher 0.3.2.',
+      en: 'New animated N2T-48 cape, reserved for ATTACK admins and chosen players: everyone sees it in the Cosmetics menu, and ATTACK players see it on those who wear it. Shipped with launcher 0.3.2.',
+    },
+    {
       version: 'Launcher 0.3.1', date: '2026-10-18',
       fr: 'L’accueil affiche la bonne version du mod (v2.1.0) et le README indique les bons dossiers. Première mise à jour livrée automatiquement aux launchers 0.3.0.',
       en: 'The home page shows the right mod version (v2.1.0) and the README lists the right folders. First update delivered automatically to 0.3.0 launchers.',
