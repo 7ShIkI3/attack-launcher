@@ -399,6 +399,9 @@ async function captureScreens() {
   await fsp.mkdir(dir, { recursive: true });
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const js = (code) => win.webContents.executeJavaScript(code);
+  // ATTACK_SCREENSHOT_SIZE=940x600 : capture à une autre taille de fenêtre (bornée par la taille minimale)
+  const size = /^(\d+)x(\d+)$/.exec(process.env.ATTACK_SCREENSHOT_SIZE || '');
+  if (size) win.setSize(Number(size[1]), Number(size[2]));
   await wait(1200);
   if (process.env.ATTACK_SCREENSHOT_UPDATE) {
     // attend la fin de la vérification de mise à jour, capture la bannière, puis clique sur Redémarrer si demandé
@@ -436,6 +439,10 @@ async function captureScreens() {
     const image = await win.webContents.capturePage();
     await fsp.writeFile(path.join(dir, `${page}.png`), image.toPNG());
   }
+  // historique complet des versions (fenêtre « Tout voir » de l'accueil)
+  await js("window.showPage && window.showPage('home'); document.getElementById('changelog-all').click()");
+  await wait(500);
+  await fsp.writeFile(path.join(dir, 'changelog.png'), (await win.webContents.capturePage()).toPNG());
   app.quit();
 }
 
