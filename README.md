@@ -203,6 +203,27 @@ SHA-256 : celui que GitHub calcule pour chaque fichier de release, ou à défaut
    lisent la **dernière** release. Sans eux, ils notent une erreur dans `updater.log` et ne proposent rien, sans
    autre conséquence.
 
+### Donner une cape réservée
+
+Le mod (2.2.0 et plus) lit [`cosmetics/cosmetics.json`](cosmetics/cosmetics.json) sur la branche `main` pour savoir
+qui peut porter les capes réservées (aujourd'hui : N2T-48). Les joueurs ATTACK voient alors ces capes sur eux.
+
+```json
+{
+  "schema": 1,
+  "admins": [ { "name": "Pseudo", "uuid": "00000000-0000-4000-8000-000000000001" } ],
+  "capes": { "n2t48": [ { "name": "Ami", "uuid": "00000000-0000-4000-8000-000000000002" } ] }
+}
+```
+
+- `admins` : ont **toutes** les capes réservées. `capes.n2t48` : les autres joueurs qui ont N2T-48.
+- Seul l'`uuid` compte, car un pseudo peut changer. Pour trouver l'UUID d'un pseudo, ouvre
+  `https://api.mojang.com/users/profiles/minecraft/<pseudo>` (champ `id`).
+- Retirer quelqu'un : supprime sa ligne.
+- Une modification met jusqu'à environ 15 minutes à arriver en jeu (cache de GitHub, puis relecture toutes les
+  10 minutes).
+- Un JSON invalide est ignoré : les joueurs gardent la dernière liste valide.
+
 ## Dépendances
 
 À l'exécution : `electron-updater` (mise à jour du launcher). Outils de développement : `electron` et `electron-builder`.
