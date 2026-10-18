@@ -61,4 +61,15 @@ function versionFromJarName(name) {
   return match ? match[1] : 'dev';
 }
 
-module.exports = { parseSha256File, parseRelease, sha256For, findDevJar, versionFromJarName };
+/**
+ * Version du mod installé, sans « v » initial : lue dans le nom du jar d'origine (URL de release ou chemin local,
+ * attack-client-2.1.0.jar -> 2.1.0), sinon la version enregistrée (le tag du launcher pour une release).
+ */
+function installedVersion(info) {
+  const name = String(info?.file || '').split(/[\\/]/).pop();
+  const fromJar = /^attack-client-(.+)\.jar$/i.exec(name);
+  const version = fromJar ? fromJar[1] : info?.version;
+  return version ? String(version).replace(/^v(?=\d)/i, '') : null;
+}
+
+module.exports = { parseSha256File, parseRelease, sha256For, findDevJar, versionFromJarName, installedVersion };

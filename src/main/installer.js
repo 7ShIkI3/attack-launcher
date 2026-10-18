@@ -234,7 +234,7 @@ async function status({ minecraftDir, gameDir }) {
     mod: has(gameDir, 'mods', C.MOD_FILE),
     profile,
     profileError,
-    modVersion: state?.mod?.version || null,
+    modVersion: mod.installedVersion(state?.mod),
     modSource: state?.mod?.source || null,
     installedAt: state?.installedAt || null,
   };

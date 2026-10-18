@@ -96,11 +96,11 @@ Côté code, toutes les requêtes OAuth passent par le tenant `consumers`
 ### Lancement direct
 
 - **Java 8** : runtime officiel `jre-legacy` de Mojang, téléchargé fichier par fichier depuis le manifeste du
-  launcher officiel (SHA-1 vérifié), dans `%LOCALAPPDATA%ATTACK Launcheruntime`. Un Java personnalisé
+  launcher officiel (SHA-1 vérifié), dans `%LOCALAPPDATA%\ATTACK Launcher\runtime`. Un Java personnalisé
   (Réglages → Java) est utilisé à la place s'il est choisi.
 - Natives extraites, classpath Forge + Minecraft 1.8.9, mémoire prise dans les Réglages, configuration log4j de
   Mojang (qui corrige aussi la faille Log4Shell).
-- La sortie du jeu va dans `%APPDATA%.attacklogslaunchergame-*.log` (lien **Journaux du jeu** sur l'accueil).
+- La sortie du jeu va dans `%APPDATA%\.attack\logs\launcher\game-*.log` (lien **Journaux du jeu** sur l'accueil).
 
 ### ⚠️ Avertissement Windows SmartScreen
 
