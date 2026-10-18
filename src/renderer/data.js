@@ -76,6 +76,11 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.3.3', date: '2026-10-18',
+      fr: 'Accueil plus net : les nouveautés tiennent sans faire défiler la page, et « Tout voir » ouvre l’historique complet des versions.',
+      en: 'Cleaner home page: what’s new fits without scrolling the page, and “See all” opens the full version history.',
+    },
+    {
       version: 'ATTACK Client 2.2', date: '2026-10-18',
       fr: 'Nouvelle cape animée N2T-48, réservée aux admins ATTACK et aux joueurs choisis : tout le monde la voit dans le menu Cosmétiques, et les joueurs ATTACK la voient sur ceux qui la portent. Livrée avec le launcher 0.3.2.',
       en: 'New animated N2T-48 cape, reserved for ATTACK admins and chosen players: everyone sees it in the Cosmetics menu, and ATTACK players see it on those who wear it. Shipped with launcher 0.3.2.',
