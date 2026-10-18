@@ -86,8 +86,11 @@
             </div>
           </div>
           <aside class="card changelog">
-            <h2 data-i18n="home.changelog">Nouveautés</h2>
-            <ol id="changelog"></ol>
+            <div class="changelog-head">
+              <h2 data-i18n="home.changelog">Nouveautés</h2>
+              <button class="link" id="changelog-all" data-i18n="home.changelogAll">Tout voir</button>
+            </div>
+            <ol class="changelog-list compact" id="changelog"></ol>
             <button class="link small" id="repo-button" data-i18n="home.repo">Voir le projet sur GitHub</button>
           </aside>
         </div>
@@ -259,6 +262,17 @@
       </section>
     </main>
   </div>
+
+  <!-- Historique complet des versions (« Tout voir » dans Nouveautés) : seule la liste défile -->
+  <dialog class="changelog-dialog" id="changelog-dialog" aria-labelledby="changelog-dialog-title">
+    <div class="dialog-head">
+      <h2 id="changelog-dialog-title" data-i18n="home.changelogHistory">Historique des versions</h2>
+      <button class="update-close" id="changelog-close" data-i18n-title="window.close" aria-label="Fermer">
+        <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg>
+      </button>
+    </div>
+    <ol class="changelog-list" id="changelog-full"></ol>
+  </dialog>
 
   <script src="logo.js"></script>
   <script src="i18n.js"></script>

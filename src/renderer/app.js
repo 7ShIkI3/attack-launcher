@@ -134,16 +134,32 @@
   $('repo-button').addEventListener('click', () => api.openRepo());
   $('logs-button').addEventListener('click', () => api.openLogs());
 
-  function renderChangelog() {
-    const list = $('changelog');
-    list.replaceChildren(...CHANGELOG.map((entry) => el('li', {}, [
+  /** Accueil : les dernières versions (texte coupé à 3 lignes) ; « Tout voir » ouvre l'historique complet. */
+  const CHANGELOG_ON_HOME = 3;
+  function changelogItem(entry) {
+    return el('li', {}, [
       el('div', { class: 'version' }, [
         el('b', { text: entry[`version_${window.I18n.lang}`] || entry.version }),
         el('time', { text: entry.date }),
       ]),
       el('p', { text: entry[window.I18n.lang] || entry.fr }),
-    ])));
+    ]);
   }
+  function renderChangelog() {
+    $('changelog').replaceChildren(...CHANGELOG.slice(0, CHANGELOG_ON_HOME).map(changelogItem));
+    $('changelog-full').replaceChildren(...CHANGELOG.map(changelogItem));
+    $('changelog-all').classList.toggle('hidden', CHANGELOG.length <= CHANGELOG_ON_HOME);
+  }
+  const changelogDialog = $('changelog-dialog');
+  $('changelog-all').addEventListener('click', () => {
+    changelogDialog.showModal();
+    $('changelog-full').scrollTop = 0;
+  });
+  $('changelog-close').addEventListener('click', () => changelogDialog.close());
+  // clic sur le fond assombri (hors de la fenêtre) : fermer ; Échap ferme aussi (comportement natif de <dialog>)
+  changelogDialog.addEventListener('click', (event) => {
+    if (event.target === changelogDialog) changelogDialog.close();
+  });
 
   // --- mods ---
   function renderMods() {
