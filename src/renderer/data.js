@@ -76,6 +76,11 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.3.1', date: '2026-10-18',
+      fr: 'L’accueil affiche la bonne version du mod (v2.1.0) et le README indique les bons dossiers. Première mise à jour livrée automatiquement aux launchers 0.3.0.',
+      en: 'The home page shows the right mod version (v2.1.0) and the README lists the right folders. First update delivered automatically to 0.3.0 launchers.',
+    },
+    {
       version: 'Launcher 0.3.0', date: '2026-10-17',
       fr: 'Mise à jour automatique : le launcher télécharge ses nouvelles versions en arrière-plan (jamais pendant une partie) et les installe au redémarrage. Version portable : un simple avis.',
       en: 'Automatic updates: the launcher downloads new versions in the background (never during a game) and installs them on restart. Portable version: a simple notice.',
