@@ -12,6 +12,7 @@ const path = require('node:path');
 const { tempDir } = require('./helpers');
 const catalog = require('../src/main/catalog');
 const installer = require('../src/main/installer');
+const mod = require('../src/main/mod');
 const { mavenPath } = require('../src/main/maven');
 
 const hash = (algorithm, body) => crypto.createHash(algorithm).update(body).digest('hex');
@@ -265,6 +266,26 @@ test('release GitHub : le jar Fabric du profil est téléchargé et vérifié (S
   assert.equal(info.sha256, hash('sha256', jar263));
   assert.deepEqual(fs.readFileSync(path.join(dir, 'mods', 'attack-fabric.jar')), jar263);
   assert.ok(!requested.some((u) => u.includes('mc1.21.1')), 'le jar de l’autre version de Minecraft n’est jamais demandé');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('release GitHub : la version du mod installé est celle du jar, même avec le « + » encodé en %2B par GitHub', async () => {
+  const jar = Buffer.from('attack fabric 1.21.1');
+  const name = 'attack-fabric-3.0.0+mc1.21.1.jar';
+  const url = `https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.0/${encodeURIComponent(name)}`;
+  assert.match(url, /attack-fabric-3\.0\.0%2Bmc1\.21\.1\.jar$/);
+  routes.set(RELEASE_URL, JSON.stringify({
+    tag_name: 'v0.5.0',
+    assets: [{ name, size: jar.length, browser_download_url: url, digest: `sha256:${hash('sha256', jar)}` }],
+  }));
+  routes.set(url, jar);
+  const dir = tempDir();
+  const info = await installer.installMod(dir, { devMode: false }, noReport, {}, catalog.get('fabric-1.21.1'));
+  assert.equal(info.name, name);
+  assert.equal(info.file, url);
+  assert.equal(mod.installedVersion(info), '3.0.0', 'pas le tag v0.5.0 du launcher');
+  // le nom survit à l'état écrit puis relu, comme dans attack-launcher.json
+  assert.equal(mod.installedVersion(JSON.parse(JSON.stringify(info))), '3.0.0');
   fs.rmSync(dir, { recursive: true, force: true });
 });
 

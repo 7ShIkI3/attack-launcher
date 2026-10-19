@@ -251,11 +251,16 @@ test('jar de développement : le plus récent du profil, ni sources ni jar d’u
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('version du mod affichée pour un profil Fabric : celle du jar, sans « v »', () => {
-  const url = 'https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.0/attack-fabric-0.1.0%2Bmc1.21.1.jar';
-  assert.equal(mod.installedVersion({ source: 'release', version: 'v0.5.0', file: 'C:\\x\\attack-fabric-0.1.0+mc1.21.1.jar' }), '0.1.0');
-  assert.equal(mod.installedVersion({ source: 'release', version: 'v0.5.0', file: url }), '0.5.0', 'URL encodée : repli sur la version enregistrée');
+test('version du mod affichée pour un profil Fabric : celle du jar, sans « v » ni repli sur le tag du launcher', () => {
+  // GitHub écrit le « + » du nom du jar en %2B dans browser_download_url
+  const url = 'https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.0/attack-fabric-3.0.0%2Bmc1.21.1.jar';
+  assert.equal(mod.installedVersion({ source: 'release', version: 'v0.5.0', file: 'C:\\x\\attack-fabric-3.0.0+mc1.21.1.jar' }), '3.0.0');
+  assert.equal(mod.installedVersion({ source: 'release', version: 'v0.5.0', file: url, name: 'attack-fabric-3.0.0+mc1.21.1.jar' }), '3.0.0', 'nom du jar enregistré');
+  assert.equal(mod.installedVersion({ source: 'release', version: 'v0.5.0', file: url }), '3.0.0', 'ancien état sans nom : URL décodée');
+  assert.equal(mod.installedVersion({ source: 'release', version: 'v0.5.0', file: 'https://x/y/attack-fabric-3.0.0%2Bmc26.3%.jar' }), '0.5.0', 'URL illisible : repli sur la version enregistrée');
+  assert.equal(mod.installedVersion({ source: 'release', version: 'v2.3.0', file: 'https://x/v2.3.0/attack-client-2.3.0.jar', name: 'attack-client-2.3.0.jar' }), '2.3.0');
   assert.equal(mod.installedVersion({ source: 'dev', version: '0.1.0', file: 'C:\\x\\attack-fabric-0.1.0+mc26.3.jar' }), '0.1.0');
+  assert.equal(mod.installedVersion(null), null);
 });
 
 // ---------- progression et état ----------

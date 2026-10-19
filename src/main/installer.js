@@ -289,7 +289,7 @@ async function installMod(gameDir, settings, report, net, profile = catalog.get(
     }
     const sha256 = asset.sha256 || mod.sha256For(await http.fetchText(asset.sha256Url, net), asset.name);
     await http.downloadFile(asset.url, dest, { sha256, size: asset.size }, net);
-    info = { source: 'release', version: asset.version, file: asset.url };
+    info = { source: 'release', version: asset.version, file: asset.url, name: asset.name };
   }
   info.sha256 = await http.hashFile(dest, 'sha256');
   report('mod', 1, 1);

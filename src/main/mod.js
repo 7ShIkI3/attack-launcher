@@ -93,12 +93,23 @@ function versionFromJarName(name, profileOrId) {
   return catalog.jarRule(resolveProfile(profileOrId)).version(name) || 'dev';
 }
 
+/** Dernier segment d'un chemin ou d'une URL, décodé : GitHub écrit le « + » du nom d'un jar Fabric en %2B. */
+function lastSegment(file) {
+  const segment = String(file || '').split(/[\\/]/).pop();
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
 /**
- * Version du mod installé, sans « v » initial : lue dans le nom du jar d'origine (URL de release ou chemin local,
- * attack-client-2.1.0.jar -> 2.1.0), sinon la version enregistrée (le tag du launcher pour une release).
+ * Version du mod installé, sans « v » initial : lue dans le nom du jar d'origine (`name` enregistré à l'installation, sinon
+ * la fin de l'URL de release ou du chemin local, attack-client-2.1.0.jar -> 2.1.0), sinon la version enregistrée
+ * (le tag du launcher pour une release).
  */
 function installedVersion(info) {
-  const name = String(info?.file || '').split(/[\\/]/).pop();
+  const name = info?.name ? String(info.name) : lastSegment(info?.file);
   let fromJar = null;
   for (const profile of catalog.list()) {
     fromJar = catalog.jarRule(profile).version(name);
