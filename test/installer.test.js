@@ -128,6 +128,40 @@ test('Fabric Loader : sans SHA-1 figé, repli sur le .sha1 publié à côté du 
   await assert.rejects(installer.installFabric(tempDir(), profile, noReport, { concurrency: 2 }), /SHA1 incorrect/);
 });
 
+test('Fabric Loader : le SHA-1 figé est vérifié même quand le profil Fabric publie un hash (autre jar refusé)', async () => {
+  const metaUrl = 'https://meta.fabricmc.net/v2/versions/loader/26.3/0.19.5/profile/json';
+  const { profile, bodies, loaderName } = fabricWorld();
+  const jarUrl = `https://maven.fabricmc.net/${mavenPath(loaderName)}`;
+  const publish = (change) => {
+    const meta = JSON.parse(routes.get(metaUrl));
+    change(meta.libraries.find((lib) => lib.name === loaderName));
+    routes.set(metaUrl, JSON.stringify(meta));
+  };
+
+  // le profil publie le SHA-512 d'un autre jar et le serveur sert ce jar : il passerait, mais ce n'est pas le jar figé
+  const evil = Buffer.from('jar piégé mais cohérent avec le sha512 du profil');
+  publish((lib) => { lib.sha512 = hash('sha512', evil); lib.size = evil.length; });
+  routes.set(jarUrl, evil);
+  const dir = tempDir();
+  await assert.rejects(installer.installFabric(dir, profile, noReport, { concurrency: 1 }), /SHA-1 incorrect pour net\.fabricmc:fabric-loader/);
+  assert.ok(!fs.existsSync(path.join(dir, 'libraries', ...mavenPath(loaderName).split('/'))), 'le jar piégé n’est pas gardé');
+  assert.ok(!fs.existsSync(path.join(dir, 'versions')), 'aucun JSON de version');
+
+  // le profil publie un SHA-1 qui contredit le SHA-1 figé : refusé sans même télécharger ce jar
+  publish((lib) => { delete lib.sha512; delete lib.size; lib.sha1 = hash('sha1', evil); });
+  routes.set(jarUrl, bodies.get(loaderName));
+  requested = [];
+  await assert.rejects(installer.installFabric(tempDir(), profile, noReport, { concurrency: 1 }), /SHA-1 du profil Fabric différent du SHA-1 figé/);
+  assert.ok(!requested.includes(jarUrl));
+
+  // hashes du profil cohérents avec le SHA-1 figé : installation normale
+  publish((lib) => { lib.sha1 = hash('sha1', bodies.get(loaderName)); lib.sha512 = hash('sha512', bodies.get(loaderName)); });
+  const ok = tempDir();
+  await installer.installFabric(ok, profile, noReport, { concurrency: 2 });
+  assert.deepEqual(fs.readFileSync(path.join(ok, 'libraries', ...mavenPath(loaderName).split('/'))), bodies.get(loaderName));
+  for (const d of [dir, ok]) fs.rmSync(d, { recursive: true, force: true });
+});
+
 test('Fabric Loader : profil de version piégé refusé avant tout téléchargement de bibliothèque', async () => {
   const { profile } = fabricWorld();
   const key = 'https://meta.fabricmc.net/v2/versions/loader/26.3/0.19.5/profile/json';

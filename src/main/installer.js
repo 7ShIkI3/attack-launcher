@@ -175,7 +175,8 @@ async function installForge(mcDir, report, net, profile = catalog.get()) {
 /**
  * Fabric Loader : profil de version de meta.fabricmc.net (validé strictement), puis ses bibliothèques depuis
  * maven.fabricmc.net / libraries.minecraft.net. Chaque jar est vérifié par le hash le plus fort publié (SHA-512,
- * sinon SHA-1) ; fabric-loader et intermediary n'en portent pas dans le profil : on prend le .sha1 à côté du jar.
+ * sinon SHA-1) ; fabric-loader et intermediary n'en portent pas dans le profil : on prend le SHA-1 figé du catalogue, à
+ * défaut le .sha1 à côté du jar. Un SHA-1 figé est toujours vérifié, même quand le profil Fabric publie un autre hash.
  */
 async function installFabric(mcDir, profile, report, net) {
   report('fabric', 0, 1, `Fabric Loader ${profile.loader.version}`);
@@ -189,12 +190,19 @@ async function installFabric(mcDir, profile, report, net) {
   report('fabric', 0, plans.length, 'Bibliothèques Fabric');
   await http.pool(plans, net.concurrency, async (plan) => {
     const dest = safeJoin(librariesDir, plan.path);
+    // SHA-1 figé dans le catalogue : il fait toujours foi, même si le profil Fabric publie lui aussi un hash
+    const pinned = profile.loader.pinnedSha1?.[plan.name];
+    if (pinned && plan.hashes.sha1 && plan.hashes.sha1 !== pinned) throw new Error(`SHA-1 du profil Fabric différent du SHA-1 figé pour ${plan.name}`);
     // hash du profil Fabric, sinon SHA-1 figé dans le catalogue, sinon celui publié à côté du jar
     const expect = Object.keys(plan.hashes).length > 0 ? { ...plan.hashes }
-      : { sha1: profile.loader.pinnedSha1?.[plan.name] || await remoteSha1(plan.url, net) };
+      : { sha1: pinned || await remoteSha1(plan.url, net) };
     await http.downloadFile(plan.url, dest, expect, net);
     const sha1 = await http.hashFile(dest, 'sha1');
     if (plan.hashes.sha1 && plan.hashes.sha1 !== sha1) throw new Error(`SHA-1 incorrect pour ${plan.name}`);
+    if (pinned && pinned !== sha1) {
+      await fsp.rm(dest, { force: true }); // le hash du profil Fabric (SHA-512, SHA-256) désignait un autre jar que celui figé
+      throw new Error(`SHA-1 incorrect pour ${plan.name} (SHA-1 figé du catalogue : ${pinned})`);
+    }
     resolved.set(plan.name, { path: plan.path, url: plan.url, sha1, size: await sizeOf(dest) });
     report('fabric', ++done, plans.length, plan.name);
   });

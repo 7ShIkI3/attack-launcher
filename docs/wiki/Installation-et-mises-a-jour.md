@@ -84,7 +84,8 @@ flowchart TD
    Chaque bibliothèque est contrôlée par le hash le plus fort publié (SHA-512 pour asm et sponge-mixin) ; `fabric-loader`
    et `intermediary` n'en portent pas dans le profil : leur SHA-1 est **figé dans le catalogue** (`catalog.js`,
    `loader.pinnedSha1`), donc pas pris sur le serveur qui sert le jar ; à défaut, on prendrait le fichier `.sha1` publié à
-   côté du jar sur le Maven de Fabric (`intermediary` n'existe pas pour 26.3).
+   côté du jar sur le Maven de Fabric (`intermediary` n'existe pas pour 26.3). Un SHA-1 figé est **toujours** vérifié,
+   même si le profil Fabric publie un hash pour cette bibliothèque : un hash du profil qui le contredit est refusé.
 5. **Pack de mods** (Fabric seulement, `src/main/modpack.js`) : voir [Le pack de mods](#le-pack-de-mods-profils-fabric).
 6. **Mod** : voir [Mod ATTACK : d'où vient le jar ?](#mod-attack--doù-vient-le-jar-).
 7. **Profil** : fusion dans `launcher_profiles.json` ([Fonctionnalités](Fonctionnalites.md#profil-du-launcher-officiel)).
