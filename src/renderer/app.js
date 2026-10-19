@@ -76,6 +76,7 @@
     if (busy || playing || !settings || id === settings.profileId) return;
     setMessage('');
     $('progress').classList.add('hidden');
+    statusToken++; // une lecture d'état déjà partie pour l'ancien profil sera ignorée
     status = null; // l'état du profil précédent ne doit pas rester affiché
     renderStatus();
     await save({ profileId: id });
@@ -122,6 +123,7 @@
     if (token !== statusToken) return;
     status = next;
     renderStatus();
+    renderMods(); // la carte ATTACK de la page Mods affiche la version installée
   }
 
   function errorText(result) {
@@ -275,10 +277,17 @@
   // --- réglages ---
   let savedTimer = null;
   async function save(patch) {
-    settings = await api.setSettings(patch);
+    try {
+      settings = await api.setSettings(patch);
+    } catch (error) {
+      // enregistrement refusé : on reprend les réglages réellement en vigueur côté processus principal
+      settings = await api.getSettings();
+      setMessage(t('error.generic', { message: error.message }), 'error');
+    }
     renderSettings();
     renderProfiles();
     renderMods();
+    if ('profileId' in patch) renderStatus();
     $('saved').classList.remove('hidden');
     clearTimeout(savedTimer);
     savedTimer = setTimeout(() => $('saved').classList.add('hidden'), 1600);

@@ -189,7 +189,9 @@ async function installFabric(mcDir, profile, report, net) {
   report('fabric', 0, plans.length, 'Bibliothèques Fabric');
   await http.pool(plans, net.concurrency, async (plan) => {
     const dest = safeJoin(librariesDir, plan.path);
-    const expect = Object.keys(plan.hashes).length > 0 ? { ...plan.hashes } : { sha1: await remoteSha1(plan.url, net) };
+    // hash du profil Fabric, sinon SHA-1 figé dans le catalogue, sinon celui publié à côté du jar
+    const expect = Object.keys(plan.hashes).length > 0 ? { ...plan.hashes }
+      : { sha1: profile.loader.pinnedSha1?.[plan.name] || await remoteSha1(plan.url, net) };
     await http.downloadFile(plan.url, dest, expect, net);
     const sha1 = await http.hashFile(dest, 'sha1');
     if (plan.hashes.sha1 && plan.hashes.sha1 !== sha1) throw new Error(`SHA-1 incorrect pour ${plan.name}`);
@@ -212,17 +214,20 @@ async function readState(gameDir) {
   }
 }
 
+/** Écriture atomique (fichier temporaire puis renommage) : un état tronqué ferait oublier les jars du pack à retirer. */
 async function writeState(gameDir, state) {
   await fsp.mkdir(gameDir, { recursive: true });
-  await fsp.writeFile(path.join(gameDir, C.STATE_FILE), `${JSON.stringify(state, null, 2)}\n`);
+  const file = path.join(gameDir, C.STATE_FILE);
+  const tmp = `${file}.tmp`;
+  await fsp.writeFile(tmp, `${JSON.stringify(state, null, 2)}\n`);
+  await fsp.rename(tmp, file);
 }
 
 /**
  * Pack de mods du profil : télécharge les jars figés, supprime ceux d'un ancien pack qui n'en font plus partie
  * (jamais un jar ajouté par le joueur) et garde la liste dans l'état.
  */
-async function installPack(gameDir, profile, settings, report, net) {
-  const pack = modpack.loadPack(profile);
+async function installPack(gameDir, profile, settings, report, net, pack = modpack.loadPack(profile)) {
   const previous = await readState(gameDir);
   const result = await modpack.installPack(gameDir, pack, {
     shaders: Boolean(settings.shaders),
@@ -234,6 +239,9 @@ async function installPack(gameDir, profile, settings, report, net) {
   const info = { id: pack.profileId, shaders: Boolean(settings.shaders), managed: result.managed, mods: result.mods };
   // enregistré tout de suite : si la suite échoue, la liste des jars gérés reste exacte
   await writeState(gameDir, { ...(previous || {}), pack: info });
+  if (result.removeFailed.length > 0) {
+    throw new InstallError('PACK_CLEANUP', `Impossible de retirer un ancien mod du pack (${result.removeFailed.join(', ')}) : ferme le jeu puis relance l'installation.`);
+  }
   report('pack', result.mods.length, result.mods.length);
   return { ...result, info };
 }

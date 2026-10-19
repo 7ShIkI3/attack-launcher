@@ -184,8 +184,14 @@ function registerIpc() {
   handle('settings:set', async (_event, patch) => {
     // pas de changement de profil pendant une installation ou un lancement : ils travaillent sur le profil choisi au départ
     const safePatch = (installing || launching) && patch && typeof patch === 'object' ? { ...patch, profileId: undefined } : patch;
+    const previous = settings;
     settings = settingsStore.sanitize(safePatch, settings);
-    await settingsStore.save(settingsFile(), settings);
+    try {
+      await settingsStore.save(settingsFile(), settings);
+    } catch (error) {
+      settings = previous; // enregistrement impossible (disque plein, antivirus) : le profil choisi ne doit pas changer en cachette
+      throw error;
+    }
     return effective();
   });
 
@@ -197,6 +203,8 @@ function registerIpc() {
 
   handle('install:run', async (event) => {
     if (installing) return { ok: false, code: 'BUSY', message: 'Installation déjà en cours' };
+    // un jar de mod ouvert par une partie ne peut pas être remplacé ni retiré : on attend la fin de la partie
+    if (games.size > 0 || launching) return { ok: false, code: 'GAME_RUNNING', message: 'Une partie est en cours' };
     installing = true;
     updater?.activityStarted('install');
     try {

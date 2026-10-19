@@ -83,7 +83,9 @@ function selectedMods(pack, { shaders = false } = {}) {
  *   protectedNames noms jamais supprimés (le jar ATTACK)
  *   net, report    options réseau et rapport de progression ('pack', fait, total, message)
  * Renvoie { managed: [noms], removed: [noms], downloaded, skipped, mods: [{ slug, version, filename, sha512 }] }.
- * Les suppressions ont lieu après tous les téléchargements : un échec laisse l'ancienne installation intacte.
+ * Les suppressions ont lieu après tous les téléchargements ; si un téléchargement échoue, les jars téléchargés pendant ce
+ * passage sont retirés et les anciens jars ne sont pas touchés. Un jar qui ne peut pas être retiré (verrouillé) reste dans
+ * `managed` et est listé dans `removeFailed`.
  */
 async function installPack(gameDir, pack, options = {}) {
   const { shaders = false, previousManaged = [], protectedNames = [], net = {}, report } = options;
@@ -94,27 +96,44 @@ async function installPack(gameDir, pack, options = {}) {
   let downloaded = 0;
   let skipped = 0;
   report?.('pack', 0, mods.length, 'Pack de mods');
-  await http.pool(mods, net.concurrency || 4, async (mod) => {
-    const result = await http.downloadFile(mod.url, safeJoin(modsDir, mod.filename), { sha512: mod.sha512, size: mod.size }, net);
-    if (result.skipped) skipped++;
-    else downloaded++;
-    report?.('pack', ++done, mods.length, mod.name);
-  });
+  const fresh = []; // jars absents avant ce passage et téléchargés par lui
+  try {
+    await http.pool(mods, net.concurrency || 4, async (mod) => {
+      const dest = safeJoin(modsDir, mod.filename);
+      const existed = fs.existsSync(dest);
+      const result = await http.downloadFile(mod.url, dest, { sha512: mod.sha512, size: mod.size }, net);
+      if (result.skipped) skipped++;
+      else downloaded++;
+      if (!existed && !result.skipped) fresh.push(dest);
+      report?.('pack', ++done, mods.length, mod.name);
+    });
+  } catch (error) {
+    // échec au milieu d'une mise à jour : on ne laisse pas les nouveaux jars à côté des anciens (deux versions du même mod)
+    await Promise.all(fresh.map((file) => fsp.rm(file, { force: true }).catch(() => {})));
+    throw error;
+  }
 
   const managed = mods.map((mod) => mod.filename);
   const keep = new Set([...managed, ...protectedNames].map((name) => name.toLowerCase()));
   const removed = [];
+  const removeFailed = [];
   for (const name of previousManaged) {
     if (typeof name !== 'string' || !FILENAME.test(name) || name.includes('..') || keep.has(name.toLowerCase())) continue;
     const target = safeJoin(modsDir, name);
     const stat = await fsp.lstat(target).catch(() => null);
     if (!stat || !stat.isFile()) continue;
-    await fsp.rm(target, { force: true });
-    removed.push(name);
+    try {
+      await fsp.rm(target, { force: true });
+      removed.push(name);
+    } catch {
+      removeFailed.push(name); // jar verrouillé (jeu ouvert ?) : il reste suivi pour être retiré à la prochaine installation
+    }
   }
   return {
-    managed,
+    // un jar qu'on n'a pas pu retirer reste dans la liste gérée : il sera retenté, et l'état du pack le signale
+    managed: [...managed, ...removeFailed],
     removed,
+    removeFailed,
     downloaded,
     skipped,
     mods: mods.map((mod) => ({ slug: mod.slug, name: mod.name, version: mod.version, filename: mod.filename, sha512: mod.sha512 })),
