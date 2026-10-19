@@ -1,251 +1,138 @@
 # ATTACK Launcher
 
-Launcher Windows d'**ATTACK Client**, le client PvP pour Minecraft 1.8.9 (Forge).
-En un clic, il installe Minecraft 1.8.9, Forge 1.8.9-11.15.1.2318 et le mod ATTACK Client.
-Avec un compte Microsoft connecté, **JOUER** lance directement le jeu ; sans compte, il ouvre le
-**launcher Minecraft officiel** sur un profil « ATTACK Client » prêt à l'emploi.
+![Accueil d'ATTACK Launcher](docs/images/home.png)
 
-![Accueil d'ATTACK Launcher](docs/accueil.png)
+Launcher Windows d'**ATTACK Client**, le client PvP pour Minecraft 1.8.9 (Forge). En un clic, il installe
+Minecraft 1.8.9, Forge 1.8.9-11.15.1.2318 et le mod ATTACK Client. Avec un compte Microsoft connecté, **JOUER**
+lance directement le jeu ; sans compte, il ouvre le **launcher Minecraft officiel** sur un profil « ATTACK Client »
+prêt à l'emploi.
 
-## Installation
+## Le but
+
+ATTACK Client est un mod Forge : pour le jouer, il faut normalement installer Minecraft 1.8.9, Forge et le bon
+jar dans le bon dossier, sans mélanger avec tes autres mods. Ce launcher fait tout ça à ta place, pour les
+joueurs de PvP 1.8.9 qui veulent un client prêt à jouer, sans se soucier de la mise en place.
+
+Il est conçu pour rester simple à contrôler : le code est visible, chaque fichier téléchargé est vérifié par son
+empreinte (hash), les adresses contactées sont une liste fixe, et il n'envoie aucune statistique (voir
+[Vie privée](#vie-privée)).
+
+## Comment ça marche
+
+```mermaid
+flowchart LR
+  L["ATTACK Launcher<br>Windows"] -->|"installe et lance"| C["ATTACK Client<br>mod Forge 1.8.9"]
+  L -->|"connexion, skin"| M[("Microsoft / Mojang")]
+  L -->|"fichiers du jeu, Forge"| D[("Mojang, Forge Maven")]
+  L -->|"jar du mod, mises à jour"| R[("GitHub<br>releases du launcher")]
+  C -->|"capes, ailes"| A["API ATTACK<br>cosmétiques"]
+  A -->|"vérifie le compte"| M
+  C -->|"liste des droits"| G[("GitHub<br>cosmetics.json")]
+  C -->|"joue sur"| P["ATTACK Practice<br>serveur PvP 1v1"]
+  C -->|"ou sur"| S["Hypixel, LAN, autres serveurs"]
+```
+
+- Le launcher est une application **Electron** : un processus principal (qui fait tout le travail : réseau,
+  fichiers, comptes) et une page d'interface isolée qui ne fait que l'afficher.
+- **Installer** : il télécharge Minecraft 1.8.9, ses bibliothèques et ses ressources chez Mojang, Forge chez Maven
+  Forge (l'installateur Forge est lu comme une archive, jamais exécuté) et le jar du mod dans la dernière release
+  GitHub de ce dépôt. Chaque fichier est vérifié par son hash.
+- **Se connecter** : connexion Microsoft par « code d'appareil » (le launcher ne voit jamais ton mot de passe),
+  puis Xbox Live et les services Minecraft. Le jeton de renouvellement est chiffré par Windows.
+- **Jouer** : avec un compte, le launcher installe le Java 8 officiel de Mojang et lance le jeu lui-même ; sans
+  compte, il ouvre le launcher officiel sur le profil « ATTACK Client ».
+- **Se mettre à jour** : il regarde les releases GitHub de ce dépôt, vérifie le SHA-512 du nouvel installateur, et
+  n'installe jamais rien pendant une partie.
+
+Détail complet : [Architecture](docs/wiki/Architecture.md).
+
+## Installation et utilisation
 
 1. Ouvre la page [Releases](https://github.com/7ShIkI3/attack-launcher/releases) et télécharge :
    - `ATTACK-Launcher-Setup-x.y.z.exe` : installateur classique (raccourci dans le menu Démarrer) ;
    - ou `ATTACK-Launcher-Portable-x.y.z.exe` : version portable, sans installation.
-2. Lance le fichier. Le launcher Minecraft officiel doit déjà être installé (version Xbox / Microsoft Store
-   ou ancienne version) et tu dois posséder Minecraft Java Edition.
+2. Lance le fichier. Tu dois posséder Minecraft Java Edition. Le launcher Minecraft officiel n'est nécessaire que
+   pour le mode « sans compte » (JOUER l'ouvre alors sur le profil ATTACK Client).
 3. Clique sur **INSTALLER**.
 4. Pour jouer :
-   - **avec un compte connecté** (page **Compte**) : **JOUER** lance directement ATTACK Client ;
+   - **avec un compte connecté** (page **Compte**, bouton « Ajouter un compte Microsoft ») : **JOUER** lance
+     directement ATTACK Client ;
    - **sans compte** : **JOUER** ouvre le launcher officiel avec le profil « ATTACK Client » en tête de liste.
 
-## Mises à jour
-
-Le launcher se met à jour tout seul depuis la page [Releases](https://github.com/7ShIkI3/attack-launcher/releases)
-de ce dépôt (le mod ATTACK Client, lui, est mis à jour à chaque installation ou réparation, comme avant).
-
-- **Version installée (`Setup.exe`)** : au démarrage, puis toutes les 6 h, le launcher regarde s'il existe une
-  version plus récente et la télécharge en arrière-plan. Une bannière **« Mise à jour X.Y.Z prête — Redémarrer »**
-  apparaît alors en haut de la fenêtre : **Redémarrer** ferme le launcher, installe la nouvelle version sans fenêtre
-  d'installation et le relance. Si tu fermes le launcher sans cliquer, la mise à jour s'installe à la fermeture.
-- **Jamais pendant une partie ni pendant une installation** : rien n'est vérifié, téléchargé ni installé tant
-  qu'ATTACK Client tourne (lancé par ce launcher **ou** par le launcher officiel) ou qu'une installation est en cours.
-  Un téléchargement commencé s'arrête si tu lances une partie, et reprend une fois le jeu fermé.
-- **Version portable** : un `.exe` portable ne peut pas se remplacer lui-même. Elle affiche seulement
-  **« Nouvelle version disponible »** avec un bouton vers la page Releases : télécharge la nouvelle version à la main.
-- **Sécurité** : le fichier téléchargé est vérifié par son empreinte **SHA-512**, publiée dans `latest.yml` avec la
-  release ; un fichier qui ne correspond pas est rejeté et supprimé. Le dépôt est public : **aucun jeton GitHub**
-  n'est embarqué dans l'app.
-- Journal des mises à jour : `%APPDATA%\ATTACK Launcher\logs\updater.log`.
-- La mise à jour automatique existe **depuis la 0.3.0** : avec une 0.2.0 ou plus ancienne, télécharge la 0.3.0
-  à la main une dernière fois.
-
-## Connexion Microsoft
-
-Page **Compte** → **Ajouter un compte Microsoft**. Le launcher affiche un **code** et ouvre la page
-Microsoft (`microsoft.com/link`) : saisis-y le code puis connecte-toi. **Le launcher ne voit jamais ton mot
-de passe** : la connexion se fait sur le site de Microsoft (connexion par « code d'appareil »).
-
-Ensuite, le launcher enchaîne Xbox Live, XSTS et les services Minecraft, vérifie que le compte possède
-Minecraft Java (achat ou Game Pass) et récupère ton pseudo et ta skin. Tu peux ajouter **plusieurs comptes**,
-choisir le compte actif et te déconnecter.
-
-- Le jeton de renouvellement (refresh token) est **chiffré par Windows** (DPAPI, via `safeStorage`) dans
-  `%APPDATA%\ATTACK Launcher\accounts.json` : seul ton compte Windows peut le relire. Il est renouvelé tout seul.
-- Aucun jeton n'apparaît dans les journaux : la ligne de commande enregistrée masque `--accessToken`.
-
-Messages d'erreur courants : pas de profil Xbox (connecte-toi une fois sur xbox.com), compte enfant
-(à ajouter à une famille Microsoft), jeu non possédé, code expiré, ou **« app Azure pas encore validée par
-Mojang »** (voir ci-dessous).
-
-### Créer l'app Azure (une seule fois, pour qui publie le launcher)
-
-**Les joueurs n'ont rien à configurer** : le launcher utilise par défaut l'app Azure officielle d'ATTACK Launcher
-(ID client `b904aac8-33e3-4ee6-a905-912a72de4859`). Les étapes ci-dessous servent seulement si tu publies ta propre
-version du launcher ; son ID se met alors dans **Réglages → ID client Azure** ou dans `ATTACK_MS_CLIENT_ID`.
-
-Mojang exige que chaque launcher utilise **sa propre application Azure, validée par Mojang**. Tant qu'elle
-n'est pas validée, la connexion échoue à l'étape Minecraft (erreur 403 « Invalid app registration »).
-Procédure reprise de celle, éprouvée, de [HeliosLauncher](https://github.com/dscalzi/HeliosLauncher/blob/master/docs/MicrosoftAuth.md)
-et de [minecraft.wiki](https://minecraft.wiki/w/Microsoft_authentication).
-
-1. **Annuaire obligatoire.** On ne peut plus créer d'app hors d'un annuaire Microsoft Entra. Si le portail ne t'en
-   propose pas, crée un **compte Azure gratuit** : une carte bancaire est demandée pour vérifier ton identité,
-   **sans aucun prélèvement**.
-2. Sur [portal.azure.com](https://portal.azure.com) : **Microsoft Entra ID** → **Inscriptions d'applications** →
-   **Nouvelle inscription**. Nom : « ATTACK Launcher » ; types de comptes : **Comptes dans un annuaire
-   organisationnel et comptes Microsoft personnels** ; pas d'URI de redirection à la création.
-3. **Authentification** → **Ajouter une plateforme** → **Applications mobiles et de bureau**, avec l'URI
-   `https://login.microsoftonline.com/common/oauth2/nativeclient`.
-4. Toujours dans **Authentification**, **Paramètres avancés** : **Autoriser les flux de clients publics** = **Oui**
-   (indispensable pour la connexion par code), puis **Enregistrer**. **Aucun secret client** n'est nécessaire.
-5. Sur la page **Vue d'ensemble**, copie l'**ID d'application (client)** (format `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
-   dans **Réglages → ID client Azure** du launcher, ou dans la variable d'environnement `ATTACK_MS_CLIENT_ID`.
-   Ce n'est **pas un secret**.
-6. Remplis le formulaire Mojang [aka.ms/mce-reviewappid](https://aka.ms/mce-reviewappid). Il demande l'**ID client**
-   **et** l'**ID de l'annuaire (tenant)**, tous deux sur la page **Vue d'ensemble**. Après l'accord, compte
-   **jusqu'à 24 h** avant que la connexion fonctionne.
-
-> **Soyons francs :** l'accord de Mojang peut être lent, et il peut **ne jamais arriver** pour un petit projet.
-> Tant qu'il n'est pas obtenu, rien n'est cassé : sans compte connecté, **JOUER** garde la voie du launcher
-> officiel (profil « ATTACK Client » présélectionné).
-
-Côté code, toutes les requêtes OAuth passent par le tenant `consumers`
-(`login.microsoftonline.com/consumers/...`), jamais par `common` ni par l'ID de l'annuaire.
-
-### Skin
-
-Page **Compte** → carte **Skin** : le skin du compte actif en 3D (il tourne tout seul ; glisse pour le tourner, choisis
-Marche, Course ou Repos).
-
-- **Changer de skin…** : choisis un PNG de 64 x 64 pixels (ou 64 x 32, ancien format), puis le **modèle des bras**
-  (Classique / Steve ou Fin / Alex). L'aperçu s'affiche **avant** tout envoi ; **Appliquer ce skin** l'envoie à Mojang.
-- **Skin par défaut** remet Steve ou Alex ; **Actualiser** relit le skin si tu l'as changé ailleurs (minecraft.net).
-- C'est le skin de ton **compte Minecraft** : il change partout (serveurs, autres launchers), comme sur minecraft.net.
-- Seul le processus principal parle à `api.minecraftservices.com` (avec le jeton Minecraft, jamais transmis à la page) ;
-  le fichier est vérifié avant l'envoi (PNG, 64 x 64 ou 64 x 32, 24 Ko au plus).
-- Vue 3D : [skinview3d](https://github.com/bs-community/skinview3d) 3.4.2 (licence MIT, avec three.js), copiée dans
-  `src/renderer/vendor/` : la page ne télécharge rien.
-
-### Lancement direct
-
-- **Java 8** : runtime officiel `jre-legacy` de Mojang, téléchargé fichier par fichier depuis le manifeste du
-  launcher officiel (SHA-1 vérifié), dans `%LOCALAPPDATA%\ATTACK Launcher\runtime`. Un Java personnalisé
-  (Réglages → Java) est utilisé à la place s'il est choisi.
-- Natives extraites, classpath Forge + Minecraft 1.8.9, mémoire prise dans les Réglages, configuration log4j de
-  Mojang (qui corrige aussi la faille Log4Shell).
-- La sortie du jeu va dans `%APPDATA%\.attack\logs\launcher\game-*.log` (lien **Journaux du jeu** sur l'accueil).
-
-### ⚠️ Avertissement Windows SmartScreen
-
-Le `.exe` n'est **pas signé** (un certificat de signature de code coûte cher pour un projet gratuit).
-Au premier lancement, Windows peut afficher **« Windows a protégé votre ordinateur »**. Pour continuer :
-clique sur **Informations complémentaires**, vérifie que l'éditeur est inconnu et que le fichier vient bien
-de la page Releases de ce dépôt, puis clique sur **Exécuter quand même**.
-
-Ne télécharge le launcher **que** depuis la page Releases de ce dépôt. Tu peux comparer l'empreinte
-SHA-256 affichée sur la release avec celle de ton fichier :
+**Avertissement Windows SmartScreen.** Le `.exe` n'est **pas signé** (un certificat de signature de code coûte cher
+pour un projet gratuit). Au premier lancement, Windows peut afficher « Windows a protégé votre ordinateur » : clique
+sur **Informations complémentaires**, vérifie que le fichier vient bien de la page Releases de ce dépôt, puis
+sur **Exécuter quand même**. Compare si tu veux le SHA-256 affiché sur la release :
 
 ```powershell
 Get-FileHash .\ATTACK-Launcher-Setup-x.y.z.exe -Algorithm SHA256
 ```
 
-## Ce que fait le launcher (et où vont les fichiers)
+**Mises à jour.** Le launcher installé (`Setup.exe`) télécharge tout seul les nouvelles versions et affiche une
+bannière « Redémarrer » ; la version portable affiche seulement un avis avec un lien vers la page Releases.
+Rien n'est jamais installé pendant une partie. Détails : [Installation et mises à jour](docs/wiki/Installation-et-mises-a-jour.md).
 
-| Élément | Emplacement |
-| --- | --- |
-| Minecraft 1.8.9 (JSON, jar, bibliothèques, ressources) | `%APPDATA%\.minecraft\versions\1.8.9`, `libraries`, `assets` |
-| Forge 1.8.9-11.15.1.2318 | `%APPDATA%\.minecraft\versions\1.8.9-forge1.8.9-11.15.1.2318-1.8.9` |
-| Dossier de jeu séparé (mods, réglages, captures, mondes) | `%APPDATA%\.attack` (modifiable dans Réglages) |
-| Mod ATTACK Client | `%APPDATA%\.attack\mods\attack-client.jar` |
-| Profil « ATTACK Client » | fusionné dans `%APPDATA%\.minecraft\launcher_profiles.json` |
-
-- Le **dossier de jeu séparé** évite tout mélange avec les autres mods de ton `.minecraft`.
-- `launcher_profiles.json` est **fusionné** : tes autres profils et réglages restent intacts, et l'ancien
-  fichier est sauvegardé en `launcher_profiles.json.bak` avant chaque écriture. Ferme le launcher officiel
-  pendant l'installation : il peut réécrire ce fichier.
-- Réglages : mémoire (-Xmx), dossier de jeu, Java (celui fourni par Minecraft par défaut), langue FR/EN,
-  ID client Azure, mode développeur.
-- **Vérifier / réparer l'installation** recontrôle chaque fichier et ne retélécharge que ce qui manque ou est abîmé.
-
-## Sécurité
-
-- Sources de téléchargement limitées à : Mojang (`piston-meta`, `piston-data`, `launcher`, `launchermeta`,
-  `libraries.minecraft.net`, `resources.download.minecraft.net`), Maven Forge (`maven.minecraftforge.net`)
-  les releases GitHub de ce dépôt, et pour la connexion : `login.microsoftonline.com`,
-  `user.auth.xboxlive.com`, `xsts.auth.xboxlive.com`, `api.minecraftservices.com`, `textures.minecraft.net`.
-  Toute autre adresse, y compris après une redirection, est refusée.
-- La mise à jour du launcher passe par `electron-updater`, uniquement vers les releases de ce dépôt
-  (`github.com` et ses serveurs de fichiers), sans jeton ; le nouvel installateur est vérifié par son SHA-512
-  (`latest.yml`) avant d'être lancé.
-- Chaque fichier est vérifié : SHA-1 publié par Mojang ou par Maven (`.sha1`), SHA-256 pour le mod.
-  Un fichier au mauvais hash est supprimé.
-- L'installateur Forge est **lu comme une archive ZIP** (on y prend `install_profile.json` et le jar
-  universal) : il n'est **jamais exécuté**.
-- Fenêtre Electron isolée : `contextIsolation`, `sandbox`, pas de `nodeIntegration`, politique CSP stricte,
-  et la page ne parle au processus principal que par une liste fixe d'appels nommés.
-
-## Développement
-
-Prérequis : Node.js 22.12 ou plus récent.
+**Pour les développeurs** (Node.js 22.12 ou plus récent) :
 
 ```bash
 npm install
-```
-
-```bash
 npm start
+npm test
 ```
 
-| Commande | Rôle |
+Toutes les commandes, les scripts de test réels et la procédure de publication sont dans le wiki
+([Développement](docs/wiki/Developpement.md), [Publier une version](docs/wiki/Publier-une-version.md)).
+
+## Vie privée
+
+Ce tableau décrit **le launcher** (pas le mod ATTACK Client ni le jeu Minecraft lui-même). Chaque ligne a été
+vérifiée dans le code ; les références `fichier:ligne` sont dans
+[Vie privée et sécurité](docs/wiki/Vie-privee-et-securite.md).
+
+| Donnée | Où elle va | Pourquoi | Durée |
+| --- | --- | --- | --- |
+| Mot de passe Microsoft | Nulle part chez nous : tu le saisis sur le site de Microsoft, le launcher ne le voit jamais | Connexion par code d'appareil | Sans objet |
+| Jeton de renouvellement Microsoft | Reçu de Microsoft ; gardé sur ton PC dans `accounts.json`, **chiffré par Windows** (DPAPI) | Rester connecté sans retaper de code | Jusqu'à ce que tu cliques **Déconnecter** |
+| Jeton Minecraft | **Mémoire du launcher seulement**, jamais écrit sur disque ; envoyé aux services Minecraft (profil, skin) et passé au jeu au lancement ; masqué dans les journaux | Lancer le jeu, lire ou changer le skin | Le temps que le launcher tourne |
+| Pseudo, UUID, skin (image et modèle de bras) | Lus chez Mojang (`api.minecraftservices.com`, `textures.minecraft.net`) ; copie dans `accounts.json` (en clair, sans jeton) | Afficher ton compte et ton skin en 3D | Jusqu'à **Déconnecter** |
+| Skin PNG que tu choisis | Lu sur ton disque, gardé en mémoire ; envoyé à Mojang **seulement** si tu cliques « Appliquer ce skin » | Changer de skin | Jusqu'à l'envoi ou l'abandon |
+| Requêtes de téléchargement (adresse IP, en-tête `User-Agent: ATTACK-Launcher (+URL du dépôt)`) | Mojang, Maven Forge, GitHub, Microsoft : les serveurs qui reçoivent toute requête voient ton IP | Installer le jeu, se connecter, se mettre à jour | Selon ces services (non vérifié) |
+| Vérification des mises à jour | GitHub (releases de ce dépôt), au démarrage puis toutes les 6 h, sans jeton ni identifiant | Savoir si une version plus récente existe | Selon GitHub (non vérifié) |
+| Réglages (mémoire, dossiers, Java, langue, ID client Azure) | `settings.json` sur ton PC, jamais envoyés | Garder tes choix | Jusqu'à suppression du fichier |
+| Journaux (mises à jour, sortie du jeu) | Fichiers sur ton PC (`updater.log`, `game-*.log`), jamais envoyés | Dépanner | Le journal des mises à jour est tourné au-delà de 1 Mo ; les journaux de jeu ne sont pas supprimés par le launcher |
+
+**Jamais collecté** : aucune télémétrie, statistique d'usage, rapport de plantage, identifiant d'installation ou de
+machine, publicité : le code ne contient rien de tel (recherche faite dans `src/` et `scripts/`). L'interface
+n'a de toute façon pas le droit de faire de requête réseau (politique CSP `connect-src 'none'`). Le launcher ne
+contacte **pas** l'API ATTACK : seules des adresses de Mojang, Microsoft/Xbox, Forge et GitHub sont autorisées.
+
+**Refuser ou effacer** : n'ajoute aucun compte (JOUER passe alors par le launcher officiel) ; clique
+**Déconnecter** pour effacer un compte et son jeton chiffré ; désinstalle le launcher et supprime `%APPDATA%\ATTACK Launcher`,
+`%LOCALAPPDATA%\ATTACK Launcher` et `%LOCALAPPDATA%\attack-launcher-updater`. Il n'existe pas d'option pour couper
+la vérification des mises à jour (la version portable la fait aussi) : seul un pare-feu l'empêche.
+
+## Wiki
+
+| Page | Contenu |
 | --- | --- |
-| `npm test` | tests unitaires (`node:test`, sans réseau) : manifestes, install_profile, chemins Maven, profils, téléchargements, connexion Microsoft simulée, comptes, ligne de commande Java, runtime, mises à jour |
-| `npm run install-test` | installation **réelle** complète dans un dossier temporaire, puis contre-vérification de tous les hash |
-| `npm run launch-test -- <dossier>` | lancement direct **réel** avec un compte hors ligne factice, jusqu'à l'écran titre |
-| `npm run screenshot -- <dossier>` | ouvre l'app dans des dossiers isolés et capture chaque page |
-| `npm run icons` | régénère les icônes PNG à partir des polygones du logo |
-| `npm run update-test -- <dossier>` | mise à jour **réelle** 0.2.0 → 0.2.1 sans GitHub : app de test à part (« ATTACK Launcher UpdateTest »), serveur local, SHA-512 falsifié rejeté, bannière capturée, Redémarrer, puis désinstallation |
-| `npm run dist` | construit `dist/ATTACK-Launcher-Setup-*.exe` (NSIS) avec `latest.yml` et `.blockmap`, et `dist/ATTACK-Launcher-Portable-*.exe` ; ne publie rien |
-
-La logique (`src/main/*.js` sauf `main.js` et `preload.js`) n'utilise pas Electron : elle se teste avec Node seul.
-
-### Mode développeur
-
-Tant qu'aucune release du mod n'est publiée, active **Réglages → Mode développeur** : le launcher copie le
-dernier `attack-client-*.jar` du dossier indiqué (par défaut `Documents\pvp-essentials\build\libs`,
-ou la variable d'environnement `ATTACK_DEV_JAR_DIR`).
-
-Le mode développeur permet aussi d'ajouter un **compte hors ligne** (pseudo seul, jeton « 0 ») pour tester
-le lancement direct en solo, sans compte Microsoft. Les serveurs en ligne refusent ce type de compte.
-
-### Publier le mod
-
-Le launcher prend le jar `attack-client*.jar` de la **dernière release** GitHub de ce dépôt et exige son
-SHA-256 : celui que GitHub calcule pour chaque fichier de release, ou à défaut un fichier
-`attack-client-x.y.z.jar.sha256` joint à la release. Sans SHA-256, l'installation est refusée.
-
-### Publier une version du launcher
-
-1. Monte `version` dans `package.json` (par exemple `0.3.1`), puis `npm run dist`.
-2. Crée une release GitHub **publiée** (ni brouillon, ni préversion) au tag `v0.3.1` et joins-y, depuis `dist/` :
-   - `ATTACK-Launcher-Setup-0.3.1.exe` ;
-   - `ATTACK-Launcher-Setup-0.3.1.exe.blockmap` : permet aux versions suivantes de ne télécharger que ce qui a changé ;
-   - `latest.yml` : version, nom et SHA-512 de l'installateur, lus par les launchers déjà installés ;
-   - comme avant : `ATTACK-Launcher-Portable-0.3.1.exe`, le jar du mod et `SHA256SUMS`.
-3. **Chaque** release doit contenir `latest.yml` et le `Setup.exe` qu'il désigne (avec son `.blockmap`), même une
-   release qui ne change que le mod (joins alors à nouveau ceux de la version actuelle du launcher) : les launchers
-   lisent la **dernière** release. Sans eux, ils notent une erreur dans `updater.log` et ne proposent rien, sans
-   autre conséquence.
-
-### Donner une cape réservée
-
-Le mod (2.2.0 et plus) lit [`cosmetics/cosmetics.json`](cosmetics/cosmetics.json) sur la branche `main` pour savoir
-qui peut porter les capes réservées (aujourd'hui : N2T-48). Les joueurs ATTACK voient alors ces capes sur eux.
-
-```json
-{
-  "schema": 1,
-  "admins": [ { "name": "Pseudo", "uuid": "00000000-0000-4000-8000-000000000001" } ],
-  "capes": { "n2t48": [ { "name": "Ami", "uuid": "00000000-0000-4000-8000-000000000002" } ] }
-}
-```
-
-- `admins` : ont **toutes** les capes réservées. `capes.n2t48` : les autres joueurs qui ont N2T-48.
-- Seul l'`uuid` compte, car un pseudo peut changer. Pour trouver l'UUID d'un pseudo, ouvre
-  `https://api.mojang.com/users/profiles/minecraft/<pseudo>` (champ `id`).
-- Retirer quelqu'un : supprime sa ligne.
-- Une modification met jusqu'à environ 15 minutes à arriver en jeu (cache de GitHub, puis relecture toutes les
-  10 minutes).
-- Un JSON invalide est ignoré : les joueurs gardent la dernière liste valide.
-
-## Dépendances
-
-À l'exécution : `electron-updater` (mise à jour du launcher). Outils de développement : `electron` et `electron-builder`.
+| [Sommaire](docs/wiki/Home.md) | Point d'entrée du wiki |
+| [Architecture](docs/wiki/Architecture.md) | Processus principal, page, IPC, schémas, organisation du code |
+| [Fonctionnalités](docs/wiki/Fonctionnalites.md) | Les quatre pages du launcher, réglages, mode développeur, profil officiel |
+| [Installation et mises à jour](docs/wiki/Installation-et-mises-a-jour.md) | Ce qui est installé et où, vérification des hash, mises à jour automatiques |
+| [Comptes et skin](docs/wiki/Comptes-et-skin.md) | Connexion Microsoft, stockage des jetons, skin 3D |
+| [Vie privée et sécurité](docs/wiki/Vie-privee-et-securite.md) | Version détaillée, avec références dans le code |
+| [Développement](docs/wiki/Developpement.md) | Commandes npm, tests, captures d'écran |
+| [Publier une version](docs/wiki/Publier-une-version.md) | Release du launcher et du mod, app Azure |
+| [Capes réservées](docs/wiki/Capes-reservees.md) | Donner une cape réservée via `cosmetics/cosmetics.json` |
+| [Dépannage](docs/wiki/Depannage.md) | SmartScreen, erreurs de connexion, d'installation, de mise à jour |
 
 ## Licences et mentions
 
+- Le launcher : **Tous droits réservés** (voir [LICENSE](LICENSE)) : le code est visible pour la transparence, mais ce n'est pas de l'open source. Tu peux utiliser les versions officielles ; copier, modifier, republier ou vendre ce travail demande l'accord écrit de l'auteur. Les versions publiées avant le 19 octobre 2026 restaient sous MIT.
 - Vue 3D du skin : **skinview3d** et **three.js**, licence MIT (`src/renderer/vendor/LICENSE-*.txt`).
 - Polices **Inter** et **Montserrat** : SIL Open Font License 1.1 (`src/renderer/fonts/OFL-*.txt`).
+- À l'exécution, une seule dépendance : `electron-updater` (mise à jour du launcher). Outils de développement :
+  `electron` et `electron-builder`.
 - Minecraft est une marque de Mojang AB / Microsoft. ATTACK Launcher est un projet indépendant, ni approuvé
   ni affilié à Mojang ou Microsoft. Les fichiers du jeu sont téléchargés depuis les serveurs officiels de Mojang ;
   il faut posséder Minecraft Java Edition pour jouer.

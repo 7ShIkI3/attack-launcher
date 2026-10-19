@@ -1,21 +1,53 @@
-MIT License
+ATTACK Launcher - Licence propriétaire, tous droits réservés
+Copyright (c) 2026 7ShIkI3. Tous droits réservés.
 
-Copyright (c) 2026 7ShIkI3
+Le code source de ce dépôt est rendu visible pour la transparence (vérifier ce que fait le logiciel,
+signaler un bug, proposer une amélioration). Il n'est PAS open source.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. Ce qui est permis, sans demander
+   - Lire le code source sur GitHub.
+   - Télécharger les versions officielles publiées par l'auteur et les utiliser pour ton usage
+     personnel et non commercial.
+   - Signaler un problème ou proposer une modification (issue, pull request). En proposant une
+     modification, tu acceptes que l'auteur l'intègre et la diffuse sous la présente licence.
+   - Créer une copie (fork) sur GitHub, dans la seule mesure permise par les conditions
+     d'utilisation de GitHub, et uniquement pour proposer une modification.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. Ce qui est interdit sans l'accord écrit de l'auteur
+   - Copier, reprendre ou réutiliser tout ou partie du code, des images, des textures, des capes,
+     des cosmétiques, des textes ou de l'interface, dans un autre projet.
+   - Modifier le logiciel pour en diffuser une version, même gratuite.
+   - Republier, redistribuer, héberger ou proposer au téléchargement le logiciel ou une version
+     modifiée, en dehors des liens officiels de l'auteur.
+   - Vendre, louer, ou utiliser le logiciel dans un service payant.
+   - Retirer ou modifier ce fichier, les mentions de copyright ou le nom de l'auteur, ou présenter
+     le travail comme le tien (changement de nom, de logo ou de marque).
+   - Utiliser le code pour entraîner un modèle d'intelligence artificielle.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. Composants de tiers
+   Les éléments fournis par d'autres auteurs gardent leur propre licence, indiquée à côté d'eux
+   (par exemple les polices sous SIL Open Font License 1.1, ou des bibliothèques sous licence MIT).
+   Cette licence ne s'applique pas à eux. Minecraft est une marque de Mojang AB / Microsoft ; ce
+   projet n'est ni approuvé ni affilié à Mojang ou Microsoft.
+
+4. Anciennes versions
+   Les versions publiées avant le 19 octobre 2026 sous licence MIT restent sous licence MIT pour les copies déjà obtenues.
+   Toutes les versions publiées à partir de cette date, et le code actuel de ce dépôt, sont
+   soumis à la présente licence.
+
+5. Absence de garantie
+   Le logiciel est fourni « tel quel », sans garantie d'aucune sorte. L'auteur n'est pas
+   responsable des dommages liés à son utilisation.
+
+6. Demander une autorisation
+   Pour toute utilisation non prévue au point 1, ouvre une issue sur le dépôt GitHub de l'auteur
+   (https://github.com/7ShIkI3) pour demander une autorisation écrite.
+
+------------------------------------------------------------------------------------------------
+English summary (the French text above prevails):
+Copyright (c) 2026 7ShIkI3. All rights reserved. The source code is visible for
+transparency only; this is not open source software. You may read the code, use the official
+releases for personal non-commercial use, and submit issues or pull requests. You may NOT copy,
+reuse, modify, redistribute, republish, sell, rebrand, or use this code to train AI models without
+the author's prior written permission. Third-party components keep their own licenses.
+The software is provided "as is", without warranty of any kind.

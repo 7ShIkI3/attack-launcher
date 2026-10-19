@@ -5,7 +5,7 @@
   "description": "Launcher d'ATTACK Client (Minecraft 1.8.9 PvP) : installe Forge et le mod, connexion Microsoft, lancement direct du jeu et mise à jour automatique.",
   "main": "src/main/main.js",
   "private": true,
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "7ShIkI3",
   "homepage": "https://github.com/7ShIkI3/attack-launcher",
   "scripts": {
