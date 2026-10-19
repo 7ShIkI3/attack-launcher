@@ -39,8 +39,10 @@ function parseRelease(release, profileOrId) {
   const assets = Array.isArray(release?.assets) ? release.assets : [];
   const found = matchingAssets(assets, profile);
   if (found.length === 0) {
+    // un jar attack-fabric* qui ne suit pas la règle (préversion, autre version de Minecraft) est cité pour aider à comprendre
+    const ignored = assets.map((a) => a?.name).filter((n) => typeof n === 'string' && /^attack-fabric/i.test(n) && !/\.sha256$/i.test(n));
     throw Object.assign(new Error(catalog.isFabric(profile)
-      ? `La dernière release ne contient pas de jar attack-fabric pour Minecraft ${profile.mc}`
+      ? `La dernière release ne contient pas de jar attack-fabric pour Minecraft ${profile.mc}${ignored.length > 0 ? ` (jars attack-fabric ignorés : ${ignored.join(', ')})` : ''}`
       : 'La dernière release ne contient pas de jar attack-client'), { code: 'NO_JAR' });
   }
   if (found.length > 1 && profile.attackJar.unique) {

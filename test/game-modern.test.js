@@ -212,3 +212,30 @@ test('détection d’une partie : la version Fabric de chaque profil est reconnu
   assert.equal(game.isGameCommandLine(line('fabric-loader-0.19.5-1.21.1'), 'fabric-loader-0.19.5-26.3'), false);
   assert.equal(game.isGameCommandLine(line('fabric-loader-0.19.5-26.3'), ['x', 'fabric-loader-0.19.5-26.3']), true);
 });
+
+test('règles d’OS : version et plage de versions Windows (options « default-user-jvm » de 26.x), inconnue = jamais appliquée', () => {
+  const zgc = [{ action: 'allow', os: { name: 'windows', versionRange: { min: '10.0.17134' } } }];
+  const g1 = [{ action: 'allow', os: { name: 'windows', versionRange: { max: '10.0.17134' } } }];
+  const win11 = mojang.currentEnv('win32', 'x64', '10.0.26200');
+  const old = mojang.currentEnv('win32', 'x64', '10.0.10240');
+  assert.equal(mojang.rulesAllow(zgc, win11), true);
+  assert.equal(mojang.rulesAllow(g1, win11), false, 'jamais ZGC et G1 ensemble');
+  assert.equal(mojang.rulesAllow(zgc, old), false);
+  assert.equal(mojang.rulesAllow(g1, old), true);
+  assert.equal(mojang.rulesAllow(zgc, { ...win11, osVersion: undefined }), false);
+  assert.equal(mojang.rulesAllow([{ action: 'allow', os: { name: 'windows', version: '^10\\.' } }], win11), true);
+  assert.equal(mojang.rulesAllow([{ action: 'allow', os: { name: 'windows', version: '^6\\.' } }], win11), false);
+  assert.equal(mojang.rulesAllow([{ action: 'allow', os: { name: 'osx', versionRange: { min: '1' } } }], win11), false);
+  assert.equal(mojang.compareVersions('10.0.9', '10.0.17134'), -1);
+  assert.equal(mojang.compareVersions('10.0.17134', '10.0.17134'), 0);
+  assert.equal(mojang.compareVersions('11', '10.9.9'), 1);
+});
+
+test('variable non résolue : le message ne cite que son nom, jamais l’argument (qui pourrait contenir le jeton)', async () => {
+  const version = await game.resolveVersion(MC, 'fabric-loader-0.19.5-1.21.1', read);
+  version.arguments.game.push('--x=${auth_access_token}${zzz}');
+  const { classpath } = game.libraryPlan(version, MC, WIN64);
+  assert.throws(() => game.buildCommand({
+    java: 'java', version, minecraftDir: MC, gameDir: GAME_DIR, nativesDir: NATIVES, classpath, identity: IDENTITY, ramMb: 2048, platform: 'win32',
+  }), (error) => /variable de lancement non résolue : zzz/i.test(error.message) && !error.message.includes(TOKEN));
+});

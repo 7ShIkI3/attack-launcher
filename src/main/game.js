@@ -153,8 +153,9 @@ function modernCommand({ java, version, minecraftDir, nativesDir, classpath, ide
     jvmArgs.push(logging.argument.replace('${path}', path.join(assetsDir, 'log_configs', logging.file.id)));
   }
   const args = [...jvmArgs, version.mainClass, ...expandArguments(version.arguments.game, modernValues, env)];
-  const unresolved = args.find((arg) => /\$\{\w+\}/.test(arg));
-  if (unresolved) throw new Error(`Argument de lancement non résolu : ${unresolved}`);
+  // le message ne cite que le nom de la variable : jamais l'argument entier, qui pourrait contenir un jeton déjà remplacé
+  const unresolved = args.map((arg) => /\$\{(\w+)\}/.exec(arg)).find(Boolean);
+  if (unresolved) throw new Error(`Variable de lancement non résolue : ${unresolved[1]}`);
   return { command: java, args, redacted: redact([java, ...args], identity.accessToken) };
 }
 

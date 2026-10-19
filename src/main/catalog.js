@@ -6,6 +6,13 @@
 /** Version de Fabric Loader fixée pour tous les profils Fabric. */
 const FABRIC_LOADER_VERSION = '0.19.5';
 
+/**
+ * SHA-1 figés des deux bibliothèques que le profil de version de Fabric publie sans hash (fabric-loader et intermediary,
+ * seulement pour les versions qui en ont un) : on ne s'appuie pas sur le .sha1 du même serveur que le jar.
+ */
+const FABRIC_LOADER_SHA1 = 'ff9e65cffca4a67f31523e1807fe0855940fcbfa';
+const FABRIC_INTERMEDIARY_SHA1 = { '1.21.1': '4b96f58657aa282efa6bb8ae9369c2d42cf96e8c' };
+
 const DEFAULT_PROFILE_ID = 'forge-1.8.9';
 
 function escapeRegex(text) {
@@ -52,6 +59,10 @@ function fabricProfile(mc, javaMajor) {
       type: 'fabric',
       version: FABRIC_LOADER_VERSION,
       versionId: `fabric-loader-${FABRIC_LOADER_VERSION}-${mc}`,
+      pinnedSha1: {
+        [`net.fabricmc:fabric-loader:${FABRIC_LOADER_VERSION}`]: FABRIC_LOADER_SHA1,
+        ...(FABRIC_INTERMEDIARY_SHA1[mc] ? { [`net.fabricmc:intermediary:${mc}`]: FABRIC_INTERMEDIARY_SHA1[mc] } : {}),
+      },
     },
     javaMajor,
     launcherProfileId: `attack-fabric-${mc}`,

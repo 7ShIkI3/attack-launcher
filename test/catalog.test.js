@@ -24,7 +24,12 @@ test('3 profils : Forge 1.8.9 (inchangé) et Fabric 1.21.1 / 26.3 avec Fabric Lo
   for (const mc of ['1.21.1', '26.3']) {
     const p = catalog.get(`fabric-${mc}`);
     assert.equal(p.mc, mc);
-    assert.deepEqual(p.loader, { type: 'fabric', version: '0.19.5', versionId: `fabric-loader-0.19.5-${mc}` });
+    assert.deepEqual({ type: p.loader.type, version: p.loader.version, versionId: p.loader.versionId },
+      { type: 'fabric', version: '0.19.5', versionId: `fabric-loader-0.19.5-${mc}` });
+    // SHA-1 figés des deux bibliothèques que Fabric publie sans hash (intermediary n'existe pas pour 26.3)
+    assert.deepEqual(Object.keys(p.loader.pinnedSha1),
+      mc === '1.21.1' ? ['net.fabricmc:fabric-loader:0.19.5', 'net.fabricmc:intermediary:1.21.1'] : ['net.fabricmc:fabric-loader:0.19.5']);
+    assert.ok(Object.values(p.loader.pinnedSha1).every((h) => /^[0-9a-f]{40}$/.test(h)));
     assert.equal(p.launcherProfileId, `attack-fabric-${mc}`);
     assert.equal(p.name, `ATTACK ${mc}`);
     assert.equal(p.gameDirName, `.attack/profiles/fabric-${mc}`);

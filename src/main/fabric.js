@@ -1,15 +1,17 @@
 'use strict';
 // Fabric Loader : profil de version publié par meta.fabricmc.net, lu comme de simples données (jamais d'installateur
-// exécuté). Le JSON est validé strictement puis réécrit à partir des seuls champs connus : le launcher officiel
-// et le lancement direct ne voient jamais un champ inattendu.
+// exécuté). Le JSON est validé strictement (dépôts, hash, options Java en liste blanche) puis réécrit à partir des seuls
+// champs connus : le launcher officiel et le lancement direct ne voient jamais un champ inattendu.
 const { mavenPath, mavenUrl, parseCoordinate } = require('./maven');
 const { FABRIC_META, FABRIC_MAVEN, MOJANG_LIBRARIES } = require('./constants');
 
 const KNOT_CLIENT = 'net.fabricmc.loader.impl.launch.knot.KnotClient';
 const SEGMENT = /^[0-9A-Za-z][0-9A-Za-z._+-]*$/;
 const HASHES = { sha1: /^[0-9a-f]{40}$/, sha256: /^[0-9a-f]{64}$/, sha512: /^[0-9a-f]{128}$/ };
-// options Java qui chargeraient du code ou changeraient le classpath : un profil Fabric n'en a pas besoin
-const FORBIDDEN_JVM = /^(-javaagent|-agentlib|-agentpath|-Xrun|-Xbootclasspath|--patch-module|--upgrade-module-path|-cp$|-classpath$|--class-path|-jar$)/;
+// Liste blanche des options Java d'un profil Fabric : des propriétés -D propres à Fabric (« -DFabricMcEmu= ... » et les
+// réglages fabric.*, loader.*, mixin.*). Tout le reste (-javaagent, -cp, --add-opens, -XX:OnError=, -Djava.library.path...)
+// est refusé : une option inconnue arrête l'installation plutôt que d'être passée à Java.
+const ALLOWED_JVM = /^-D(FabricMcEmu|fabric\.[\w.-]+|loader\.[\w.-]+|mixin\.[\w.-]+)=/;
 
 /** Adresse du profil de version Fabric Loader pour une version de Minecraft : .../loader/<mc>/<loader>/profile/json */
 function profileUrl(mc, loaderVersion) {
@@ -38,7 +40,9 @@ function checkArguments(list, kind) {
   if (!Array.isArray(list)) throw new Error(`Profil Fabric : arguments ${kind} invalides`);
   return list.map((arg) => {
     if (typeof arg !== 'string' || arg.length > 500) throw new Error(`Profil Fabric : argument ${kind} suspect`);
-    if (kind === 'jvm' && FORBIDDEN_JVM.test(arg.trim())) throw new Error(`Profil Fabric : option Java refusée (${arg.trim()})`);
+    if (kind === 'jvm' && !ALLOWED_JVM.test(arg)) throw new Error(`Profil Fabric : option Java refusée (${arg.trim().slice(0, 60)})`);
+    // un argument du jeu ne peut pas demander le jeton ou l'identité du compte
+    if (kind === 'game' && /\$\{auth_/.test(arg)) throw new Error('Profil Fabric : argument du jeu refusé (identifiants du compte)');
     return arg;
   });
 }
