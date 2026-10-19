@@ -11,8 +11,10 @@ vérifiée dans le code ; les références sont de la forme `fichier:ligne` (ét
 
 - **Aucune télémétrie.** Le launcher n'a ni statistiques d'usage, ni rapport de plantage, ni identifiant d'installation
   ou de machine, ni publicité. Voir [la recherche faite](#télémétrie--ce-qui-a-été-cherché).
-- Il ne parle qu'à **Mojang, Microsoft / Xbox, Forge (Maven) et GitHub** : la liste est fixe et codée en dur.
-- Il **ne contacte pas l'API ATTACK** (elle n'est pas dans la liste des hôtes autorisés).
+- Il ne parle qu'à **Mojang, Microsoft / Xbox, Forge (Maven), Fabric (`meta.fabricmc.net`, `maven.fabricmc.net`), le CDN
+  de Modrinth (`cdn.modrinth.com`) et GitHub** : la liste est fixe et codée en dur.
+- Il **ne contacte pas l'API ATTACK** ni **l'API de Modrinth** (aucune des deux n'est dans la liste des hôtes autorisés) :
+  les mods du pack sont des adresses et des hash écrits dans le dépôt.
 - Il ne voit **jamais ton mot de passe** Microsoft.
 - Le jeton Minecraft reste **en mémoire** ; le jeton de renouvellement est **chiffré par Windows**.
 - Tout fichier téléchargé est **vérifié par un hash** ; la page d'interface **n'a pas le droit de faire de requête réseau**.
@@ -41,7 +43,7 @@ Toute requête réseau révèle ton **adresse IP** au serveur qui la reçoit. Le
 | --- | --- | --- | --- |
 | Démarrage, puis toutes les 6 h (version installée **ou** portable) | `github.com` (page de la dernière release, `latest.yml`) | Requêtes HTTPS sans jeton ni identifiant | `updates.js:9`, `updates.js:123-124` |
 | Démarrage, si un compte Microsoft est actif | Microsoft, Xbox Live, XSTS, `api.minecraftservices.com` | Refresh token (renouvellement), puis jetons de la chaîne de connexion | `main.js:517-526` |
-| INSTALLER, Vérifier / réparer | Mojang (manifestes, jar, bibliothèques, ressources), Maven Forge, `api.github.com` et les fichiers de la release | Requêtes GET de fichiers publics | `installer.js:57-174` |
+| INSTALLER, Vérifier / réparer | Mojang (manifestes, jar, bibliothèques, ressources), Maven Forge (1.8.9), `meta.fabricmc.net` et `maven.fabricmc.net` (Fabric), `cdn.modrinth.com` (pack de mods Fabric), `api.github.com` et les fichiers de la release | Requêtes GET de fichiers publics | `installer.js` |
 | Ajouter un compte | `login.microsoftonline.com`, `user.auth.xboxlive.com`, `xsts.auth.xboxlive.com`, `api.minecraftservices.com`, `textures.minecraft.net` | ID client Azure, code d'appareil, jetons de la chaîne ; le jeton Minecraft sert à lire le profil | `auth.js:93-231` |
 | JOUER avec un compte | `piston-meta.mojang.com` (manifeste du runtime Java ; fichiers la première fois) ; si le jeton Minecraft manque ou expire, Microsoft, Xbox, Minecraft | Requêtes GET ; jetons de renouvellement | `runtime.js:60-70`, `accounts.js:119-130` |
 | Skin : Appliquer, Par défaut, Actualiser | `api.minecraftservices.com`, puis `textures.minecraft.net` | Jeton Minecraft (en-tête `Authorization`) ; **le PNG choisi, seulement au clic sur Appliquer** | `skins.js:57-80`, `main.js:254-260` |
@@ -81,8 +83,10 @@ Détails utiles :
 | Risque | Protection | Réf. |
 | --- | --- | --- |
 | Téléchargement depuis un site non officiel | Liste fixe d'hôtes `https` ; chaque redirection est vérifiée **avant** d'être suivie ; au plus 5 redirections | `constants.js:27-44`, `http.js:22-45` |
-| Fichier corrompu ou remplacé | Hash obligatoire (SHA-1 ou SHA-256) calculé pendant le téléchargement ; `.part` supprimé si le hash ou la taille ne correspondent pas ; téléchargement sans hash refusé | `http.js:98-130`, `mod.js:28` |
+| Fichier corrompu ou remplacé | Hash obligatoire (SHA-1, SHA-256 ou SHA-512) calculé pendant le téléchargement ; `.part` supprimé si le hash ou la taille ne correspondent pas ; téléchargement sans hash refusé | `http.js:98-130`, `mod.js:28` |
 | Installateur Forge piégé | Lu comme une archive ZIP, **jamais exécuté** ; id de version et nom du jar contrôlés ; dépôts Maven limités à Forge et Mojang | `forge.js:9-37`, `zip.js` |
+| Profil Fabric piégé | JSON de `meta.fabricmc.net` validé strictement (id, version de Minecraft, classe Knot, dépôts `maven.fabricmc.net` / Mojang seulement, hash bien formés, pas de `-javaagent` ni de classpath), puis réécrit à partir des seuls champs connus | `fabric.js` |
+| Mod du pack falsifié ou mal nommé | Adresse figée sur `cdn.modrinth.com` uniquement, SHA-512 et taille vérifiés avant de garder le fichier, nom de fichier sans chemin, jars du joueur jamais supprimés | `modpack.js` |
 | Chemins malveillants (`..`, absolus) dans des manifestes | `safeJoin` refuse de sortir du dossier ; coordonnées Maven validées ; chemins du runtime Java contrôlés ; extraction des natives par `safeJoin` | `maven.js:5-25`, `maven.js:40-47`, `runtime.js:36-50`, `game.js:75-91` |
 | Fuite du jeton Minecraft | Gardé en mémoire ; jamais transmis à la page ; masqué dans les journaux (`--accessToken`, `--session`, ou toute occurrence) | `accounts.js:27`, `preload.js:1-3`, `game.js:133-139` |
 | Vol du refresh token sur disque | Chiffré par `safeStorage` (DPAPI) ; si le chiffrement est indisponible, la connexion échoue plutôt que d'écrire en clair | `main.js:50-58` |
