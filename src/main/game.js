@@ -253,28 +253,61 @@ const JAVA_PROCESSES_PS = "$ProgressPreference='SilentlyContinue'; " +
   "Get-CimInstance Win32_Process -Filter \"Name='javaw.exe' OR Name='java.exe'\" | ForEach-Object { $_.CommandLine }";
 
 /**
- * Vrai si une de ces lignes de commande est une partie ATTACK : le --version du jeu est l'id de version d'un profil du
+ * Lignes de commande de la sortie qui sont une partie ATTACK : le --version du jeu est l'id de version d'un profil du
  * catalogue (Forge 1.8.9, Fabric 1.21.1 ou 26.3), quel que soit le launcher. `versionIds` : une chaîne ou une liste.
  */
-function isGameCommandLine(output, versionIds = catalog.versionIds()) {
+function gameCommandLines(output, versionIds = catalog.versionIds()) {
   const ids = [].concat(versionIds);
-  return String(output || '').split(/\r?\n/).some((line) => ids.some((id) => line.includes(id)));
+  return String(output || '').split(/\r?\n/).filter((line) => ids.some((id) => line.includes(id)));
+}
+
+/** Vrai si une de ces lignes de commande est une partie ATTACK. */
+function isGameCommandLine(output, versionIds) {
+  return gameCommandLines(output, versionIds).length > 0;
 }
 
 /**
- * Une partie tourne-t-elle, lancée par ce launcher ou par le launcher officiel ?
- * Faux si la détection échoue : on ne bloque pas les mises à jour pour toujours.
+ * Lignes de commande des parties ATTACK en cours, lancées par ce launcher ou par le launcher officiel.
+ * Vide si la détection échoue : on ne bloque pas les mises à jour pour toujours.
  */
-function detectRunningGame({ run = execFile, platform = process.platform } = {}) {
-  if (platform !== 'win32') return Promise.resolve(false);
+function runningGameLines({ run = execFile, platform = process.platform } = {}) {
+  if (platform !== 'win32') return Promise.resolve([]);
   const encoded = Buffer.from(JAVA_PROCESSES_PS, 'utf16le').toString('base64');
   return new Promise((resolve) => {
     run('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], { windowsHide: true, timeout: 15000 },
-      (error, stdout) => resolve(!error && isGameCommandLine(stdout)));
+      (error, stdout) => resolve(error ? [] : gameCommandLines(stdout)));
+  });
+}
+
+/** Une partie tourne-t-elle, lancée par ce launcher ou par le launcher officiel ? */
+async function detectRunningGame(options) {
+  return (await runningGameLines(options)).length > 0;
+}
+
+/** Dossier de jeu (--gameDir) d'une ligne de commande Java ; null s'il manque ou n'est pas un chemin absolu. */
+function gameDirOfCommandLine(line) {
+  const match = /--gameDir(?:\s+|=)("[^"]*"|.*?)(?=\s+--|\s*$)/.exec(String(line));
+  const dir = match ? match[1].replace(/^"|"$/g, '') : '';
+  return path.isAbsolute(dir) ? dir : null;
+}
+
+/**
+ * Une partie en cours empêche-t-elle d'installer dans `gameDir` ? Seule une partie qui joue dans CE dossier bloque
+ * (chemins résolus, casse ignorée) : une partie d'un autre profil ne gêne pas.
+ * `ownGameDirs` : dossiers de jeu des parties lancées par ce launcher et encore ouvertes.
+ * `commandLines` : parties ATTACK détectées (runningGameLines), lancées par le launcher officiel ou non.
+ * Une ligne dont le --gameDir est introuvable ne peut pas être comparée : par prudence, elle bloque.
+ */
+function gameBlocksInstall(gameDir, ownGameDirs = [], commandLines = []) {
+  const same = (a, b) => path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
+  if (ownGameDirs.some((dir) => same(dir, gameDir))) return true;
+  return commandLines.some((line) => {
+    const dir = gameDirOfCommandLine(line);
+    return dir === null || same(dir, gameDir);
   });
 }
 
 module.exports = {
   HIDDEN, readVersion, resolveVersion, javaComponent, libraryPlan, extractNatives, expandArguments, nativesSubdirs, buildCommand, redact, launchGame,
-  JAVA_PROCESSES_PS, isGameCommandLine, detectRunningGame,
+  JAVA_PROCESSES_PS, gameCommandLines, isGameCommandLine, runningGameLines, detectRunningGame, gameDirOfCommandLine, gameBlocksInstall,
 };

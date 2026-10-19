@@ -42,7 +42,7 @@ let installing = false;
 let login = null; // connexion en cours : { cancelled, verificationUri, userCode }
 let accounts = null;
 let launching = false; // lancement direct en préparation (Java, connexion)
-const games = new Set(); // parties lancées directement et encore ouvertes
+const games = new Map(); // parties lancées directement et encore ouvertes : processus -> dossier de jeu du profil
 let updater = null; // contrôleur des mises à jour du launcher
 const transport = auth.createTransport();
 
@@ -203,14 +203,17 @@ function registerIpc() {
 
   handle('install:run', async (event) => {
     if (installing) return { ok: false, code: 'BUSY', message: 'Installation déjà en cours' };
-    // un jar de mod ouvert par une partie ne peut pas être remplacé ni retiré : on attend la fin de la partie
-    if (games.size > 0 || launching) return { ok: false, code: 'GAME_RUNNING', message: 'Une partie est en cours' };
-    installing = true;
-    updater?.activityStarted('install');
+    installing = true; // posé avant la détection des parties (asynchrone) : un deuxième clic ne lance pas une deuxième installation
     try {
+      const eff = effective();
+      // un jar de mod ouvert par une partie ne peut pas être remplacé ni retiré : on attend la fin de la partie de ce profil
+      if (launching || game.gameBlocksInstall(eff.gameDir, [...games.values()], await game.runningGameLines())) {
+        return { ok: false, code: 'GAME_RUNNING', message: 'Une partie est en cours' };
+      }
+      updater?.activityStarted('install');
       const summary = await installer.install({
         minecraftDir,
-        settings: effective(),
+        settings: eff,
         profile: currentProfile(),
         icon: profileIcon(),
         onProgress: (progress) => {
@@ -455,7 +458,7 @@ async function playDirect(event, account, profile, eff) {
     launching = false;
   }
   // partie en cours : aucune mise à jour tant que le jeu n'est pas fermé
-  games.add(result.child);
+  games.set(result.child, eff.gameDir);
   result.child.once('exit', () => {
     games.delete(result.child);
     updater?.activityEnded();
