@@ -111,6 +111,43 @@ test('shaders : booléen, profils Fabric seulement ; dossier par défaut rétabl
     'retour au dossier par défaut du profil courant');
 });
 
+test('dossier de jeu : refusé s’il est déjà celui d’un autre profil (casse et écriture du chemin ignorées), ancien dossier conservé', () => {
+  const base = settings.defaults(ENV);
+  const forgeDir = path.join(ENV.APPDATA, '.attack');
+  const dirOf = (s, id) => settings.forProfile(s, id).gameDir;
+
+  // Forge veut le dossier par défaut de Fabric 1.21.1, écrit de plusieurs façons
+  for (const variant of [GAME_121, GAME_121.toUpperCase(), `${GAME_121}\\`, path.join(GAME_121, '..', 'fabric-1.21.1')]) {
+    assert.equal(dirOf(settings.sanitize({ gameDir: variant }, base), 'forge-1.8.9'), forgeDir, variant);
+  }
+  // Fabric 26.3 veut le dossier par défaut de Forge, ou le dossier choisi pour un autre profil : il garde l'ancien
+  let s = settings.sanitize({ profileId: 'fabric-26.3', gameDir: 'D:\\mc26' }, base);
+  assert.equal(dirOf(settings.sanitize({ gameDir: forgeDir.toLowerCase() }, s), 'fabric-26.3'), 'D:\\mc26');
+  s = settings.sanitize({ profileId: 'fabric-1.21.1', gameDir: 'D:\\MC26\\' }, s);
+  assert.equal(dirOf(s, 'fabric-1.21.1'), GAME_121, 'dossier déjà pris par Fabric 26.3');
+  assert.equal(dirOf(s, 'fabric-26.3'), 'D:\\mc26');
+  // même refus pour la forme rangée par profil du fichier enregistré
+  s = settings.sanitize({ profiles: { 'forge-1.8.9': { gameDir: 'd:\\mc26' } } }, s);
+  assert.equal(dirOf(s, 'forge-1.8.9'), forgeDir);
+  const both = settings.sanitize({ profiles: { 'forge-1.8.9': { gameDir: 'D:\\jeu' }, 'fabric-1.21.1': { gameDir: 'd:\\JEU' } } }, base);
+  assert.equal(dirOf(both, 'forge-1.8.9'), 'D:\\jeu');
+  assert.equal(dirOf(both, 'fabric-1.21.1'), GAME_121, 'le second profil retrouve son dossier par défaut');
+
+  // un dossier libre, ou le dossier que le profil a déjà, reste accepté
+  s = settings.sanitize({ profileId: 'fabric-1.21.1', gameDir: 'D:\\libre' }, base);
+  assert.equal(dirOf(s, 'fabric-1.21.1'), 'D:\\libre');
+  assert.equal(dirOf(settings.sanitize({ gameDir: 'd:\\LIBRE' }, s), 'fabric-1.21.1'), 'd:\\LIBRE');
+
+  // retour au dossier par défaut (chaîne vide) : refusé aussi s'il a été pris entre-temps par un autre profil
+  const real = settings.defaults();
+  const default26 = require('../src/main/paths').defaultGameDir(process.env, catalog.get('fabric-26.3'));
+  let r = settings.sanitize({ profileId: 'fabric-26.3', gameDir: 'D:\\mc26' }, real);
+  r = settings.sanitize({ profileId: 'forge-1.8.9', gameDir: default26 }, r);
+  assert.equal(dirOf(r, 'forge-1.8.9'), default26, 'libre : le profil 26.3 l’a quitté');
+  r = settings.sanitize({ profileId: 'fabric-26.3', gameDir: '' }, r);
+  assert.equal(dirOf(r, 'fabric-26.3'), 'D:\\mc26');
+});
+
 // ---------- profils du launcher officiel ----------
 
 const NOW = new Date('2026-10-19T12:00:00.000Z');

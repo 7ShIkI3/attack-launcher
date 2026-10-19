@@ -296,6 +296,19 @@ async function installProfile(mcDir, gameDir, settings, icon, report, profile = 
 }
 
 /**
+ * L'état lu dans un dossier de jeu désigne-t-il un autre profil que `profile` ? Un état sans profileId (ancien launcher,
+ * installation interrompue) se reconnaît à ses champs : `forge` vient du profil 1.8.9, `pack` d'un profil Fabric
+ * (`pack.id` est l'identifiant de ce profil).
+ */
+function gameDirConflict(state, profile) {
+  if (!state || typeof state !== 'object') return false;
+  if (typeof state.profileId === 'string') return state.profileId !== profile.id;
+  const fabricState = Boolean(state.pack) && typeof state.pack === 'object';
+  if (!catalog.isFabric(profile)) return fabricState;
+  return Boolean(state.forge) || (fabricState && Boolean(state.pack.id) && state.pack.id !== profile.id);
+}
+
+/**
  * Installation complète. options : { minecraftDir, settings, profile, icon, onProgress, concurrency, allowedHosts, env }.
  * `profile` : entrée du catalogue ou son identifiant (Forge 1.8.9 par défaut). `settings` : réglages effectifs du profil
  * (gameDir, javaPath, ramMb, devMode, devJarDir, shaders). Renvoie un résumé.
@@ -306,6 +319,10 @@ async function install(options) {
   const net = { concurrency: options.concurrency || 8, ...(options.allowedHosts ? { allowedHosts: options.allowedHosts } : {}) };
   const report = progressReporter(onProgress, stepsFor(profile));
   const gameDir = settings.gameDir;
+  // deux profils dans le même dossier se marcheraient dessus (mods, pack, état) : on s'arrête avant de toucher à quoi que ce soit
+  if (gameDirConflict(await readState(gameDir), profile)) {
+    throw new InstallError('GAMEDIR_IN_USE', 'Ce dossier de jeu est déjà utilisé par un autre profil. Choisis un autre dossier dans Réglages.');
+  }
   await fsp.mkdir(gameDir, { recursive: true });
 
   const versionJson = await installMinecraft(minecraftDir, report, net, profile.mc);
@@ -409,5 +426,5 @@ async function status({ minecraftDir, gameDir, profile: profileOption, shaders =
 
 module.exports = {
   STEPS, STEPS_FORGE, STEPS_FABRIC, stepsFor, InstallError, install, status, progressReporter,
-  installMinecraft, installForge, installFabric, installPack, installMod, readState,
+  installMinecraft, installForge, installFabric, installPack, installMod, readState, gameDirConflict,
 };

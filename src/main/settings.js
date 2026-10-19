@@ -62,11 +62,22 @@ function cleanPath(value, fallback, { allowEmpty = false } = {}) {
   return path.isAbsolute(trimmed) ? path.normalize(trimmed) : fallback;
 }
 
-/** Fusionne les réglages d'un profil (dossier de jeu, Java, jars de développement, shaders) sur `base`. */
-function sanitizeProfile(input, base, profile) {
+/** Deux dossiers de jeu sont les mêmes une fois résolus, sans tenir compte de la casse (Windows). */
+function sameDir(a, b) {
+  return path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
+}
+
+/**
+ * Fusionne les réglages d'un profil (dossier de jeu, Java, jars de développement, shaders) sur `base`.
+ * `otherDirs` : dossiers de jeu effectifs des autres profils ; un profil ne peut pas prendre l'un d'eux.
+ */
+function sanitizeProfile(input, base, profile, otherDirs = []) {
   const s = { ...base };
-  // chaîne vide = revenir au dossier par défaut
-  if ('gameDir' in input) s.gameDir = input.gameDir === '' ? defaultGameDir(process.env, profile) : cleanPath(input.gameDir, base.gameDir);
+  if ('gameDir' in input) {
+    // chaîne vide = revenir au dossier par défaut
+    const wanted = input.gameDir === '' ? defaultGameDir(process.env, profile) : cleanPath(input.gameDir, base.gameDir);
+    if (!otherDirs.some((dir) => sameDir(dir, wanted))) s.gameDir = wanted;
+  }
   if ('javaPath' in input) {
     const java = cleanPath(input.javaPath, base.javaPath, { allowEmpty: true });
     s.javaPath = java === '' || /javaw?\.exe$|\/java$/i.test(java) ? java : base.javaPath;
@@ -97,16 +108,18 @@ function sanitize(input, base = defaults()) {
     if (id === '' || CLIENT_ID.test(id)) s.msClientId = id.toLowerCase();
   }
   if (catalog.isValidId(input.profileId)) s.profileId = input.profileId;
+  // dossiers de jeu effectifs des autres profils (lus à chaque appel : ils suivent les modifications déjà faites)
+  const otherDirs = (id) => catalog.list().filter((p) => p.id !== id).map((p) => s.profiles[p.id].gameDir);
   // réglages rangés par profil (fichier enregistré)
   if (input.profiles && typeof input.profiles === 'object') {
     for (const profile of catalog.list()) {
       const entry = input.profiles[profile.id];
-      if (entry && typeof entry === 'object') s.profiles[profile.id] = sanitizeProfile(entry, s.profiles[profile.id], profile);
+      if (entry && typeof entry === 'object') s.profiles[profile.id] = sanitizeProfile(entry, s.profiles[profile.id], profile, otherDirs(profile.id));
     }
   }
   // clés à plat : elles concernent le profil courant (ancien fichier de réglages, modification faite dans l'interface)
   if (PROFILE_KEYS.some((key) => key in input)) {
-    s.profiles[s.profileId] = sanitizeProfile(input, s.profiles[s.profileId], catalog.get(s.profileId));
+    s.profiles[s.profileId] = sanitizeProfile(input, s.profiles[s.profileId], catalog.get(s.profileId), otherDirs(s.profileId));
   }
   return s;
 }

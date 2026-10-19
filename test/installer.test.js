@@ -144,6 +144,68 @@ test('Fabric Loader : profil de version piégé refusé avant tout téléchargem
   await assert.rejects(installer.installFabric(tempDir(), profile, noReport, { concurrency: 2 }), /option Java refusée/);
 });
 
+// ---------- dossier de jeu partagé entre deux profils ----------
+
+test('dossier de jeu : l’état d’un autre profil (profileId, ancien champ forge ou pack) est reconnu', () => {
+  const forge = catalog.get('forge-1.8.9');
+  const f121 = catalog.get('fabric-1.21.1');
+  const f263 = catalog.get('fabric-26.3');
+  const conflict = installer.gameDirConflict;
+  // dossier neuf, état illisible ou vide : rien ne s'oppose
+  for (const state of [null, undefined, {}, 'oups', { installedAt: 'x' }]) assert.equal(conflict(state, f121), false, JSON.stringify(state));
+  // état avec profileId : seul le même profil peut y revenir
+  assert.equal(conflict({ profileId: 'fabric-1.21.1' }, f121), false);
+  assert.equal(conflict({ profileId: 'fabric-1.21.1' }, f263), true);
+  assert.equal(conflict({ profileId: 'fabric-1.21.1' }, forge), true);
+  assert.equal(conflict({ profileId: 'forge-1.8.9', forge: forge.loader.versionId }, forge), false);
+  assert.equal(conflict({ profileId: 'forge-1.8.9', forge: forge.loader.versionId }, f121), true);
+  // ancien état Forge (sans profileId) : réutilisable par Forge, pas par un profil Fabric
+  assert.equal(conflict({ minecraft: '1.8.9', forge: forge.loader.versionId, mod: {} }, forge), false);
+  assert.equal(conflict({ minecraft: '1.8.9', forge: forge.loader.versionId, mod: {} }, f263), true);
+  // état Fabric sans profileId (installation interrompue après le pack) : propre à son profil, jamais à Forge
+  assert.equal(conflict({ pack: { id: 'fabric-1.21.1', managed: [] } }, f121), false);
+  assert.equal(conflict({ pack: { id: 'fabric-1.21.1', managed: [] } }, f263), true);
+  assert.equal(conflict({ pack: { id: 'fabric-1.21.1', managed: [] } }, forge), true);
+  assert.equal(conflict({ pack: { managed: [] } }, f121), false, 'pack sans identifiant : on ne peut pas dire à qui il est');
+  assert.equal(conflict({ pack: { managed: [] } }, forge), true);
+});
+
+test('install : dossier de jeu déjà utilisé par un autre profil = GAMEDIR_IN_USE avant tout téléchargement, dossier intact', async () => {
+  const states = [
+    ['Fabric 1.21.1 déjà installé, on installe Fabric 26.3', { profileId: 'fabric-1.21.1', pack: { id: 'fabric-1.21.1', managed: [] } }, 'fabric-26.3'],
+    ['Forge déjà installé, on installe Fabric', { profileId: 'forge-1.8.9', forge: '1.8.9-forge' }, 'fabric-1.21.1'],
+    ['Fabric déjà installé, on installe Forge', { profileId: 'fabric-26.3' }, 'forge-1.8.9'],
+    ['ancien état Forge sans profileId, on installe Fabric', { minecraft: '1.8.9', forge: '1.8.9-forge', mod: {} }, 'fabric-1.21.1'],
+    ['ancien état Fabric sans profileId, on installe Forge', { pack: { id: 'fabric-1.21.1', managed: ['sodium.jar'] } }, 'forge-1.8.9'],
+  ];
+  for (const [label, state, profileId] of states) {
+    const gameDir = tempDir();
+    const minecraftDir = tempDir();
+    const file = path.join(gameDir, 'attack-launcher.json');
+    fs.writeFileSync(file, JSON.stringify(state));
+    await assert.rejects(installer.install({ minecraftDir, settings: { gameDir, devMode: false }, profile: profileId }),
+      (error) => error instanceof installer.InstallError && error.code === 'GAMEDIR_IN_USE' && /déjà utilisé par un autre profil/.test(error.message), label);
+    assert.deepEqual(requested, [], `${label} : aucun accès réseau`);
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), state, `${label} : état inchangé`);
+    assert.deepEqual(fs.readdirSync(gameDir), ['attack-launcher.json'], `${label} : rien d’écrit dans le dossier de jeu`);
+    assert.deepEqual(fs.readdirSync(minecraftDir), [], `${label} : rien d’écrit dans .minecraft`);
+    fs.rmSync(gameDir, { recursive: true, force: true });
+    fs.rmSync(minecraftDir, { recursive: true, force: true });
+  }
+});
+
+test('install : le même profil, ou un dossier neuf, n’est pas bloqué par le contrôle du dossier de jeu', async () => {
+  // le faux serveur ne connaît pas le manifeste Mojang : l'installation échoue plus loin (HTTP 404), jamais en GAMEDIR_IN_USE
+  for (const [state, profileId] of [[null, 'fabric-26.3'], [{ profileId: 'fabric-26.3' }, 'fabric-26.3'], [{ forge: '1.8.9-forge' }, 'forge-1.8.9']]) {
+    const gameDir = tempDir();
+    if (state) fs.writeFileSync(path.join(gameDir, 'attack-launcher.json'), JSON.stringify(state));
+    await assert.rejects(installer.install({ minecraftDir: tempDir(), settings: { gameDir }, profile: profileId }), (error) => error.code !== 'GAMEDIR_IN_USE' && /HTTP 404/.test(error.message));
+    assert.ok(requested.some((u) => u.includes('version_manifest')), 'l’installation a bien démarré');
+    requested = [];
+    fs.rmSync(gameDir, { recursive: true, force: true });
+  }
+});
+
 // ---------- jar ATTACK depuis la release GitHub ----------
 
 const RELEASE_URL = 'https://api.github.com/repos/7ShIkI3/attack-launcher/releases/latest';
