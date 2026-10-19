@@ -1,6 +1,6 @@
 'use strict';
 // Téléchargements vérifiés : hôtes autorisés uniquement, écriture dans un .part puis renommage,
-// contrôle du hash (SHA-1 ou SHA-256) avant de garder le fichier.
+// contrôle du hash (SHA-1, SHA-256 ou SHA-512) avant de garder le fichier.
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
@@ -92,13 +92,14 @@ async function fetchText(url, options) {
 
 /**
  * Télécharge `url` vers `dest`.
- * expect = { sha1 | sha1s: [..] | sha256, size } : au moins un hash est exigé, sauf `allowUnverified`.
- * Un fichier déjà présent avec le bon hash n'est pas retéléchargé. Renvoie { skipped, bytes, sha1, sha256 }.
+ * expect = { sha1 | sha1s: [..] | sha256 | sha512, size } : au moins un hash est exigé, sauf `allowUnverified`.
+ * Un fichier déjà présent avec le bon hash n'est pas retéléchargé. Renvoie { skipped, bytes, <algorithme>: hash }.
  */
 async function downloadFile(url, dest, expect = {}, options = {}) {
   const { allowUnverified = false, onBytes } = options;
-  const algorithm = expect.sha256 ? 'sha256' : 'sha1';
-  const accepted = (expect.sha256 ? [expect.sha256] : expect.sha1s || (expect.sha1 ? [expect.sha1] : []))
+  // le hash le plus fort fourni décide : SHA-512 (Modrinth), SHA-256 (releases GitHub), sinon SHA-1 (Mojang, Maven)
+  const algorithm = expect.sha512 ? 'sha512' : expect.sha256 ? 'sha256' : 'sha1';
+  const accepted = (expect.sha512 ? [expect.sha512] : expect.sha256 ? [expect.sha256] : expect.sha1s || (expect.sha1 ? [expect.sha1] : []))
     .map((h) => h.toLowerCase());
   if (accepted.length === 0 && !allowUnverified) throw new Error(`Aucun hash connu pour ${url}`);
 

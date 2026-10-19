@@ -1,9 +1,13 @@
 'use strict';
 // Versions, adresses officielles et noms fixes du launcher.
 
-const MC_VERSION = '1.8.9';
-const FORGE_VERSION = '1.8.9-11.15.1.2318-1.8.9';
-const FORGE_VERSION_ID = '1.8.9-forge1.8.9-11.15.1.2318-1.8.9';
+// Les versions de chaque profil vivent dans catalog.js ; ces alias désignent le profil historique forge-1.8.9.
+const { get: catalogProfile } = require('./catalog');
+
+const LEGACY = catalogProfile('forge-1.8.9');
+const MC_VERSION = LEGACY.mc;
+const FORGE_VERSION = LEGACY.loader.fullVersion;
+const FORGE_VERSION_ID = LEGACY.loader.versionId;
 
 const VERSION_MANIFEST_URL = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json';
 const MOJANG_LIBRARIES = 'https://libraries.minecraft.net/';
@@ -11,17 +15,21 @@ const RESOURCES_URL = 'https://resources.download.minecraft.net/';
 const FORGE_MAVEN = 'https://maven.minecraftforge.net/';
 const FORGE_INSTALLER_URL =
   `${FORGE_MAVEN}net/minecraftforge/forge/${FORGE_VERSION}/forge-${FORGE_VERSION}-installer.jar`;
+const FABRIC_META = 'https://meta.fabricmc.net/';
+const FABRIC_MAVEN = 'https://maven.fabricmc.net/';
+const MODRINTH_CDN_HOST = 'cdn.modrinth.com';
 
 const GITHUB_REPO = '7ShIkI3/attack-launcher';
 const GITHUB_LATEST_RELEASE = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
 
-const PROFILE_ID = 'attack-client';
-const PROFILE_NAME = 'ATTACK Client';
-const MOD_FILE = 'attack-client.jar';
+const PROFILE_ID = LEGACY.launcherProfileId;
+const PROFILE_NAME = LEGACY.name;
+const MOD_FILE = LEGACY.modFile;
 const STATE_FILE = 'attack-launcher.json';
 
 /**
- * Seuls hôtes contactés : Mojang, Forge, GitHub (releases du projet) et la connexion Microsoft / Xbox / Minecraft.
+ * Seuls hôtes contactés : Mojang, Forge, Fabric (meta + Maven), le CDN de Modrinth (URL figées dans les packs, jamais
+ * l'API), GitHub (releases du projet) et la connexion Microsoft / Xbox / Minecraft.
  * Les redirections sont vérifiées aussi.
  */
 const ALLOWED_HOSTS = new Set([
@@ -32,6 +40,9 @@ const ALLOWED_HOSTS = new Set([
   'libraries.minecraft.net',
   'resources.download.minecraft.net',
   'maven.minecraftforge.net',
+  'meta.fabricmc.net',
+  'maven.fabricmc.net',
+  'cdn.modrinth.com',
   'api.github.com',
   'github.com',
   'objects.githubusercontent.com',
@@ -73,6 +84,9 @@ module.exports = {
   RESOURCES_URL,
   FORGE_MAVEN,
   FORGE_INSTALLER_URL,
+  FABRIC_META,
+  FABRIC_MAVEN,
+  MODRINTH_CDN_HOST,
   GITHUB_REPO,
   GITHUB_LATEST_RELEASE,
   PROFILE_ID,

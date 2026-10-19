@@ -12,6 +12,7 @@ const net = require('../src/main/http');
 const BODY = Buffer.from('contenu du fichier de test '.repeat(100));
 const SHA1 = crypto.createHash('sha1').update(BODY).digest('hex');
 const SHA256 = crypto.createHash('sha256').update(BODY).digest('hex');
+const SHA512 = crypto.createHash('sha512').update(BODY).digest('hex');
 
 let server;
 let base;
@@ -55,6 +56,30 @@ test('téléchargement vérifié (SHA-1, taille), puis fichier existant non ret�
   assert.equal(hits, before);
   const sha256 = await net.downloadFile(`${base}/file`, path.join(dir, 'c.jar'), { sha256: SHA256 }, options);
   assert.equal(sha256.sha256, SHA256);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('téléchargement vérifié par SHA-512 (Modrinth) : le plus fort hash fourni décide', async () => {
+  const dir = tempDir();
+  const dest = path.join(dir, 'mod.jar');
+  assert.equal(SHA512.length, 128);
+  const first = await net.downloadFile(`${base}/file`, dest, { sha512: SHA512, size: BODY.length }, options);
+  assert.equal(first.skipped, false);
+  assert.equal(first.sha512, SHA512);
+  assert.deepEqual(fs.readFileSync(dest), BODY);
+  // déjà présent avec le bon SHA-512 : pas de nouveau téléchargement
+  const before = hits;
+  const second = await net.downloadFile(`${base}/file`, dest, { sha512: SHA512.toUpperCase() }, options);
+  assert.equal(second.skipped, true);
+  assert.equal(hits, before);
+  // SHA-512 faux : rejeté même si le SHA-1 fourni est juste (le plus fort décide), et aucun fichier ne reste
+  const bad = path.join(dir, 'bad.jar');
+  await assert.rejects(net.downloadFile(`${base}/file`, bad, { sha512: 'f'.repeat(128), sha1: SHA1 }, options), /SHA512 incorrect/);
+  assert.equal(fs.existsSync(bad), false);
+  assert.equal(fs.existsSync(`${bad}.part`), false);
+  // taille fausse : rejetée aussi
+  await assert.rejects(net.downloadFile(`${base}/file`, bad, { sha512: SHA512, size: BODY.length + 1 }, options), /Taille incorrecte/);
+  assert.equal(fs.existsSync(bad), false);
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
