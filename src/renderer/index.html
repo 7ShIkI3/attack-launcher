@@ -230,6 +230,44 @@
 
         <div class="accounts-list" id="accounts-list"></div>
 
+        <!-- Skin du compte actif : vue 3D, changement, retour au skin par defaut -->
+        <div class="card skin-card hidden" id="skin-card">
+          <div class="skin-stage">
+            <canvas id="skin-canvas" width="240" height="320"></canvas>
+            <p class="skin-empty muted hidden" id="skin-empty" data-i18n="skin.empty">Aucun skin à afficher</p>
+            <span class="skin-preview-badge hidden" id="skin-preview-badge" data-i18n="skin.previewBadge">Aperçu</span>
+          </div>
+          <div class="skin-side">
+            <h3><span data-i18n="skin.title">Skin</span> <span class="badge" id="skin-variant-badge"></span></h3>
+            <p class="muted" id="skin-help" data-i18n="skin.help">Glisse pour tourner le personnage. Le skin est celui de ton compte Minecraft : il change partout (serveurs, autres launchers).</p>
+            <div class="skin-anim" id="skin-anim">
+              <button class="chip active" data-anim="walk" data-i18n="skin.walk">Marche</button>
+              <button class="chip" data-anim="run" data-i18n="skin.run">Course</button>
+              <button class="chip" data-anim="idle" data-i18n="skin.idle">Repos</button>
+            </div>
+            <!-- skin actuel -->
+            <div class="setup-actions" id="skin-actions">
+              <button class="btn accent" id="skin-pick" data-i18n="skin.pick">Changer de skin…</button>
+              <button class="btn" id="skin-refresh" data-i18n="skin.refresh">Actualiser</button>
+              <button class="btn ghost danger" id="skin-reset" data-i18n="skin.reset">Skin par défaut</button>
+            </div>
+            <!-- skin choisi, pas encore envoye -->
+            <div class="skin-pending hidden" id="skin-pending">
+              <p class="muted" data-i18n="skin.model">Modèle des bras :</p>
+              <div class="skin-anim" id="skin-model">
+                <button class="chip active" data-model="classic" data-i18n="skin.classic">Classique (Steve)</button>
+                <button class="chip" data-model="slim" data-i18n="skin.slim">Fin (Alex)</button>
+              </div>
+              <p class="muted small-note hidden" id="skin-legacy" data-i18n="skin.legacy">Ancien format 64 x 32 : Minecraft le convertit tout seul.</p>
+              <div class="setup-actions">
+                <button class="btn accent" id="skin-apply" data-i18n="skin.apply">Appliquer ce skin</button>
+                <button class="btn ghost" id="skin-cancel" data-i18n="skin.cancel">Annuler</button>
+              </div>
+            </div>
+            <p class="message hidden" id="skin-message"></p>
+          </div>
+        </div>
+
         <!-- Connexion en cours (code d'appareil) -->
         <div class="card device hidden" id="device">
           <p class="muted" id="device-text" data-i18n="login.instructions">Sur la page Microsoft qui vient de s'ouvrir, saisis ce code :</p>
@@ -277,6 +315,8 @@
   <script src="logo.js"></script>
   <script src="i18n.js"></script>
   <script src="data.js"></script>
+  <script src="vendor/skinview3d-3.4.2.js"></script>
   <script src="app.js"></script>
+  <script src="skin.js"></script>
 </body>
 </html>

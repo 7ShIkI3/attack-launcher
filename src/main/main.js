@@ -18,6 +18,7 @@ const game = require('./game');
 const http = require('./http');
 const updates = require('./updates');
 const { AccountStore } = require('./accounts');
+const skins = require('./skins');
 const { defaultMinecraftDir } = require('./paths');
 
 const ROOT = path.join(__dirname, '..', '..');
@@ -237,6 +238,72 @@ function registerIpc() {
     try {
       await accounts.addOffline(String(name || ''));
       return { ok: true, ...accountsView() };
+    } catch (error) {
+      return publicError(error);
+    }
+  });
+  // --- skin du compte actif (le jeton Minecraft reste ici ; la page ne voit que les images) ---
+  let pendingSkin = null; // { png: Buffer, dataUrl } choisi mais pas encore envoye
+  const skinAccount = () => {
+    const account = accounts.active();
+    if (!account || account.type !== 'msa') {
+      throw Object.assign(new Error('Connecte un compte Microsoft pour changer de skin.'), { code: 'NO_ACCOUNT' });
+    }
+    return account;
+  };
+  const afterSkinChange = async (account, skin) => {
+    const image = skin ? await skinDataUrl(skin.url) : null;
+    await accounts.setSkin(account.id, image, skin?.variant || 'classic');
+    const view = accountsView();
+    send('accounts:changed', view);
+    return { ok: true, ...view };
+  };
+  handle('skins:pick', async () => {
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Choisir un skin (PNG 64 x 64)',
+      properties: ['openFile'],
+      filters: [{ name: 'Skin Minecraft', extensions: ['png'] }],
+    });
+    if (result.canceled || !result.filePaths[0]) return { ok: false, code: 'CANCELLED' };
+    try {
+      const png = await fsp.readFile(result.filePaths[0]);
+      const size = skins.checkSkinPng(png);
+      pendingSkin = { png, dataUrl: `data:image/png;base64,${png.toString('base64')}` };
+      return { ok: true, dataUrl: pendingSkin.dataUrl, legacy: size.height === 32 };
+    } catch (error) {
+      pendingSkin = null;
+      return publicError(error);
+    }
+  });
+  handle('skins:discard', () => {
+    pendingSkin = null;
+  });
+  handle('skins:apply', async (_event, variant) => {
+    try {
+      const account = skinAccount();
+      if (!pendingSkin) return { ok: false, code: 'NO_SKIN', message: 'Choisis d’abord une image.' };
+      const identity = await accounts.launchIdentity(account.id, refreshWith);
+      const skin = await skins.uploadSkin(transport, identity.accessToken, pendingSkin.png, variant === 'slim' ? 'slim' : 'classic');
+      pendingSkin = null;
+      return await afterSkinChange(account, skin);
+    } catch (error) {
+      return publicError(error);
+    }
+  });
+  handle('skins:reset', async () => {
+    try {
+      const account = skinAccount();
+      const identity = await accounts.launchIdentity(account.id, refreshWith);
+      return await afterSkinChange(account, await skins.resetSkin(transport, identity.accessToken));
+    } catch (error) {
+      return publicError(error);
+    }
+  });
+  handle('skins:refresh', async () => {
+    try {
+      const account = skinAccount();
+      const identity = await accounts.launchIdentity(account.id, refreshWith);
+      return await afterSkinChange(account, await skins.readSkin(transport, identity.accessToken));
     } catch (error) {
       return publicError(error);
     }

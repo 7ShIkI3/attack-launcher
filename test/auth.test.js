@@ -43,7 +43,7 @@ test('connexion complète par code d’appareil', async () => {
   const codes = [];
   const result = await auth.loginWithDeviceCode(transport, CLIENT, { ...fast, onCode: (c) => codes.push(c) });
   assert.deepEqual(codes, [{ userCode: 'ABCD-1234', verificationUri: 'https://www.microsoft.com/link', expiresIn: 900 }]);
-  assert.deepEqual(result.profile, { id: UUID, name: 'Raphou', skinUrl: 'http://textures.minecraft.net/texture/abc' });
+  assert.deepEqual(result.profile, { id: UUID, name: 'Raphou', skinUrl: 'http://textures.minecraft.net/texture/abc', skinVariant: 'classic' });
   assert.equal(result.minecraft.accessToken, 'MC-ACCESS');
   assert.equal(result.microsoft.refreshToken, 'MS-REFRESH');
 

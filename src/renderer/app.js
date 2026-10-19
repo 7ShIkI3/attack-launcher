@@ -329,7 +329,11 @@
         ]);
       }));
     }
+    document.dispatchEvent(new CustomEvent('attack:accounts', { detail: view }));
   }
+
+  // skin.js (vue 3D du skin) suit le compte actif et reutilise la traduction des erreurs
+  window.AttackUI = { errorText, view: () => accountsView };
 
   async function refreshAccounts() {
     accountsView = await api.accounts.list();

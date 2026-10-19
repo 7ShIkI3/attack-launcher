@@ -93,6 +93,20 @@ et de [minecraft.wiki](https://minecraft.wiki/w/Microsoft_authentication).
 Côté code, toutes les requêtes OAuth passent par le tenant `consumers`
 (`login.microsoftonline.com/consumers/...`), jamais par `common` ni par l'ID de l'annuaire.
 
+### Skin
+
+Page **Compte** → carte **Skin** : le skin du compte actif en 3D (il tourne tout seul ; glisse pour le tourner, choisis
+Marche, Course ou Repos).
+
+- **Changer de skin…** : choisis un PNG de 64 x 64 pixels (ou 64 x 32, ancien format), puis le **modèle des bras**
+  (Classique / Steve ou Fin / Alex). L'aperçu s'affiche **avant** tout envoi ; **Appliquer ce skin** l'envoie à Mojang.
+- **Skin par défaut** remet Steve ou Alex ; **Actualiser** relit le skin si tu l'as changé ailleurs (minecraft.net).
+- C'est le skin de ton **compte Minecraft** : il change partout (serveurs, autres launchers), comme sur minecraft.net.
+- Seul le processus principal parle à `api.minecraftservices.com` (avec le jeton Minecraft, jamais transmis à la page) ;
+  le fichier est vérifié avant l'envoi (PNG, 64 x 64 ou 64 x 32, 24 Ko au plus).
+- Vue 3D : [skinview3d](https://github.com/bs-community/skinview3d) 3.4.2 (licence MIT, avec three.js), copiée dans
+  `src/renderer/vendor/` : la page ne télécharge rien.
+
 ### Lancement direct
 
 - **Java 8** : runtime officiel `jre-legacy` de Mojang, téléchargé fichier par fichier depuis le manifeste du
@@ -230,6 +244,7 @@ qui peut porter les capes réservées (aujourd'hui : N2T-48). Les joueurs ATTACK
 
 ## Licences et mentions
 
+- Vue 3D du skin : **skinview3d** et **three.js**, licence MIT (`src/renderer/vendor/LICENSE-*.txt`).
 - Polices **Inter** et **Montserrat** : SIL Open Font License 1.1 (`src/renderer/fonts/OFL-*.txt`).
 - Minecraft est une marque de Mojang AB / Microsoft. ATTACK Launcher est un projet indépendant, ni approuvé
   ni affilié à Mojang ou Microsoft. Les fichiers du jeu sont téléchargés depuis les serveurs officiels de Mojang ;

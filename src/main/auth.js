@@ -32,10 +32,15 @@ function isClientId(value) {
 /** Transport réel : fetch avec hôtes en liste blanche (redirections comprises). */
 function createTransport({ allowedHosts = ALLOWED_HOSTS } = {}) {
   const { fetchChecked } = require('./http');
-  return async (method, url, { form, json, bearer } = {}) => {
+  return async (method, url, { form, json, bearer, multipart } = {}) => {
     const headers = { Accept: 'application/json' };
     let body;
-    if (form) {
+    if (multipart) {
+      // envoi de fichier (skin) : voir skins.multipartBody
+      const encoded = require('./skins').multipartBody(multipart);
+      headers['Content-Type'] = encoded.contentType;
+      body = encoded.body;
+    } else if (form) {
       headers['Content-Type'] = 'application/x-www-form-urlencoded';
       body = new URLSearchParams(form).toString();
     } else if (json) {
@@ -198,7 +203,8 @@ async function minecraftProfile(transport, mcAccessToken) {
   const { id, name, skins = [] } = profile.data;
   if (!UUID_HEX.test(id || '')) throw new AuthError('MC_ERROR', 'Profil Minecraft invalide.');
   const skin = skins.find((s) => s.state === 'ACTIVE') || skins[0];
-  return { id: id.toLowerCase(), name, skinUrl: skin?.url || null };
+  const skinVariant = String(skin?.variant || 'CLASSIC').toLowerCase() === 'slim' ? 'slim' : 'classic';
+  return { id: id.toLowerCase(), name, skinUrl: skin?.url || null, skinVariant };
 }
 
 /** Chaîne complète à partir de jetons Microsoft : { profile, minecraft, microsoft }. */
