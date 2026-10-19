@@ -13,7 +13,7 @@ ATTACK Client est un mod Forge : pour le jouer, il faut normalement installer Mi
 jar dans le bon dossier, sans mélanger avec tes autres mods. Ce launcher fait tout ça à ta place, pour les
 joueurs de PvP 1.8.9 qui veulent un client prêt à jouer, sans se soucier de la mise en place.
 
-Il est conçu pour rester simple à contrôler : le code est ouvert, chaque fichier téléchargé est vérifié par son
+Il est conçu pour rester simple à contrôler : le code est visible, chaque fichier téléchargé est vérifié par son
 empreinte (hash), les adresses contactées sont une liste fixe, et il n'envoie aucune statistique (voir
 [Vie privée](#vie-privée)).
 
@@ -128,7 +128,7 @@ la vérification des mises à jour (la version portable la fait aussi) : seul un
 
 ## Licences et mentions
 
-- Le launcher est sous licence **MIT** (voir [LICENSE](LICENSE)).
+- Le launcher : **Tous droits réservés** (voir [LICENSE](LICENSE)) : le code est visible pour la transparence, mais ce n'est pas de l'open source. Tu peux utiliser les versions officielles ; copier, modifier, republier ou vendre ce travail demande l'accord écrit de l'auteur. Les versions publiées avant le 19 octobre 2026 restaient sous MIT.
 - Vue 3D du skin : **skinview3d** et **three.js**, licence MIT (`src/renderer/vendor/LICENSE-*.txt`).
 - Polices **Inter** et **Montserrat** : SIL Open Font License 1.1 (`src/renderer/fonts/OFL-*.txt`).
 - À l'exécution, une seule dépendance : `electron-updater` (mise à jour du launcher). Outils de développement :
