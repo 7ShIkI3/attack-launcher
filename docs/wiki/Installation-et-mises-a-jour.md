@@ -77,12 +77,14 @@ flowchart TD
    `https://meta.fabricmc.net/v2/versions/loader/<mc>/0.19.5/profile/json` (Fabric Loader est **épinglé** à 0.19.5). Il
    est validé strictement : identifiant `fabric-loader-0.19.5-<mc>`, héritage de la bonne version de Minecraft, classe
    principale `net.fabricmc.loader.impl.launch.knot.KnotClient`, bibliothèques uniquement sur `maven.fabricmc.net` ou
-   `libraries.minecraft.net`, hash bien formés, aucune option Java qui chargerait du code (`-javaagent`, `-cp`...), et
-   `fabric-loader 0.19.5` présent. Le JSON écrit dans `versions\` est reconstruit à partir de ces seuls champs, avec les
+   `libraries.minecraft.net`, hash bien formés, options Java en **liste blanche** (seulement des propriétés `-D` de Fabric :
+   `-DFabricMcEmu=`, `fabric.*`, `loader.*`, `mixin.*` ; tout le reste, `-javaagent`, `-cp`, `-Djava.library.path`,
+   `--add-opens`... est refusé), aucun argument du jeu qui réclame les identifiants du compte, et `fabric-loader 0.19.5` présent. Le JSON écrit dans `versions\` est reconstruit à partir de ces seuls champs, avec les
    bibliothèques au format `downloads.artifact` (chemin, URL, SHA-1, taille) que le launcher officiel sait vérifier.
    Chaque bibliothèque est contrôlée par le hash le plus fort publié (SHA-512 pour asm et sponge-mixin) ; `fabric-loader`
-   et `intermediary` n'en portent pas dans le profil : on prend le fichier `.sha1` publié à côté du jar sur le Maven de
-   Fabric (`intermediary` n'existe pas pour 26.3).
+   et `intermediary` n'en portent pas dans le profil : leur SHA-1 est **figé dans le catalogue** (`catalog.js`,
+   `loader.pinnedSha1`), donc pas pris sur le serveur qui sert le jar ; à défaut, on prendrait le fichier `.sha1` publié à
+   côté du jar sur le Maven de Fabric (`intermediary` n'existe pas pour 26.3).
 5. **Pack de mods** (Fabric seulement, `src/main/modpack.js`) : voir [Le pack de mods](#le-pack-de-mods-profils-fabric).
 6. **Mod** : voir [Mod ATTACK : d'où vient le jar ?](#mod-attack--doù-vient-le-jar-).
 7. **Profil** : fusion dans `launcher_profiles.json` ([Fonctionnalités](Fonctionnalites.md#profil-du-launcher-officiel)).
@@ -98,7 +100,7 @@ rapide.
 | Runtime Java (`jre-legacy`, `java-runtime-delta`, `java-runtime-epsilon`) | SHA-1 de chaque fichier | Manifeste des runtimes de Mojang |
 | Installateur Forge, bibliothèques Forge | SHA-1 | Fichier `.sha1` voisin sur Maven Forge, ou checksums de l'`install_profile` |
 | Bibliothèques Fabric (asm, sponge-mixin…) | SHA-512 | Profil de version publié par `meta.fabricmc.net` |
-| `fabric-loader`, `intermediary` | SHA-1 | Fichier `.sha1` voisin sur `maven.fabricmc.net` (le profil n'en donne pas) |
+| `fabric-loader`, `intermediary` | SHA-1 | Figé dans `catalog.js` (le profil n'en donne pas) ; à défaut, fichier `.sha1` voisin sur `maven.fabricmc.net` |
 | Mods du pack (Fabric) | **SHA-512** et taille | Écrits dans `src/main/packs/<profil>.json` (relus sur Modrinth au moment de figer le pack), jamais demandés à l'API à l'exécution |
 | Jar ATTACK (`attack-client` ou `attack-fabric`) | SHA-256 **obligatoire** et taille | Champ `digest` de GitHub pour l'asset, sinon un fichier `.sha256` ou `SHA256SUMS` joint à la release. Sans SHA-256, l'installation est **refusée** (`mod.js`) |
 | Mise à jour du launcher | SHA-512 | `latest.yml`, publié avec la release |
@@ -161,9 +163,13 @@ SHA-512, SHA-1 et taille. Le launcher **n'appelle jamais l'API Modrinth** : il t
   doublon (même à la casse près). Les noms contenant `+` sont encodés `%2B` dans l'adresse.
 - **Installation** : téléchargements en parallèle dans `<dossier de jeu>\mods\`, chacun vérifié par SHA-512 et taille. Iris
   n'est installé que si l'option **Shaders (Iris)** du profil est activée.
-- **Jars gérés** : la liste des jars posés par le launcher est gardée dans `attack-launcher.json` (`pack.managed`). À
-  l'installation suivante, un jar géré qui n'est plus dans le pack (mod retiré, version changée, Iris coupé) est
-  **supprimé**, après que tous les téléchargements ont réussi. Les jars que **tu** ajoutes à `mods\` ne sont **jamais**
+- **Jars gérés** : la liste des jars posés par le launcher est gardée dans `attack-launcher.json` (`pack.managed`,
+  écriture atomique : fichier temporaire puis renommage). À l'installation suivante, un jar géré qui n'est plus dans le pack
+  (mod retiré, version changée, Iris coupé) est **supprimé**, après que tous les téléchargements ont réussi. Si un
+  téléchargement échoue, les jars téléchargés pendant ce passage sont retirés (jamais deux versions du même mod côte à côte)
+  et les anciens ne sont pas touchés ; si un ancien jar est verrouillé (jeu ouvert), il reste suivi et l'installation
+  s'arrête avec un message qui demande de fermer le jeu. L'installation est refusée tant qu'une partie lancée par le launcher
+  est ouverte. Les jars que **tu** ajoutes à `mods\` ne sont **jamais**
   touchés, pas plus que le jar ATTACK ; un nom suspect dans l'état (chemin, autre extension) est ignoré.
 - **État de l'accueil** : le voyant « Pack de mods » est vert quand chaque jar du pack est présent avec la bonne taille et
   qu'aucun ancien jar géré ne traîne. Activer ou couper les shaders le repasse à « à installer » jusqu'au prochain clic

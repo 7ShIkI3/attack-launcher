@@ -176,6 +176,7 @@ async function main() {
       await run({ ...settings, shaders: true });
       await check(irisFile, 'sha512', iris.sha512, 'cycle : Iris réinstallé');
       if (!fs.existsSync(own)) failures.push('cycle : le jar du joueur a été supprimé (réactivation)');
+      fs.rmSync(own, { force: true }); // faux jar : retiré, sinon Fabric refuserait de démarrer le dossier de test
       extra.push('cycle shaders OK (Iris retiré puis remis, jar du joueur intact)');
     }
   }

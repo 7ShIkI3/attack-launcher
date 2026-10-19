@@ -51,7 +51,7 @@ et minuteurs dans `updates.js`), ce qui permet de les simuler.
 
 ## Tests unitaires (`npm test`)
 
-Les 132 tests tournent en moins de deux secondes et n'ont besoin ni du réseau ni d'Electron. Les fixtures de `test/fixtures/` sont les vrais JSON de Mojang (1.21.1, 26.3, réduits à quelques bibliothèques) et de Fabric (profils 0.19.5).
+Les 144 tests tournent en quelques secondes et n'ont besoin ni du réseau ni d'Electron. Les fixtures de `test/fixtures/` sont les vrais JSON de Mojang (1.21.1, 26.3, réduits à quelques bibliothèques) et de Fabric (profils 0.19.5).
 
 | Fichier | Ce qu'il vérifie |
 | --- | --- |
@@ -63,6 +63,7 @@ Les 132 tests tournent en moins de deux secondes et n'ont besoin ni du réseau n
 | `fabric.test.js` | Adresse du profil Fabric, validation stricte (vrais profils 1.21.1 et 26.3, profils piégés refusés), plan de téléchargement avec ou sans hash, JSON de version écrit |
 | `modpack.test.js` | Packs figés valides (versions demandées), validation (URL, hash, noms), installation, Iris selon l'option, jars gérés supprimés, jars du joueur intacts, échec sans suppression |
 | `game-modern.test.js` | Fusion Fabric + Minecraft, arguments modernes (1.21.1 et 26.3), un seul `-cp`, variables sans découpage, natives de 26.x, détection d'une partie |
+| `installer.test.js` | Étapes de l'installateur avec un faux réseau (`fetch` remplacé) : Fabric Loader (hash figés, SHA-512, profil piégé refusé avant tout téléchargement), jar ATTACK d'une release (profil, SHA-256, erreurs), pack et fichier d'état (échec au milieu, jar verrouillé) |
 | `multi-profils.test.js` | Réglages par profil et migration de l'ancien fichier, profils du launcher officiel, jar ATTACK par release, progression par chargeur, état d'un profil Fabric |
 | `forge.test.js` | Lecteur ZIP, extraction de `install_profile.json` et du jar universal, installateur piégé refusé, bibliothèques, JSON de version |
 | `mojang.test.js` | Manifeste, règles par plateforme, bibliothèques et natives, assets, chemins incohérents refusés |

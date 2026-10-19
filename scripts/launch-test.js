@@ -20,7 +20,7 @@ const FABRIC_LOADED = /Loading (\d+) mods?:/;
 const FABRIC_READY = /Sound engine started/;
 const FABRIC_ATTACK_LISTED = /^\s*-\s+attack\s+\S+/m;
 // Forge écrit un faux « Crash Report » (Loading screen debug info) au démarrage : on cherche le vrai marqueur.
-const CRASH = /#@!@# Game crashed!|Exception in thread "main"|Could not find or load main class|Incompatible mod set|Mod resolution failed/;
+const CRASH = /#@!@# Game crashed!|Exception in thread "main"|Could not find or load main class|Incompatible mod set|Incompatible mods found|Mod resolution failed|Mod discovery failed/;
 
 /** Analyse le journal du jeu : { ready, mods, attack } ; ready = écran titre atteint. */
 function readLog(log, profile) {
@@ -67,6 +67,14 @@ async function main() {
     exited = code;
   });
 
+  // en cas d'échec le jeu est fermé (Fabric laisse sinon une fenêtre d'erreur ouverte)
+  const stop = () => {
+    try {
+      process.kill(pid);
+    } catch {
+      // déjà fermé
+    }
+  };
   for (;;) {
     await new Promise((r) => setTimeout(r, 1000));
     const log = fs.readFileSync(logFile, 'utf8');
@@ -74,11 +82,20 @@ async function main() {
     if (state.ready) {
       console.log(`ÉCRAN TITRE atteint en ${((Date.now() - started) / 1000).toFixed(1)} s (${state.loader} : ${state.mods} mods chargés, ` +
         `ATTACK ${state.attack ? 'chargé' : 'ABSENT'})`);
-      if (!state.attack) throw new Error('ATTACK ne figure pas parmi les mods chargés');
+      if (!state.attack) {
+        stop();
+        throw new Error('ATTACK ne figure pas parmi les mods chargés');
+      }
       break;
     }
-    if (CRASH.test(log) || exited !== null) throw new Error(`Le jeu s'est arrêté (code ${exited}) : voir ${logFile}`);
-    if (Date.now() - started > 180000) throw new Error('Écran titre non atteint en 3 minutes');
+    if (CRASH.test(log) || exited !== null) {
+      stop();
+      throw new Error(`Le jeu s'est arrêté (code ${exited}) : voir ${logFile}`);
+    }
+    if (Date.now() - started > 180000) {
+      stop();
+      throw new Error('Écran titre non atteint en 3 minutes');
+    }
   }
   if (!keep) {
     await new Promise((r) => setTimeout(r, 4000));
