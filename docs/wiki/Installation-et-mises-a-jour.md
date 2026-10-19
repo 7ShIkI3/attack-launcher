@@ -194,7 +194,7 @@ premier jar qui ressemble ».
 flowchart TD
   A["Étape « Mod » : installMod(profil)"] --> B{"Mode développeur ?"}
   B -->|oui| C["Copie le dernier jar qui suit la règle du profil<br>dans le dossier de jars du profil"]
-  B -->|non| D["GET api.github.com/repos/7ShIkI3/attack-launcher/releases/latest"]
+  B -->|non| D["GET api.github.com/repos/7ShIkI3/attack-launcher/releases/latest<br>(launcher en préversion : releases?per_page=10, première non-brouillon)"]
   D --> E{"Release publiée ?"}
   E -->|"404"| X["Erreur : aucune release publiée"]
   E -->|oui| F["Cherche le jar de la règle du profil<br>(un jar Fabric ambigu est une erreur)"]
@@ -211,7 +211,11 @@ Dossier des jars de développement : `Documents\pvp-essentials\build\libs` (1.8.
 `Documents\attack-client-fabric\versions\<mc>\build\libs` (Fabric), réglable par profil dans Réglages. Variables
 d'environnement : `ATTACK_DEV_JAR_DIR` (1.8.9) et `ATTACK_DEV_JAR_DIR_FABRIC_1_21_1`, `ATTACK_DEV_JAR_DIR_FABRIC_26_3`.
 
-Le mod est mis à jour à **chaque installation ou réparation** : il prend toujours la dernière release.
+Le mod est mis à jour à **chaque installation ou réparation** : il prend toujours la dernière release. Un launcher en
+**préversion** (version avec un `-`, par exemple `0.5.0-beta.1`) lit à la place les 10 dernières releases
+(`.../releases?per_page=10`) et prend la première qui n'est pas un brouillon, préversion comprise ; `releases/latest`
+ignore les préversions et reste utilisé par tous les launchers en version normale. La mise à jour automatique du launcher
+ne propose jamais de préversion (`allowPrerelease` reste faux).
 
 ## Java pour le lancement direct
 

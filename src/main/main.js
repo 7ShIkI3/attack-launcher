@@ -216,6 +216,7 @@ function registerIpc() {
         settings: eff,
         profile: currentProfile(),
         icon: profileIcon(),
+        appVersion: app.getVersion(),
         onProgress: (progress) => {
           if (!event.sender.isDestroyed()) event.sender.send('install:progress', progress);
         },

@@ -21,6 +21,8 @@ const MODRINTH_CDN_HOST = 'cdn.modrinth.com';
 
 const GITHUB_REPO = '7ShIkI3/attack-launcher';
 const GITHUB_LATEST_RELEASE = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+/** Les 10 dernières releases, préversions comprises (canal bêta : launcher en préversion). */
+const GITHUB_RELEASES = `https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=10`;
 
 const PROFILE_ID = LEGACY.launcherProfileId;
 const PROFILE_NAME = LEGACY.name;
@@ -89,6 +91,7 @@ module.exports = {
   MODRINTH_CDN_HOST,
   GITHUB_REPO,
   GITHUB_LATEST_RELEASE,
+  GITHUB_RELEASES,
   PROFILE_ID,
   PROFILE_NAME,
   MOD_FILE,

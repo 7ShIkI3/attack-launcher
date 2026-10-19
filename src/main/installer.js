@@ -256,9 +256,10 @@ async function installPack(gameDir, profile, settings, report, net, pack = modpa
 
 /**
  * Jar ATTACK -> <gameDir>/mods/<profile.modFile>, depuis la release GitHub (jar du profil, choisi par sa règle exacte)
- * ou le build local (mode développeur).
+ * ou le build local (mode développeur). `appVersion` : version du launcher ; une préversion (0.5.0-beta.1) prend la
+ * dernière release publiée, préversion comprise, au lieu de la dernière release stable.
  */
-async function installMod(gameDir, settings, report, net, profile = catalog.get()) {
+async function installMod(gameDir, settings, report, net, profile = catalog.get(), appVersion) {
   const dest = path.join(gameDir, 'mods', profile.modFile);
   await fsp.mkdir(path.dirname(dest), { recursive: true });
   let info;
@@ -273,9 +274,9 @@ async function installMod(gameDir, settings, report, net, profile = catalog.get(
     report('mod', 0, 1, 'Dernière release GitHub');
     let release;
     try {
-      release = await http.fetchJson(C.GITHUB_LATEST_RELEASE, { ...net, headers: { Accept: 'application/vnd.github+json' } });
+      release = await mod.fetchRelease(appVersion, (url) => http.fetchJson(url, { ...net, headers: { Accept: 'application/vnd.github+json' } }));
     } catch (error) {
-      if (error.status === 404) {
+      if (error.status === 404 || error.code === 'NO_RELEASE') {
         throw new InstallError('NO_RELEASE', "Aucune release d'ATTACK Client n'est encore publiée sur GitHub.");
       }
       throw error;
@@ -317,7 +318,7 @@ function gameDirConflict(state, profile) {
 }
 
 /**
- * Installation complète. options : { minecraftDir, settings, profile, icon, onProgress, concurrency, allowedHosts, env }.
+ * Installation complète. options : { minecraftDir, settings, profile, icon, onProgress, concurrency, allowedHosts, env, appVersion }.
  * `profile` : entrée du catalogue ou son identifiant (Forge 1.8.9 par défaut). `settings` : réglages effectifs du profil
  * (gameDir, javaPath, ramMb, devMode, devJarDir, shaders). Renvoie un résumé.
  */
@@ -344,7 +345,7 @@ async function install(options) {
   } else {
     loaderLibraries = (await installForge(minecraftDir, report, net, profile)).libraries;
   }
-  const modInfo = await installMod(gameDir, settings, report, net, profile);
+  const modInfo = await installMod(gameDir, settings, report, net, profile, options.appVersion);
   await installProfile(minecraftDir, gameDir, settings, icon, report, profile);
 
   const previous = await readState(gameDir);

@@ -263,6 +263,44 @@ test('version du mod affichée pour un profil Fabric : celle du jar, sans « v �
   assert.equal(mod.installedVersion(null), null);
 });
 
+// ---------- canal bêta : release d'où vient le jar ----------
+
+test('préversion du launcher : reconnue par son « - » semver, une version illisible n’en est pas une', () => {
+  for (const version of ['0.5.0-beta.1', 'v1.0.0-rc.1', '0.6.0-alpha']) assert.equal(mod.isPrereleaseVersion(version), true, version);
+  for (const version of ['0.5.0', 'v0.4.0', '1.0.0+build.7', '', 'dev', undefined, null]) assert.equal(mod.isPrereleaseVersion(version), false, String(version));
+});
+
+test('release du mod : releases/latest pour un launcher normal, première release publiée (préversion comprise) pour une préversion', async () => {
+  const LATEST = 'https://api.github.com/repos/7ShIkI3/attack-launcher/releases/latest';
+  const LIST = 'https://api.github.com/repos/7ShIkI3/attack-launcher/releases?per_page=10';
+  const stable = { tag_name: 'v0.4.0' };
+  const releases = [{ tag_name: 'v0.5.1-beta.2', draft: true }, { tag_name: 'v0.5.0-beta.1', prerelease: true, draft: false }, stable];
+  const calls = [];
+  const getJson = async (url) => {
+    calls.push(url);
+    return url === LATEST ? stable : releases;
+  };
+
+  // version normale (ou illisible) : comportement inchangé, la liste n'est même pas lue
+  for (const version of ['0.4.0', 'v0.5.0', '1.0.0+build.7', undefined, '', 'dev']) {
+    calls.length = 0;
+    assert.equal(await mod.fetchRelease(version, getJson), stable, String(version));
+    assert.deepEqual(calls, [LATEST], String(version));
+  }
+  // préversion : la première release qui n'est pas un brouillon, préversion acceptée
+  for (const version of ['0.5.0-beta.1', 'v1.0.0-rc.1']) {
+    calls.length = 0;
+    assert.equal((await mod.fetchRelease(version, getJson)).tag_name, 'v0.5.0-beta.1', version);
+    assert.deepEqual(calls, [LIST], version);
+  }
+  // rien de publiable, ou réponse inattendue : NO_RELEASE (le brouillon n'est jamais pris)
+  for (const list of [[], [{ tag_name: 'v0.5.0-beta.1', draft: true }], null, {}, 'oups', [null, 3]]) {
+    await assert.rejects(mod.fetchRelease('0.5.0-beta.1', async () => list), (error) => error.code === 'NO_RELEASE', JSON.stringify(list));
+  }
+  // une erreur réseau n'est pas masquée
+  await assert.rejects(mod.fetchRelease('0.5.0-beta.1', async () => { throw Object.assign(new Error('HTTP 403'), { status: 403 }); }), (error) => error.status === 403);
+});
+
 // ---------- progression et état ----------
 
 test('progression : 0 à 100 % pour chaque chargeur, étape inconnue sans erreur', () => {

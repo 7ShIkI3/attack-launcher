@@ -289,6 +289,50 @@ test('release GitHub : la version du mod installé est celle du jar, même avec 
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+test('release GitHub : un launcher en préversion lit les dernières releases (préversion acceptée), un launcher normal reste sur releases/latest', async () => {
+  const LIST_URL = 'https://api.github.com/repos/7ShIkI3/attack-launcher/releases?per_page=10';
+  const betaJar = Buffer.from('attack fabric beta');
+  const stableJar = Buffer.from('attack fabric stable');
+  const download = (tag, name) => `https://github.com/7ShIkI3/attack-launcher/releases/download/${tag}/${name}`;
+  const betaName = 'attack-fabric-3.1.0+mc26.3.jar';
+  const stableName = 'attack-fabric-3.0.0+mc26.3.jar';
+  routes.set(LIST_URL, JSON.stringify([
+    { tag_name: 'v0.5.1', draft: true, assets: [] },
+    { tag_name: 'v0.5.0-beta.1', prerelease: true, assets: [asset(betaName, { size: betaJar.length, digest: `sha256:${hash('sha256', betaJar)}`, browser_download_url: download('v0.5.0-beta.1', betaName) })] },
+  ]));
+  routes.set(RELEASE_URL, JSON.stringify({
+    tag_name: 'v0.4.0',
+    assets: [asset(stableName, { size: stableJar.length, digest: `sha256:${hash('sha256', stableJar)}`, browser_download_url: download('v0.4.0', stableName) })],
+  }));
+  routes.set(download('v0.5.0-beta.1', betaName), betaJar);
+  routes.set(download('v0.4.0', stableName), stableJar);
+  const profile = catalog.get('fabric-26.3');
+  const installed = (dir) => fs.readFileSync(path.join(dir, 'mods', 'attack-fabric.jar'));
+
+  const beta = tempDir();
+  const betaInfo = await installer.installMod(beta, { devMode: false }, noReport, {}, profile, '0.5.0-beta.1');
+  assert.equal(betaInfo.version, 'v0.5.0-beta.1');
+  assert.deepEqual(installed(beta), betaJar);
+  assert.ok(requested.includes(LIST_URL) && !requested.includes(RELEASE_URL), 'préversion : liste des releases, pas releases/latest');
+
+  for (const appVersion of ['0.5.0', undefined]) {
+    requested = [];
+    const normal = tempDir();
+    const info = await installer.installMod(normal, { devMode: false }, noReport, {}, profile, appVersion);
+    assert.equal(info.version, 'v0.4.0', String(appVersion));
+    assert.deepEqual(installed(normal), stableJar);
+    assert.ok(requested.includes(RELEASE_URL) && !requested.includes(LIST_URL), `${appVersion} : releases/latest, jamais une préversion`);
+    fs.rmSync(normal, { recursive: true, force: true });
+  }
+
+  // aucune release publiable pour une préversion : même erreur claire qu'un 404 de releases/latest
+  routes.set(LIST_URL, JSON.stringify([{ tag_name: 'v0.5.0-beta.1', draft: true, assets: [] }]));
+  await assert.rejects(installer.installMod(tempDir(), { devMode: false }, noReport, {}, profile, '0.5.0-beta.1'), (error) => error.code === 'NO_RELEASE');
+  routes.delete(LIST_URL);
+  await assert.rejects(installer.installMod(tempDir(), { devMode: false }, noReport, {}, profile, '0.5.0-beta.1'), (error) => error.code === 'NO_RELEASE');
+  fs.rmSync(beta, { recursive: true, force: true });
+});
+
 test('release GitHub : pas de jar pour ce profil = erreur claire (NO_PROFILE_JAR) ; jar altéré rejeté', async () => {
   routes.set(RELEASE_URL, JSON.stringify({
     assets: [asset('attack-client-2.3.0.jar', { digest: `sha256:${hash('sha256', 'forge')}` }), asset('attack-fabric-3.0.0-beta.1+mc26.3.jar', { digest: `sha256:${'a'.repeat(64)}` })],

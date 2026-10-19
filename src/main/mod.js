@@ -6,9 +6,29 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const catalog = require('./catalog');
+const { GITHUB_LATEST_RELEASE, GITHUB_RELEASES } = require('./constants');
+const { parseVersion } = require('./updates');
 
 const EXCLUDED = /-(sources|javadoc|dev|deobf)\.jar$/i;
 const SHA256 = /\b([0-9a-f]{64})\b/i;
+
+/** Version du launcher en préversion (semver avec « - » : 0.5.0-beta.1) ? Une version illisible n'en est pas une. */
+function isPrereleaseVersion(version) {
+  return (parseVersion(version)?.pre.length || 0) > 0;
+}
+
+/**
+ * Release GitHub d'où vient le jar. Launcher en version normale : `releases/latest`, qui ignore les préversions.
+ * Launcher en préversion (canal bêta) : la première release qui n'est pas un brouillon parmi les dernières, préversion
+ * acceptée. `getJson(url)` lit et décode une adresse de l'API GitHub (injectée : testable sans réseau).
+ */
+async function fetchRelease(appVersion, getJson) {
+  if (!isPrereleaseVersion(appVersion)) return getJson(GITHUB_LATEST_RELEASE);
+  const list = await getJson(GITHUB_RELEASES);
+  const release = Array.isArray(list) ? list.find((r) => r && typeof r === 'object' && r.draft !== true) : null;
+  if (!release) throw Object.assign(new Error("Aucune release d'ATTACK n'est publiée"), { code: 'NO_RELEASE' });
+  return release;
+}
 
 /** Profil du catalogue (ou son identifiant) ; profil historique Forge 1.8.9 par défaut. */
 function resolveProfile(profile) {
@@ -119,4 +139,4 @@ function installedVersion(info) {
   return version ? String(version).replace(/^v(?=\d)/i, '') : null;
 }
 
-module.exports = { parseSha256File, parseRelease, sha256For, findDevJar, versionFromJarName, installedVersion };
+module.exports = { parseSha256File, isPrereleaseVersion, fetchRelease, parseRelease, sha256For, findDevJar, versionFromJarName, installedVersion };
