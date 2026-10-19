@@ -1,0 +1,5 @@
+# graphify : pas de code tiers minifie ni de licences de polices dans le graphe
+src/renderer/vendor/
+src/renderer/fonts/
+assets/
+build/
