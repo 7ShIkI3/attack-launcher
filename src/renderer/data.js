@@ -41,7 +41,7 @@
     { name: 'FOV', icon: 'FO', cat: 'visual', fr: 'Champ de vision fixe, sans effet de vitesse.', en: 'Fixed field of view, no speed effect.' },
     { name: 'View Bobbing', icon: 'VB', cat: 'visual', fr: 'Balancement de la caméra à ton goût.', en: 'Camera bobbing to your taste.' },
     { name: 'Nametags', icon: 'NT', cat: 'visual', fr: 'Pseudos plus lisibles, avec ton écusson.', en: 'Clearer nametags, with your badge.' },
-    { name: 'Capes ATTACK', en_name: 'ATTACK capes', icon: 'CA', cat: 'visual', fr: 'Capes animées avec physique.', en: 'Animated capes with physics.' },
+    { name: 'Capes ATTACK', en_name: 'ATTACK capes', icon: 'CA', cat: 'visual', fr: '19 capes animées avec physique (dont 12 « Ciné culte ») et 7 paires d’ailes, visibles par tous les joueurs ATTACK.', en: '19 animated capes with physics (12 of them “Cult cinema”) and 7 pairs of wings, seen by every ATTACK player.' },
     { name: 'FPS Boost', icon: 'FX', cat: 'perf', fr: 'Réglages de rendu pour plus d’images par seconde.', en: 'Rendering tweaks for higher frame rates.' },
     { name: 'Scoreboard', icon: 'SB', cat: 'utility', fr: 'Tableau des scores déplaçable et allégé.', en: 'Movable, cleaner scoreboard.' },
     { name: 'Chat', icon: 'CT', cat: 'utility', fr: 'Messages répétés regroupés et chat plus propre.', en: 'Stacks repeated messages, cleaner chat.' },
@@ -75,6 +75,11 @@
   ];
 
   const CHANGELOG = [
+    {
+      version: 'ATTACK Client 2.3', date: '2026-10-19',
+      fr: 'Des ailes en plus des capes : Ange, Démon, Dragon, Papillon, Phénix, Cristal et ATTACK, qui battent au repos et s’ouvrent en l’air. Avec les 12 capes « Ciné culte », tous les joueurs ATTACK les voient sur toi, quel que soit le serveur.',
+      en: 'Wings on top of capes: Angel, Demon, Dragon, Butterfly, Phoenix, Crystal and ATTACK, flapping at rest and opening in the air. Like the 12 “Cult cinema” capes, every ATTACK player sees them on you, on any server.',
+    },
     {
       version: 'Launcher 0.3.3', date: '2026-10-18',
       fr: 'Accueil plus net : les nouveautés tiennent sans faire défiler la page, et « Tout voir » ouvre l’historique complet des versions.',
