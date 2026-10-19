@@ -59,19 +59,20 @@ test('jar de développement : le plus récent, sans -sources', () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('réglages : bornes, chemins absolus, langue', () => {
+test('réglages : bornes, chemins absolus, langue (réglages à plat du profil courant)', () => {
   const env = { APPDATA: 'C:\\Users\\x\\AppData\\Roaming' };
   const base = settings.defaults(env);
-  assert.equal(base.gameDir, path.join('C:\\Users\\x\\AppData\\Roaming', '.attack'));
-  assert.equal(settings.sanitize({ ramMb: 100 }, base).ramMb, settings.RAM_MIN);
-  assert.equal(settings.sanitize({ ramMb: 999999 }, base).ramMb, settings.RAM_MAX);
-  assert.equal(settings.sanitize({ ramMb: '3000' }, base).ramMb, 3072);
-  assert.equal(settings.sanitize({ lang: 'de' }, base).lang, 'fr');
-  assert.equal(settings.sanitize({ lang: 'en' }, base).lang, 'en');
-  assert.equal(settings.sanitize({ gameDir: 'relatif\\dossier' }, base).gameDir, base.gameDir);
-  assert.equal(settings.sanitize({ javaPath: 'C:\\Windows\\notepad.exe' }, base).javaPath, '');
-  assert.equal(settings.sanitize({ javaPath: 'C:\\Java\\bin\\javaw.exe' }, base).javaPath, 'C:\\Java\\bin\\javaw.exe');
-  assert.equal(settings.sanitize({ devMode: 'oui' }, base).devMode, false);
+  const view = (input) => settings.forProfile(settings.sanitize(input, base));
+  assert.equal(settings.forProfile(base).gameDir, path.join('C:\\Users\\x\\AppData\\Roaming', '.attack'));
+  assert.equal(view({ ramMb: 100 }).ramMb, settings.RAM_MIN);
+  assert.equal(view({ ramMb: 999999 }).ramMb, settings.RAM_MAX);
+  assert.equal(view({ ramMb: '3000' }).ramMb, 3072);
+  assert.equal(view({ lang: 'de' }).lang, 'fr');
+  assert.equal(view({ lang: 'en' }).lang, 'en');
+  assert.equal(view({ gameDir: 'relatif\\dossier' }).gameDir, settings.forProfile(base).gameDir);
+  assert.equal(view({ javaPath: 'C:\\Windows\\notepad.exe' }).javaPath, '');
+  assert.equal(view({ javaPath: 'C:\\Java\\bin\\javaw.exe' }).javaPath, 'C:\\Java\\bin\\javaw.exe');
+  assert.equal(view({ devMode: 'oui' }).devMode, false);
   assert.equal(settings.sanitize({ hack: 1 }, base).hack, undefined);
 });
 
