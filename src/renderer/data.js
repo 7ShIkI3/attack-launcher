@@ -76,6 +76,11 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.4.0', date: '2026-10-19',
+      fr: 'Page Compte : ton skin en 3D (il marche, court ou se repose), et change-le sans quitter le launcher : aperçu, bras classiques ou fins, ou retour au skin par défaut.',
+      en: 'Account page: your skin in 3D (walking, running or idle), and change it without leaving the launcher: preview, classic or slim arms, or back to the default skin.',
+    },
+    {
       version: 'ATTACK Client 2.3', date: '2026-10-19',
       fr: 'Des ailes en plus des capes : Ange, Démon, Dragon, Papillon, Phénix, Cristal et ATTACK, qui battent au repos et s’ouvrent en l’air. Avec les 12 capes « Ciné culte », tous les joueurs ATTACK les voient sur toi, quel que soit le serveur.',
       en: 'Wings on top of capes: Angel, Demon, Dragon, Butterfly, Phoenix, Crystal and ATTACK, flapping at rest and opening in the air. Like the 12 “Cult cinema” capes, every ATTACK player sees them on you, on any server.',
