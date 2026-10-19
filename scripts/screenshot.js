@@ -28,8 +28,11 @@ fs.writeFileSync(path.join(userData, 'settings.json'), JSON.stringify({
 if (process.env.ATTACK_OFFLINE) {
   const { offlineUuid } = require('../src/main/accounts');
   const id = offlineUuid(process.env.ATTACK_OFFLINE);
+  // ATTACK_SKIN=<png> : skin de ce compte (vue 3D) ; ATTACK_ACCOUNT_TYPE=msa : compte Microsoft factice (boutons du skin)
+  const skin = process.env.ATTACK_SKIN ? `data:image/png;base64,${fs.readFileSync(process.env.ATTACK_SKIN).toString('base64')}` : undefined;
+  const type = process.env.ATTACK_ACCOUNT_TYPE === 'msa' ? 'msa' : 'offline';
   fs.writeFileSync(path.join(userData, 'accounts.json'), JSON.stringify({
-    version: 1, active: id, accounts: [{ id, name: process.env.ATTACK_OFFLINE, type: 'offline' }],
+    version: 1, active: id, accounts: [{ id, name: process.env.ATTACK_OFFLINE, type, skin, skinVariant: 'classic' }],
   }));
 }
 const result = spawnSync(electron, ['.'], {

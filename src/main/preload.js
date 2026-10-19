@@ -33,6 +33,13 @@ contextBridge.exposeInMainWorld('attack', {
     remove: invoke('accounts:remove'),
     addOffline: invoke('accounts:addOffline'),
   },
+  skins: {
+    pick: invoke('skins:pick'),
+    discard: invoke('skins:discard'),
+    apply: invoke('skins:apply'),
+    reset: invoke('skins:reset'),
+    refresh: invoke('skins:refresh'),
+  },
   update: {
     state: invoke('update:state'),
     install: invoke('update:install'),

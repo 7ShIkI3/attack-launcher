@@ -31,7 +31,7 @@ test('compte Microsoft : refresh token chiffré sur disque, absent de la vue pub
   assert.ok(!onDisk.includes('MC-SECRET'), 'jeton Minecraft sur disque');
   const view = JSON.stringify(store.list());
   assert.ok(!/SECRET|refreshToken|ENC:/.test(view), 'jeton visible par l’interface');
-  assert.deepEqual(store.list(), [{ id: UUID, name: 'Raphou', type: 'msa', skin: 'data:image/png;base64,AAAA', active: true }]);
+  assert.deepEqual(store.list(), [{ id: UUID, name: 'Raphou', type: 'msa', skin: 'data:image/png;base64,AAAA', skinVariant: 'classic', active: true }]);
 
   const reloaded = await new AccountStore(file, cipher).load();
   assert.equal(reloaded.active().name, 'Raphou');
@@ -113,4 +113,26 @@ test('ID client Azure : réglage validé, sinon variable ATTACK_MS_CLIENT_ID, si
   assert.equal(settings.clientId({ ...base, msClientId: '11111111-2222-3333-4444-555555555555' }, { ATTACK_MS_CLIENT_ID: id }),
     '11111111-2222-3333-4444-555555555555');
   assert.equal(settings.clientIdSource({ ...base, msClientId: '11111111-2222-3333-4444-555555555555' }, {}), 'settings');
+});
+
+test('setSkin : nouveau skin et modele enregistres, visibles dans la vue publique', async () => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const path = require('node:path');
+  const { AccountStore } = require('../src/main/accounts');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'attack-skin-'));
+  const cipher = { encrypt: (s) => Buffer.from(s), decrypt: (b) => b.toString() };
+  const store = new AccountStore(path.join(dir, 'accounts.json'), cipher);
+  await store.saveMicrosoft({
+    profile: { id: 'b'.repeat(32), name: 'Bob', skinVariant: 'slim' },
+    minecraft: { accessToken: 'mc', expiresAt: Date.now() + 3600000 },
+    microsoft: { refreshToken: 'r' },
+  }, { skin: 'data:image/png;base64,OLD' });
+  assert.equal(store.list()[0].skinVariant, 'slim');
+  await store.setSkin('b'.repeat(32), 'data:image/png;base64,NEW', 'classic');
+  const again = await new AccountStore(path.join(dir, 'accounts.json'), cipher).load();
+  assert.equal(again.list()[0].skin, 'data:image/png;base64,NEW');
+  assert.equal(again.list()[0].skinVariant, 'classic');
+  await assert.rejects(store.setSkin('inconnu', null, 'classic'), /Compte inconnu/);
+  fs.rmSync(dir, { recursive: true, force: true });
 });

@@ -48,7 +48,8 @@ class AccountStore {
   /** Vue publique, sans aucun jeton. */
   list() {
     return this.data.accounts.map((a) => ({
-      id: a.id, name: a.name, type: a.type, skin: a.skin || null, active: a.id === this.data.active,
+      id: a.id, name: a.name, type: a.type, skin: a.skin || null, skinVariant: a.skinVariant || 'classic',
+      active: a.id === this.data.active,
     }));
   }
 
@@ -68,6 +69,7 @@ class AccountStore {
       name: profile.name,
       type: 'msa',
       skin: skin ?? existing?.skin ?? null,
+      skinVariant: profile.skinVariant || existing?.skinVariant || 'classic',
       refreshToken: this.cipher.encrypt(microsoft.refreshToken).toString('base64'),
       addedAt: existing?.addedAt || new Date().toISOString(),
     };
@@ -86,6 +88,15 @@ class AccountStore {
     this.data.active = id;
     await this.save();
     return id;
+  }
+
+  /** Nouveau skin d'un compte (image en data: URL et modèle 'classic' ou 'slim'), après un changement chez Mojang. */
+  async setSkin(id, skin, skinVariant) {
+    const account = this.get(id);
+    if (!account) throw new Error('Compte inconnu');
+    account.skin = skin;
+    account.skinVariant = skinVariant === 'slim' ? 'slim' : 'classic';
+    await this.save();
   }
 
   async setActive(id) {
