@@ -183,7 +183,7 @@ function registerIpc() {
   handle('settings:get', () => effective());
   handle('settings:set', async (_event, patch) => {
     // pas de changement de profil pendant une installation ou un lancement : ils travaillent sur le profil choisi au départ
-    const safePatch = installing || launching ? { ...patch, profileId: undefined } : patch;
+    const safePatch = (installing || launching) && patch && typeof patch === 'object' ? { ...patch, profileId: undefined } : patch;
     settings = settingsStore.sanitize(safePatch, settings);
     await settingsStore.save(settingsFile(), settings);
     return effective();
