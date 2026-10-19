@@ -3,13 +3,15 @@
   'use strict';
   const api = window.attack;
   const { t } = window.I18n;
-  const { CATEGORIES, MODS, CHANGELOG } = window.AttackData;
+  const { CATEGORIES, MODS, CHANGELOG, PACK_INFO } = window.AttackData;
   const $ = (id) => document.getElementById(id);
 
   let info = null;
   let settings = null;
   let status = null;
   let busy = false;
+  let playing = false; // lancement du jeu en cours
+  let statusToken = 0; // ignore une lecture d'état arrivée après un changement de profil
   let modFilter = 'all';
   let accountsView = { accounts: [], hasClientId: false, devMode: false };
 
@@ -48,31 +50,77 @@
     node.classList.toggle('hidden', !text);
   }
 
+  // --- profils (version de Minecraft + chargeur de mods) ---
+  const profileList = () => (info && info.profiles) || [];
+  const currentProfile = () => profileList().find((p) => p.id === (settings && settings.profileId)) || profileList()[0] || null;
+  const loaderName = (profile) => (profile.loaderType === 'fabric' ? 'Fabric' : 'Forge');
+  const isFabric = (profile) => Boolean(profile) && profile.loaderType === 'fabric';
+
+  /** Sous-titre de l'accueil et sélecteur de profil (désactivé pendant une installation ou un lancement). */
+  function renderProfiles() {
+    const profile = currentProfile();
+    if (!profile) return;
+    $('hero-sub').textContent = `Minecraft ${profile.mc} · ${loaderName(profile)} ${profile.loaderVersion}`;
+    $('profile-select').replaceChildren(...profileList().map((p) => {
+      const button = el('button', { type: 'button', class: p.id === profile.id ? 'active' : '', 'data-profile': p.id }, [
+        el('b', { text: p.label }),
+        el('small', { text: loaderName(p) }),
+      ]);
+      button.disabled = busy || playing;
+      button.addEventListener('click', () => switchProfile(p.id));
+      return button;
+    }));
+  }
+
+  async function switchProfile(id) {
+    if (busy || playing || !settings || id === settings.profileId) return;
+    setMessage('');
+    $('progress').classList.add('hidden');
+    status = null; // l'état du profil précédent ne doit pas rester affiché
+    renderStatus();
+    await save({ profileId: id });
+  }
+
+  /** Mods du pack qui seront installés : tous, plus Iris seulement avec l'option Shaders. */
+  function packSize(profile) {
+    return profile.pack.filter((m) => !m.optional || (settings && settings.shaders)).length;
+  }
+
   function renderStatus() {
     const list = $('status-list');
     list.replaceChildren();
-    const items = [
-      ['minecraft', status?.minecraft],
-      ['forge', status?.forge],
-      ['mod', status?.mod, status?.modVersion ? `v${status.modVersion}${status.modSource === 'dev' ? ` · ${t('status.dev')}` : ''}` : null],
-      ['profile', status?.profile],
+    const profile = currentProfile();
+    if (!profile) return;
+    const modDetail = status?.modVersion ? `v${status.modVersion}${status.modSource === 'dev' ? ` · ${t('status.dev')}` : ''}` : null;
+    const rows = [
+      [t('status.minecraft', { mc: profile.mc }), status?.minecraft],
+      [t(`status.loader.${profile.loaderType}`, { version: profile.loaderVersion }), status?.loader],
     ];
-    for (const [key, ok, detail] of items) {
+    if (profile.hasPack) {
+      rows.push([t('status.pack'), status?.pack, t(settings.shaders ? 'status.packShaders' : 'status.packCount', { n: packSize(profile) })]);
+    }
+    rows.push([t('status.mod'), status?.mod, modDetail], [t('status.profile'), status?.profile]);
+    for (const [label, ok, detail] of rows) {
       list.append(el('li', { class: ok ? 'ok' : '' }, [
         el('span', { class: 'state', text: ok ? '✓' : '·' }),
-        el('span', {}, [t(`status.${key}`), el('small', { text: ok ? detail || t('status.ok') : t('status.missing') })]),
+        el('span', {}, [label, el('small', { text: ok ? detail || t('status.ok') : t('status.missing') })]),
       ]));
     }
     const button = $('play-button');
     button.disabled = busy || !status;
     $('play-label').textContent = busy ? t('home.installing') : status?.installed ? t('home.play') : t('home.install');
     const player = launchAccount();
-    $('play-hint').textContent = busy ? '' : !status?.installed ? t('home.installHint')
-      : player ? t('home.playAs', { name: player.name }) : t('home.playHint');
+    const installHint = t(isFabric(profile) ? 'home.installHintFabric' : 'home.installHintForge', { mc: profile.mc });
+    $('play-hint').textContent = busy ? '' : !status?.installed ? installHint
+      : player ? t('home.playAs', { name: player.name }) : t('home.playHint', { name: profile.name });
+    renderProfiles();
   }
 
   async function refreshStatus() {
-    status = await api.status();
+    const token = ++statusToken;
+    const next = await api.status();
+    if (token !== statusToken) return;
+    status = next;
     renderStatus();
   }
 
@@ -87,6 +135,7 @@
   async function runInstall() {
     busy = true;
     setMessage(t('home.profileNote'));
+    $('progress-bar').style.width = '0%';
     $('progress').classList.remove('hidden');
     renderStatus();
     const result = await api.install();
@@ -105,16 +154,20 @@
   api.onProgress((p) => {
     $('progress-bar').style.width = `${p.percent}%`;
     $('progress-percent').textContent = `${Math.floor(p.percent)} %`;
-    $('progress-step').textContent = `${t(`step.${p.step}`)}${p.total > 1 ? ` · ${p.done}/${p.total}` : ''}`;
+    const profile = currentProfile();
+    $('progress-step').textContent = `${t(`step.${p.step}`, { mc: profile ? profile.mc : '' })}${p.total > 1 ? ` · ${p.done}/${p.total}` : ''}`;
   });
 
   $('play-button').addEventListener('click', async () => {
-    if (busy) return;
+    if (busy || playing) return;
     if (!status?.installed) {
       await runInstall();
       return;
     }
     $('play-button').disabled = true;
+    playing = true;
+    renderProfiles();
+    const profile = currentProfile();
     const direct = Boolean(launchAccount());
     if (direct) {
       setMessage('');
@@ -122,10 +175,12 @@
       $('progress').classList.remove('hidden');
     }
     const result = await api.play();
+    playing = false;
+    renderProfiles();
     $('play-button').disabled = false;
     if (direct) setTimeout(() => $('progress').classList.add('hidden'), result.ok ? 1200 : 0);
     if (result.ok && result.mode === 'direct') setMessage(t('home.launchedDirect', { name: result.name }), 'ok');
-    else if (result.ok) setMessage(result.detected ? t('home.launched') : t('home.launchedUnknown'), 'ok');
+    else if (result.ok) setMessage(t(result.detected ? 'home.launched' : 'home.launchedUnknown', { name: profile.name }), 'ok');
     else if (result.code === 'NOT_INSTALLED') await refreshStatus();
     else setMessage(errorText(result), 'error');
   });
@@ -162,10 +217,40 @@
   });
 
   // --- mods ---
+  /**
+   * Cartes de la page Mods : les modules d'ATTACK Client pour Forge 1.8.9 ; pour un profil Fabric, le mod ATTACK
+   * (avec sa version installée) et les mods du pack figé avec leur version.
+   */
+  function modItems(profile, lang) {
+    if (!isFabric(profile)) {
+      return MODS.map((m) => ({ name: (lang === 'en' && m.en_name) || m.name, icon: m.icon, cat: m.cat, text: m[lang] || m.fr, tags: [] }));
+    }
+    const attackVersion = status && status.mod && status.modVersion ? t('mods.attackVersion', { version: status.modVersion }) : t('mods.attackMissing');
+    const items = [{ name: 'ATTACK Client', icon: 'AT', cat: 'attack', text: t('mods.attackDesc', { mc: profile.mc }), tags: [attackVersion] }];
+    for (const mod of profile.pack) {
+      const known = PACK_INFO[mod.slug] || { icon: mod.name.slice(0, 2).toUpperCase(), cat: 'utility', fr: '', en: '' };
+      items.push({
+        name: mod.name,
+        icon: known.icon,
+        cat: known.cat,
+        text: known[lang] || known.fr,
+        tags: [t('mods.version', { version: mod.version }), ...(mod.optional ? [t('mods.optional')] : [])],
+      });
+    }
+    return items;
+  }
+
   function renderMods() {
     const lang = window.I18n.lang;
-    const filters = $('mods-filters');
-    const chips = [{ id: 'all', fr: t('mods.all'), en: t('mods.all') }, ...CATEGORIES].map((c) => {
+    const profile = currentProfile();
+    if (!profile) return;
+    const fabricMode = isFabric(profile);
+    $('mods-title').textContent = fabricMode ? t('mods.titleFabric', { label: profile.label }) : t('mods.title');
+    $('mods-subtitle').textContent = fabricMode ? t('mods.subtitleFabric') : t('mods.subtitle');
+    const items = modItems(profile, lang);
+    const used = CATEGORIES.filter((c) => items.some((item) => item.cat === c.id));
+    if (modFilter !== 'all' && !used.some((c) => c.id === modFilter)) modFilter = 'all';
+    const chips = [{ id: 'all', fr: t('mods.all'), en: t('mods.all') }, ...used].map((c) => {
       const chip = el('button', { class: `chip${modFilter === c.id ? ' active' : ''}`, text: c[lang] || c.fr });
       chip.addEventListener('click', () => {
         modFilter = c.id;
@@ -173,18 +258,18 @@
       });
       return chip;
     });
-    filters.replaceChildren(...chips);
-    const visible = MODS.filter((m) => modFilter === 'all' || m.cat === modFilter);
+    $('mods-filters').replaceChildren(...chips);
+    const visible = items.filter((m) => modFilter === 'all' || m.cat === modFilter);
     const category = (id) => CATEGORIES.find((c) => c.id === id)[lang];
     $('mods-grid').replaceChildren(...visible.map((m) => el('article', { class: 'card mod' }, [
       el('div', { class: 'mod-icon', text: m.icon }),
       el('div', {}, [
-        el('h3', { text: (lang === 'en' && m.en_name) || m.name }),
-        el('p', { text: m[lang] || m.fr }),
-        el('span', { class: 'tag', text: category(m.cat) }),
+        el('h3', { text: m.name }),
+        el('p', { text: m.text }),
+        el('div', { class: 'tags' }, [m.cat, ...m.tags].map((tag, i) => el('span', { class: 'tag', text: i === 0 ? category(tag) : tag }))),
       ]),
     ])));
-    $('mods-count').textContent = t('mods.count', { n: MODS.length });
+    $('mods-count').textContent = t('mods.count', { n: items.length });
   }
 
   // --- réglages ---
@@ -192,10 +277,12 @@
   async function save(patch) {
     settings = await api.setSettings(patch);
     renderSettings();
+    renderProfiles();
+    renderMods();
     $('saved').classList.remove('hidden');
     clearTimeout(savedTimer);
     savedTimer = setTimeout(() => $('saved').classList.add('hidden'), 1600);
-    if ('gameDir' in patch || 'devMode' in patch || 'devJarDir' in patch) refreshStatus();
+    if (['profileId', 'gameDir', 'devMode', 'devJarDir', 'shaders'].some((key) => key in patch)) refreshStatus();
     if ('devMode' in patch || 'msClientId' in patch) refreshAccounts();
   }
 
@@ -205,6 +292,15 @@
   }
 
   function renderSettings() {
+    const profile = currentProfile();
+    if (profile) {
+      $('settings-profile').textContent = `${profile.label} · ${loaderName(profile)}`;
+      $('ram-help').textContent = isFabric(profile) ? t('settings.ramHelpModern', { mc: profile.mc }) : t('settings.ramHelp');
+      $('java-help').textContent = t('settings.javaHelp', { java: profile.javaMajor, mc: profile.mc });
+      $('dev-help').textContent = t('settings.devHelp', { glob: profile.jarGlob });
+      $('shaders-card').classList.toggle('hidden', !isFabric(profile));
+      $('shaders').checked = Boolean(settings.shaders);
+    }
     const ram = $('ram');
     const max = info ? Math.max(4096, Math.min(16384, Math.floor(info.totalRamMb / 1024) * 1024)) : 8192;
     ram.max = String(max);
@@ -253,6 +349,7 @@
     applyLanguage();
   });
   $('dev-mode').addEventListener('change', (e) => save({ devMode: e.target.checked }));
+  $('shaders').addEventListener('change', (e) => save({ shaders: e.target.checked }));
   $('dev-dir-change').addEventListener('click', async () => {
     const dir = await api.pickFolder(settings.devJarDir);
     if (dir) save({ devJarDir: dir });
@@ -449,6 +546,7 @@
 
   function applyLanguage() {
     window.I18n.setLang(settings.lang);
+    renderProfiles();
     renderStatus();
     renderChangelog();
     renderMods();
@@ -461,7 +559,6 @@
 
   async function init() {
     [info, settings] = await Promise.all([api.info(), api.getSettings()]);
-    $('hero-sub').textContent = `Minecraft ${info.mcVersion} · Forge ${info.forgeVersion.split('-')[1]}`;
     accountsView = await api.accounts.list();
     update = await api.update.state();
     applyLanguage();

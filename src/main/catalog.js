@@ -24,6 +24,8 @@ const FORGE_1_8_9 = {
     fullVersion: '1.8.9-11.15.1.2318-1.8.9',
     versionId: '1.8.9-forge1.8.9-11.15.1.2318-1.8.9',
   },
+  // version de Java à titre indicatif (affichage) : le composant réellement utilisé vient du JSON de version de Mojang
+  javaMajor: 8,
   launcherProfileId: 'attack-client',
   gameDirName: '.attack',
   modFile: 'attack-client.jar',
@@ -39,7 +41,7 @@ const FORGE_1_8_9 = {
   pack: null,
 };
 
-function fabricProfile(mc) {
+function fabricProfile(mc, javaMajor) {
   const jarPattern = `attack-fabric-([0-9.]+)\\+mc${escapeRegex(mc)}\\.jar`;
   return {
     id: `fabric-${mc}`,
@@ -51,6 +53,7 @@ function fabricProfile(mc) {
       version: FABRIC_LOADER_VERSION,
       versionId: `fabric-loader-${FABRIC_LOADER_VERSION}-${mc}`,
     },
+    javaMajor,
     launcherProfileId: `attack-fabric-${mc}`,
     gameDirName: `.attack/profiles/fabric-${mc}`,
     modFile: 'attack-fabric.jar',
@@ -67,7 +70,7 @@ function fabricProfile(mc) {
   };
 }
 
-const PROFILES = Object.freeze([FORGE_1_8_9, fabricProfile('1.21.1'), fabricProfile('26.3')].map((p) => Object.freeze(p)));
+const PROFILES = Object.freeze([FORGE_1_8_9, fabricProfile('1.21.1', 21), fabricProfile('26.3', 25)].map((p) => Object.freeze(p)));
 
 function list() {
   return PROFILES;
@@ -126,8 +129,10 @@ function view(profile) {
     loaderType: profile.loader.type,
     loaderVersion: profile.loader.version,
     versionId: profile.loader.versionId,
+    javaMajor: profile.javaMajor,
     launcherProfileId: profile.launcherProfileId,
     modFile: profile.modFile,
+    jarGlob: profile.attackJar.glob,
     hasPack: Boolean(profile.pack),
   };
 }

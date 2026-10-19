@@ -132,7 +132,14 @@ h1, h2, h3 { font-family: 'Montserrat', 'Inter', sans-serif; font-weight: 700; m
 .hero-logo svg { width: 100%; height: 100%; }
 .hero-title { font-size: 40px; letter-spacing: 0.14em; }
 .hero-title span { color: var(--accent); }
-.hero-sub { margin: 8px 0 28px; color: var(--muted); letter-spacing: 0.04em; }
+.hero-sub { margin: 8px 0 16px; color: var(--muted); letter-spacing: 0.04em; }
+/* Choix du profil (version de Minecraft + chargeur de mods) au-dessus de JOUER */
+.profile-select { margin-bottom: 22px; }
+.profile-select button { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 104px; padding: 6px 14px; line-height: 1.15; }
+.profile-select button b { font-size: 14px; letter-spacing: 0.02em; }
+.profile-select button small { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.75; }
+.profile-select button.active small { opacity: 0.9; }
+.profile-select button:disabled { opacity: 0.5; cursor: default; }
 .play {
   position: relative; width: 300px; height: 70px; border: 0; border-radius: 14px; overflow: hidden;
   background: linear-gradient(180deg, #ef5350, var(--accent) 55%, #c62828);
@@ -233,6 +240,7 @@ h1, h2, h3 { font-family: 'Montserrat', 'Inter', sans-serif; font-weight: 700; m
 }
 .mod h3 { font-size: 14px; }
 .mod p { margin: 4px 0 8px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border: 1px solid var(--border); padding: 2px 7px; border-radius: 99px; }
 
 /* --- Réglages --- */
@@ -271,6 +279,7 @@ input[type='range']::-webkit-slider-thumb {
 .switch input:checked + span::before { transform: translateX(18px); }
 .warn { grid-column: 1 / -1; margin: 0; color: var(--warn); font-size: 12px; }
 .saved { color: var(--good); font-size: 12px; padding-top: 10px; }
+.page-head .badge { margin-top: 10px; white-space: nowrap; }
 .footnote { font-size: 11.5px; margin-top: 18px; }
 
 /* --- Comptes --- */
@@ -311,8 +320,10 @@ input[type='range']::-webkit-slider-thumb {
   #page-home { padding-top: 18px; padding-bottom: 14px; }
   .hero { padding: 0; }
   .hero-logo { width: 104px; height: 104px; margin-bottom: 6px; }
-  .hero-sub { margin: 6px 0 20px; }
-  .status-list { margin-top: 18px; }
+  .hero-sub { margin: 6px 0 10px; }
+  .profile-select { margin-bottom: 12px; }
+  .profile-select button { padding: 3px 12px; }
+  .status-list { margin-top: 14px; gap: 6px; }
   .changelog { margin-top: 0; }
 }
 

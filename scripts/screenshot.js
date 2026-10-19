@@ -4,7 +4,8 @@
 // Sans dossiers d'installation, l'app montre l'état « à installer ». Rien n'est écrit dans le vrai .minecraft.
 // ATTACK_SCREENSHOT_INSTALL=1 clique d'abord sur INSTALLER (installation réelle dans les dossiers donnés),
 // ATTACK_DEV=1 active le mode développeur (jar local), ATTACK_LANG=en passe l'interface en anglais,
-// ATTACK_OFFLINE=<pseudo> ajoute un compte hors ligne actif et ATTACK_SCREENSHOT_PLAY=1 clique sur JOUER.
+// ATTACK_OFFLINE=<pseudo> ajoute un compte hors ligne actif et ATTACK_SCREENSHOT_PLAY=1 clique sur JOUER,
+// ATTACK_PROFILE=<id> choisit le profil affiché (forge-1.8.9 par défaut, fabric-1.21.1, fabric-26.3).
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -22,6 +23,7 @@ fs.writeFileSync(path.join(userData, 'settings.json'), JSON.stringify({
   ramMb: 3072,
   gameDir: gameDir || path.join(empty, '.attack'),
   lang: process.env.ATTACK_LANG || 'fr',
+  profileId: process.env.ATTACK_PROFILE || 'forge-1.8.9',
   devMode: Boolean(process.env.ATTACK_DEV),
 }));
 // ATTACK_OFFLINE=<pseudo> : compte hors ligne factice actif (mode développeur), pour tester JOUER sans Microsoft

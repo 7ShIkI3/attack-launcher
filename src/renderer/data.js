@@ -3,6 +3,7 @@
   'use strict';
 
   const CATEGORIES = [
+    { id: 'attack', fr: 'ATTACK', en: 'ATTACK' },
     { id: 'combat', fr: 'Combat', en: 'Combat' },
     { id: 'hud', fr: 'HUD', en: 'HUD' },
     { id: 'visual', fr: 'Visuel', en: 'Visual' },
@@ -76,6 +77,11 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.5.0', date: '2026-10-19',
+      fr: 'Trois profils au choix sur l’accueil : 1.8.9 (Forge, comme avant), 1.21.1 et 26.3 (Fabric). Chacun a son dossier de jeu et son Java officiel (8, 21 ou 25). Les profils Fabric installent un pack de mods de performance figé, vérifié par SHA-512 : Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast, Mod Menu, et Iris pour les shaders en option.',
+      en: 'Three profiles to pick from on the home page: 1.8.9 (Forge, as before), 1.21.1 and 26.3 (Fabric). Each has its own game folder and official Java (8, 21 or 25). Fabric profiles install a pinned performance mod pack, checked by SHA-512: Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast, Mod Menu, and Iris for optional shaders.',
+    },
+    {
       version: 'Launcher 0.4.0', date: '2026-10-19',
       fr: 'Page Compte : ton skin en 3D (il marche, court ou se repose), et change-le sans quitter le launcher : aperçu, bras classiques ou fins, ou retour au skin par défaut.',
       en: 'Account page: your skin in 3D (walking, running or idle), and change it without leaving the launcher: preview, classic or slim arms, or back to the default skin.',
@@ -142,5 +148,16 @@
     },
   ];
 
-  window.AttackData = { CATEGORIES, MODS, CHANGELOG };
+  // Mods du pack Fabric (src/main/packs/) : icône, catégorie et description. La version vient du pack figé.
+  const PACK_INFO = {
+    'fabric-api': { icon: 'FA', cat: 'utility', fr: 'Bibliothèque commune dont dépendent presque tous les mods Fabric.', en: 'Shared library almost every Fabric mod depends on.' },
+    sodium: { icon: 'SO', cat: 'perf', fr: 'Moteur de rendu optimisé : beaucoup plus d’images par seconde.', en: 'Optimized renderer: many more frames per second.' },
+    lithium: { icon: 'LI', cat: 'perf', fr: 'Accélère la logique du jeu (entités, physique, génération) sans rien changer au gameplay.', en: 'Speeds up game logic (entities, physics, generation) without changing gameplay.' },
+    'ferrite-core': { icon: 'FC', cat: 'perf', fr: 'Réduit la mémoire utilisée par le jeu.', en: 'Cuts the memory the game uses.' },
+    immediatelyfast: { icon: 'IF', cat: 'perf', fr: 'Accélère l’affichage de l’interface, du texte et des objets.', en: 'Speeds up drawing of the interface, text and items.' },
+    modmenu: { icon: 'MM', cat: 'utility', fr: 'Liste les mods installés et ouvre leurs réglages depuis le menu du jeu.', en: 'Lists installed mods and opens their settings from the game menu.' },
+    iris: { icon: 'IR', cat: 'visual', fr: 'Packs de shaders, avec la version faite pour le Sodium du pack. Option « Shaders » des Réglages.', en: 'Shader packs, using the version made for the pack’s Sodium. “Shaders” option in Settings.' },
+  };
+
+  window.AttackData = { CATEGORIES, MODS, CHANGELOG, PACK_INFO };
 })();
