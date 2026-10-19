@@ -77,9 +77,9 @@ flowchart TD
    `https://meta.fabricmc.net/v2/versions/loader/<mc>/0.19.5/profile/json` (Fabric Loader est **épinglé** à 0.19.5). Il
    est validé strictement : identifiant `fabric-loader-0.19.5-<mc>`, héritage de la bonne version de Minecraft, classe
    principale `net.fabricmc.loader.impl.launch.knot.KnotClient`, bibliothèques uniquement sur `maven.fabricmc.net` ou
-   `libraries.minecraft.net`, hash bien formés, options Java en **liste blanche** (seulement des propriétés `-D` de Fabric :
-   `-DFabricMcEmu=`, `fabric.*`, `loader.*`, `mixin.*` ; tout le reste, `-javaagent`, `-cp`, `-Djava.library.path`,
-   `--add-opens`... est refusé), aucun argument du jeu qui réclame les identifiants du compte, et `fabric-loader 0.19.5` présent. Le JSON écrit dans `versions\` est reconstruit à partir de ces seuls champs, avec les
+   `libraries.minecraft.net`, hash bien formés, options Java en **liste blanche** (une seule valeur exacte, une seule fois :
+   `-DFabricMcEmu= net.minecraft.client.main.Main ` ; tout le reste, `-javaagent`, `-cp`, `-Djava.library.path`,
+   `--add-opens`, `-Dfabric.addMods=`, `-Dfabric.gameJarPath=`... est refusé), aucun argument du jeu (la liste doit être vide ou absente), et `fabric-loader 0.19.5` présent. Le JSON écrit dans `versions\` est reconstruit à partir de ces seuls champs, avec les
    bibliothèques au format `downloads.artifact` (chemin, URL, SHA-1, taille) que le launcher officiel sait vérifier.
    Chaque bibliothèque est contrôlée par le hash le plus fort publié (SHA-512 pour asm et sponge-mixin) ; `fabric-loader`
    et `intermediary` n'en portent pas dans le profil : leur SHA-1 est **figé dans le catalogue** (`catalog.js`,

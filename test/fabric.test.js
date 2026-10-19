@@ -92,16 +92,26 @@ test('arguments Fabric : chaînes seulement, aucune option Java qui charge du co
   assert.throws(mutated('26.3', (j) => { j.arguments.jvm = ['-Xbootclasspath/a:x.jar']; }), /option Java refusée/);
   assert.throws(mutated('26.3', (j) => { j.arguments.jvm = [{ rules: [], value: '-Dx=1' }]; }), /argument jvm suspect/);
   assert.throws(mutated('26.3', (j) => { j.arguments.game = 'oops'; }), /arguments game invalides/);
-  // liste blanche : seules les propriétés -D de Fabric passent ; le reste détournerait Java (natives, options, modules)
+  // liste blanche : la seule valeur exacte du profil officiel passe ; le reste détournerait Java (natives, options, modules, mods)
   for (const hostile of ['-Djava.library.path=C:\\evil', '-XX:OnError=calc.exe', '-Xlog:file=C:\\x.log', '--add-opens=java.base/java.lang=ALL-UNNAMED',
     '@C:\\evil.args', '-p', '--module-path', '-Djava.system.class.loader=Evil', '-XX:Flags=x', '-XX:VMOptionsFile=x', '--add-modules=ALL-SYSTEM',
-    '-Djna.library.path=C:\\evil', '-Dminecraft.launcher.brand=evil', '-Dfabric', '-Dfabricx.y=1']) {
+    '-Djna.library.path=C:\\evil', '-Dminecraft.launcher.brand=evil', '-Dfabric', '-Dfabricx.y=1',
+    '-Dfabric.addMods=//evil/x.jar', '-Dfabric.gameJarPath=', '-Dfabric.debug=true', '-Dloader.disableCache=true', '-Dmixin.debug=true',
+    '-DFabricMcEmu=', '-DFabricMcEmu= net.minecraft.client.main.Main', '-DFabricMcEmu= evil.Main ']) {
     assert.throws(mutated('26.3', (j) => { j.arguments.jvm = [hostile]; }), /option Java refusée/, hostile);
   }
-  assert.doesNotThrow(mutated('26.3', (j) => { j.arguments.jvm = ['-Dfabric.debug=true', '-DFabricMcEmu= net.minecraft.client.main.Main ', '-Dmixin.debug=true']; }));
-  // un argument du jeu ne réclame pas les identifiants du compte
-  assert.throws(mutated('26.3', (j) => { j.arguments.game = ['--leak', '${auth_access_token}']; }), /identifiants du compte/);
-  assert.doesNotThrow(mutated('26.3', (j) => { j.arguments.game = ['--fabric.demo']; }));
+  // la valeur officielle ne tolère ni option en plus, avant ou après, ni doublon
+  const official = '-DFabricMcEmu= net.minecraft.client.main.Main ';
+  assert.throws(mutated('26.3', (j) => { j.arguments.jvm = [official, '-Dfabric.addMods=//evil/x.jar']; }), /option Java refusée/);
+  assert.throws(mutated('26.3', (j) => { j.arguments.jvm = ['-Dfabric.gameJarPath=', official]; }), /option Java refusée/);
+  assert.throws(mutated('26.3', (j) => { j.arguments.jvm = [official, official]; }), /option Java refusée/);
+  assert.doesNotThrow(mutated('26.3', (j) => { j.arguments.jvm = [official]; }));
+  // aucun argument du jeu : ni les identifiants du compte, ni une connexion automatique, ni un simple drapeau
+  assert.throws(mutated('26.3', (j) => { j.arguments.game = ['--leak', '${auth_access_token}']; }), /argument du jeu refusé/);
+  assert.throws(mutated('26.3', (j) => { j.arguments.game = ['--quickPlayMultiplayer', 'x:1']; }), /argument du jeu refusé/);
+  assert.throws(mutated('26.3', (j) => { j.arguments.game = ['--fabric.demo']; }), /argument du jeu refusé/);
+  assert.throws(mutated('26.3', (j) => { j.arguments.game = [{ value: '--x' }]; }), /argument game suspect/);
+  assert.doesNotThrow(mutated('26.3', (j) => { j.arguments.game = []; }));
   // sans arguments : listes vides
   const bare = mutated('26.3', (j) => { delete j.arguments; });
   assert.deepEqual(bare().arguments, { game: [], jvm: [] });

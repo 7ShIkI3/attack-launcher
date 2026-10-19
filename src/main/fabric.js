@@ -8,10 +8,10 @@ const { FABRIC_META, FABRIC_MAVEN, MOJANG_LIBRARIES } = require('./constants');
 const KNOT_CLIENT = 'net.fabricmc.loader.impl.launch.knot.KnotClient';
 const SEGMENT = /^[0-9A-Za-z][0-9A-Za-z._+-]*$/;
 const HASHES = { sha1: /^[0-9a-f]{40}$/, sha256: /^[0-9a-f]{64}$/, sha512: /^[0-9a-f]{128}$/ };
-// Liste blanche des options Java d'un profil Fabric : des propriétés -D propres à Fabric (« -DFabricMcEmu= ... » et les
-// réglages fabric.*, loader.*, mixin.*). Tout le reste (-javaagent, -cp, --add-opens, -XX:OnError=, -Djava.library.path...)
-// est refusé : une option inconnue arrête l'installation plutôt que d'être passée à Java.
-const ALLOWED_JVM = /^-D(FabricMcEmu|fabric\.[\w.-]+|loader\.[\w.-]+|mixin\.[\w.-]+)=/;
+// Liste blanche des options Java d'un profil Fabric : la seule valeur exacte que publie meta.fabricmc.net, une seule fois.
+// Tout le reste (-javaagent, -cp, --add-opens, -XX:OnError=, -Dfabric.addMods=..., -Dfabric.gameJarPath=...) est refusé :
+// une option inconnue arrête l'installation plutôt que d'être passée à Java. Aucun argument du jeu n'est accepté non plus.
+const FABRIC_MC_EMU = '-DFabricMcEmu= net.minecraft.client.main.Main ';
 
 /** Adresse du profil de version Fabric Loader pour une version de Minecraft : .../loader/<mc>/<loader>/profile/json */
 function profileUrl(mc, loaderVersion) {
@@ -38,11 +38,11 @@ function normalizeRepository(url) {
 function checkArguments(list, kind) {
   if (list === undefined) return [];
   if (!Array.isArray(list)) throw new Error(`Profil Fabric : arguments ${kind} invalides`);
-  return list.map((arg) => {
+  return list.map((arg, index) => {
     if (typeof arg !== 'string' || arg.length > 500) throw new Error(`Profil Fabric : argument ${kind} suspect`);
-    if (kind === 'jvm' && !ALLOWED_JVM.test(arg)) throw new Error(`Profil Fabric : option Java refusée (${arg.trim().slice(0, 60)})`);
-    // un argument du jeu ne peut pas demander le jeton ou l'identité du compte
-    if (kind === 'game' && /\$\{auth_/.test(arg)) throw new Error('Profil Fabric : argument du jeu refusé (identifiants du compte)');
+    if (kind === 'jvm' && (arg !== FABRIC_MC_EMU || index > 0)) throw new Error(`Profil Fabric : option Java refusée (${arg.trim().slice(0, 60)})`);
+    // le profil officiel n'a aucun argument du jeu : tout ajout (--quickPlayMultiplayer, ${auth_...}) est refusé
+    if (kind === 'game') throw new Error(`Profil Fabric : argument du jeu refusé (${arg.trim().slice(0, 60)})`);
     return arg;
   });
 }
