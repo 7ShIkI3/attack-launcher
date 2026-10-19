@@ -43,21 +43,24 @@ réseau ou du chiffrement reçoivent leur dépendance en paramètre (un « trans
 | --- | --- |
 | `main.js` | Fenêtre, canaux IPC, chiffrement des jetons (`safeStorage`), enchaînement installation / lancement / mises à jour |
 | `preload.js` | Pont `contextBridge` : expose `window.attack` avec des appels nommés, sans aucun accès à Node |
-| `constants.js` | Versions (Minecraft 1.8.9, Forge), adresses officielles, **liste des hôtes autorisés** (`ALLOWED_HOSTS`), URL de connexion |
+| `catalog.js` | **Catalogue des 3 profils** (Forge 1.8.9, Fabric 1.21.1, Fabric 26.3) : version de Minecraft, chargeur, dossier de jeu, profil officiel, règle exacte du jar ATTACK, pack. Module pur |
+| `constants.js` | Adresses officielles, **liste des hôtes autorisés** (`ALLOWED_HOSTS`, Fabric et CDN Modrinth compris), URL de connexion ; alias des anciennes constantes du profil 1.8.9 |
 | `http.js` | Téléchargements : hôtes autorisés, redirections vérifiées une à une, fichier `.part`, contrôle du hash |
-| `installer.js` | Installation complète en 6 étapes (Minecraft, bibliothèques, assets, Forge, mod, profil) et état d'installation |
+| `installer.js` | Installation complète d'un profil (Minecraft, bibliothèques, assets, Forge **ou** Fabric + pack de mods, mod, profil) et état d'installation |
 | `mojang.js` | Lecture des manifestes Mojang (version, bibliothèques, natives, index d'assets) |
 | `forge.js`, `zip.js` | Lecture de l'installateur Forge **comme une archive ZIP** (jamais exécuté) |
+| `fabric.js` | Profil de version de Fabric Loader : adresse de `meta.fabricmc.net`, validation stricte, plan de téléchargement, JSON de version écrit |
+| `modpack.js` | Packs de mods figés (`src/main/packs/*.json`) : validation, installation dans `mods/`, jars gérés supprimés quand ils sortent du pack |
 | `maven.js` | Coordonnées Maven vers chemins et URL ; `safeJoin` qui interdit de sortir d'un dossier |
-| `mod.js` | Choix du jar ATTACK Client dans la dernière release GitHub (et de son SHA-256) ou, en mode développeur, du jar local |
-| `runtime.js` | Installation du Java 8 officiel de Mojang (`jre-legacy`), fichier par fichier, SHA-1 vérifié |
-| `game.js` | Lancement direct : classpath, natives, ligne de commande Java, journal, détection d'une partie en cours |
+| `mod.js` | Choix du jar ATTACK du profil dans la dernière release GitHub (règle de nom exacte, SHA-256) ou, en mode développeur, du jar local |
+| `runtime.js` | Installation du Java officiel de Mojang (`jre-legacy`, `java-runtime-delta`, `java-runtime-epsilon`), fichier par fichier, SHA-1 vérifié |
+| `game.js` | Lancement direct : classpath, natives, ligne de commande Java (anciens et nouveaux formats d'arguments), journal, détection d'une partie en cours |
 | `launch.js` | Ouverture du launcher Minecraft officiel (version Xbox / Store ou ancien `.exe`) |
-| `profiles.js` | Fusion du profil « ATTACK Client » dans `launcher_profiles.json` du launcher officiel |
+| `profiles.js` | Fusion des profils ATTACK (« ATTACK Client », « ATTACK 1.21.1 », « ATTACK 26.3 ») dans `launcher_profiles.json` du launcher officiel |
 | `auth.js` | Connexion Microsoft par code d'appareil, Xbox Live, XSTS, services Minecraft, vérification de possession du jeu |
 | `accounts.js` | Comptes enregistrés (`accounts.json`) : refresh token chiffré, jeton Minecraft en mémoire |
 | `skins.js` | Lecture, envoi et réinitialisation du skin chez Mojang ; contrôle du PNG |
-| `settings.js`, `paths.js` | Réglages validés (`settings.json`) et dossiers par défaut |
+| `settings.js`, `paths.js` | Réglages validés (`settings.json`, globaux + par profil, migration de l'ancien format) et dossiers par défaut de chaque profil |
 | `updates.js` | Contrôleur des mises à jour du launcher (par-dessus `electron-updater`) |
 
 Les noeuds les plus connectés du graphe de dépendances du dépôt sont `AccountStore`, `UpdateController`,
@@ -67,10 +70,10 @@ Les noeuds les plus connectés du graphe de dépendances du dépôt sont `Accoun
 
 | Fichier | Rôle |
 | --- | --- |
-| `index.html` | Structure des quatre pages (Accueil, Mods, Réglages, Compte) et politique CSP |
-| `app.js` | Logique de l'interface : navigation, bouton JOUER, comptes, réglages, bannière de mise à jour |
+| `index.html` | Structure des quatre pages (Accueil, Mods, Réglages, Compte), sélecteur de profil, politique CSP |
+| `app.js` | Logique de l'interface : navigation, profil choisi, bouton JOUER, comptes, réglages, bannière de mise à jour |
 | `i18n.js` | Textes en français et en anglais |
-| `data.js` | Contenu « vitrine » : liste des mods d'ATTACK Client et historique des versions |
+| `data.js` | Contenu « vitrine » : modules d'ATTACK Client, descriptions des mods du pack Fabric et historique des versions |
 | `skin.js` | Vue 3D du skin avec skinview3d |
 | `logo.js`, `styles.css`, `fonts/` | Logo SVG généré, styles, polices Inter et Montserrat |
 | `vendor/` | skinview3d et three.js, copiés dans le dépôt (la page ne télécharge rien) |
@@ -108,7 +111,7 @@ sequenceDiagram
 
 | Domaine | Canaux |
 | --- | --- |
-| Application | `app:info`, `settings:get`, `settings:set` |
+| Application | `app:info` (version, mémoire, profils et contenu des packs), `settings:get`, `settings:set` (réglages à plat du profil courant ; `profileId` change de profil) |
 | Installation | `install:status`, `install:run` |
 | Comptes | `accounts:list`, `accounts:login`, `accounts:cancel`, `accounts:openVerification`, `accounts:copyCode`, `accounts:select`, `accounts:remove`, `accounts:addOffline` (mode développeur seulement) |
 | Skin | `skins:pick`, `skins:discard`, `skins:apply`, `skins:reset`, `skins:refresh` |
@@ -152,14 +155,14 @@ démarrage : la page reçoit alors `accounts:changed`, avec une erreur éventuel
 
 ```mermaid
 flowchart TD
-  A["JOUER : canal game:play"] --> B{"Installation complète ?"}
+  A["JOUER : canal game:play<br>(profil choisi)"] --> B{"Installation complète ?"}
   B -->|non| X["Erreur : installation incomplète"]
   B -->|oui| C{"Compte actif ?"}
-  C -->|"Microsoft<br>ou hors ligne en mode dev"| D["Java : celui des Réglages,<br>sinon runtime officiel Mojang"]
+  C -->|"Microsoft<br>ou hors ligne en mode dev"| D["Java : celui des Réglages du profil,<br>sinon runtime officiel Mojang<br>(composant du JSON de version)"]
   D --> E["Jeton Minecraft :<br>mémoire, renouvelé si besoin"]
   E --> F["game.launchGame :<br>natives, classpath, processus Java"]
   F --> G["Sortie du jeu dans<br>.attack/logs/launcher/game-*.log"]
-  C -->|"aucun compte"| H["Profil ATTACK Client mis en<br>dernier utilisé dans launcher_profiles.json"]
+  C -->|"aucun compte"| H["Profil ATTACK du profil mis en<br>dernier utilisé dans launcher_profiles.json"]
   H --> I["Ouverture du launcher officiel"]
 ```
 

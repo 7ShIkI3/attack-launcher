@@ -1,14 +1,50 @@
 'use strict';
 // Lecture des manifestes Mojang : manifeste des versions, JSON de version (jar, bibliothèques, natives), index d'assets.
+const os = require('node:os');
 const { mavenPath } = require('./maven');
 const { RESOURCES_URL } = require('./constants');
 
 const SHA1 = /^[0-9a-f]{40}$/;
 
-/** Plateforme au sens Mojang : { name: windows|osx|linux, arch: '64'|'32' }. */
-function currentEnv(platform = process.platform, arch = process.arch) {
+/**
+ * Plateforme au sens Mojang : { name: windows|osx|linux, arch: '64'|'32', osVersion }.
+ * osVersion (ex. 10.0.26200) sert aux règles `os.version` et `os.versionRange` ; absente, ces règles ne s'appliquent pas.
+ */
+function currentEnv(platform = process.platform, arch = process.arch, osVersion = os.release()) {
   const name = platform === 'win32' ? 'windows' : platform === 'darwin' ? 'osx' : 'linux';
-  return { name, arch: arch === 'ia32' ? '32' : '64', archName: arch === 'ia32' ? 'x86' : 'x86_64' };
+  return { name, arch: arch === 'ia32' ? '32' : '64', archName: arch === 'ia32' ? 'x86' : 'x86_64', osVersion };
+}
+
+/** Compare deux versions « 10.0.17134 » numériquement : -1, 0 ou 1. */
+function compareVersions(a, b) {
+  const pa = String(a).split('.').map((n) => Number.parseInt(n, 10) || 0);
+  const pb = String(b).split('.').map((n) => Number.parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pa[i] || 0) - (pb[i] || 0);
+    if (diff !== 0) return diff < 0 ? -1 : 1;
+  }
+  return 0;
+}
+
+/** La règle d'OS (nom, architecture, version) s'applique-t-elle à cette plateforme ? */
+function osMatches(rule, env) {
+  if (rule.name && rule.name !== env.name) return false;
+  // « x86 » désigne le 32 bits chez Mojang
+  if (rule.arch === 'x86' ? env.arch !== '32' : rule.arch && rule.arch !== env.archName) return false;
+  if (rule.version) {
+    try {
+      if (!env.osVersion || !new RegExp(rule.version).test(env.osVersion)) return false;
+    } catch {
+      return false;
+    }
+  }
+  if (rule.versionRange) {
+    const { min, max } = rule.versionRange;
+    if (!env.osVersion) return false;
+    if (min !== undefined && compareVersions(env.osVersion, min) < 0) return false;
+    if (max !== undefined && compareVersions(env.osVersion, max) > 0) return false;
+  }
+  return true;
 }
 
 /** Entrée d'une version dans version_manifest_v2.json (url + sha1 du JSON de version). */
@@ -25,11 +61,7 @@ function rulesAllow(rules, env = currentEnv()) {
   let allowed = false;
   for (const rule of rules) {
     if (rule.features) continue; // options du launcher (démo, résolution...) : jamais actives ici
-    if (rule.os) {
-      if (rule.os.name && rule.os.name !== env.name) continue;
-      // « x86 » désigne le 32 bits chez Mojang
-      if (rule.os.arch === 'x86' ? env.arch !== '32' : rule.os.arch && rule.os.arch !== env.archName) continue;
-    }
+    if (rule.os && !osMatches(rule.os, env)) continue;
     allowed = rule.action === 'allow';
   }
   return allowed;
@@ -92,6 +124,7 @@ function assetDownloads(assetIndex) {
 
 module.exports = {
   currentEnv,
+  compareVersions,
   findVersion,
   rulesAllow,
   libraryDownloads,

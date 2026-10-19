@@ -8,6 +8,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const C = require('./constants');
+const catalog = require('./catalog');
+const modpack = require('./modpack');
 const installer = require('./installer');
 const settingsStore = require('./settings');
 const profiles = require('./profiles');
@@ -35,16 +37,33 @@ const runtimeDir = process.env.ATTACK_RUNTIME_DIR
   : path.join(process.env.LOCALAPPDATA || os.homedir(), 'ATTACK Launcher', 'runtime');
 
 let win = null;
-let settings = settingsStore.defaults();
+let settings = settingsStore.defaults(); // réglages complets (globaux + par profil) ; la page reçoit la vue à plat du profil courant
 let installing = false;
 let login = null; // connexion en cours : { cancelled, verificationUri, userCode }
 let accounts = null;
 let launching = false; // lancement direct en préparation (Java, connexion)
-const games = new Set(); // parties lancées directement et encore ouvertes
+const games = new Map(); // parties lancées directement et encore ouvertes : processus -> dossier de jeu du profil
 let updater = null; // contrôleur des mises à jour du launcher
 const transport = auth.createTransport();
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
+
+/** Profil choisi (catalogue) et ses réglages effectifs à plat : dossier de jeu, Java, jars de développement, shaders. */
+const currentProfile = () => catalog.get(settings.profileId);
+const effective = () => settingsStore.forProfile(settings);
+
+/** Description des profils pour la page : catalogue + contenu du pack de mods figé (nom, version, optionnel). */
+function profilesView() {
+  return catalog.list().map((profile) => {
+    let pack = [];
+    try {
+      pack = modpack.view(modpack.loadPack(profile));
+    } catch {
+      pack = [];
+    }
+    return { ...catalog.view(profile), pack };
+  });
+}
 
 /** Chiffrement du refresh token par Windows (DPAPI, lié à la session de l'utilisateur). */
 const cipher = {
@@ -158,28 +177,46 @@ function registerIpc() {
     totalRamMb: Math.floor(os.totalmem() / 1048576),
     minecraftDir,
     launcherDetected: Boolean(launch.launchPlan().detected),
-    forgeVersion: C.FORGE_VERSION,
-    mcVersion: C.MC_VERSION,
+    profiles: profilesView(),
   }));
 
-  handle('settings:get', () => settings);
+  handle('settings:get', () => effective());
   handle('settings:set', async (_event, patch) => {
-    settings = settingsStore.sanitize(patch, settings);
-    await settingsStore.save(settingsFile(), settings);
-    return settings;
+    // pas de changement de profil pendant une installation ou un lancement : ils travaillent sur le profil choisi au départ
+    const safePatch = (installing || launching) && patch && typeof patch === 'object' ? { ...patch, profileId: undefined } : patch;
+    const previous = settings;
+    settings = settingsStore.sanitize(safePatch, settings);
+    try {
+      await settingsStore.save(settingsFile(), settings);
+    } catch (error) {
+      settings = previous; // enregistrement impossible (disque plein, antivirus) : le profil choisi ne doit pas changer en cachette
+      throw error;
+    }
+    return effective();
   });
 
-  handle('install:status', () => installer.status({ minecraftDir, gameDir: settings.gameDir }));
+  handle('install:status', () => {
+    const profile = currentProfile();
+    const eff = effective();
+    return installer.status({ minecraftDir, gameDir: eff.gameDir, profile, shaders: eff.shaders });
+  });
 
   handle('install:run', async (event) => {
     if (installing) return { ok: false, code: 'BUSY', message: 'Installation déjà en cours' };
-    installing = true;
-    updater?.activityStarted('install');
+    installing = true; // posé avant la détection des parties (asynchrone) : un deuxième clic ne lance pas une deuxième installation
     try {
+      const eff = effective();
+      // un jar de mod ouvert par une partie ne peut pas être remplacé ni retiré : on attend la fin de la partie de ce profil
+      if (launching || game.gameBlocksInstall(eff.gameDir, [...games.values()], await game.runningGameLines())) {
+        return { ok: false, code: 'GAME_RUNNING', message: 'Une partie est en cours' };
+      }
+      updater?.activityStarted('install');
       const summary = await installer.install({
         minecraftDir,
-        settings,
+        settings: eff,
+        profile: currentProfile(),
         icon: profileIcon(),
+        appVersion: app.getVersion(),
         onProgress: (progress) => {
           if (!event.sender.isDestroyed()) event.sender.send('install:progress', progress);
         },
@@ -317,15 +354,17 @@ function registerIpc() {
   handle('game:play', async (event) => {
     updater?.activityStarted('game');
     try {
-      const status = await installer.status({ minecraftDir, gameDir: settings.gameDir });
+      const profile = currentProfile();
+      const eff = effective();
+      const status = await installer.status({ minecraftDir, gameDir: eff.gameDir, profile, shaders: eff.shaders });
       if (!status.installed) return { ok: false, code: 'NOT_INSTALLED', message: 'Installation incomplète' };
       const account = accounts.active();
       // un compte hors ligne ne sert qu'en mode développeur
-      if (account && (account.type === 'msa' || settings.devMode)) return await playDirect(event, account);
+      if (account && (account.type === 'msa' || eff.devMode)) return await playDirect(event, account, profile, eff);
       // sans compte : profil présélectionné dans le launcher officiel
       await profiles.updateProfiles(minecraftDir, (data) => profiles.markLastUsed(profiles.mergeProfile(data, {
-        gameDir: settings.gameDir, ramMb: settings.ramMb, javaPath: settings.javaPath, icon: profileIcon(),
-      })));
+        ...profiles.identityOf(profile), gameDir: eff.gameDir, ramMb: eff.ramMb, javaPath: eff.javaPath, icon: profileIcon(),
+      }), new Date(), profile.launcherProfileId));
       const plan = launch.openLauncher();
       return { ok: true, mode: 'official', detected: Boolean(plan.detected) };
     } catch (error) {
@@ -333,14 +372,15 @@ function registerIpc() {
     }
   });
   handle('game:openLogs', async () => {
-    const dir = path.join(settings.gameDir, 'logs', 'launcher');
+    const dir = path.join(effective().gameDir, 'logs', 'launcher');
     await fsp.mkdir(dir, { recursive: true });
     return shell.openPath(dir);
   });
 
   handle('shell:openGameDir', async () => {
-    await fsp.mkdir(settings.gameDir, { recursive: true });
-    return shell.openPath(settings.gameDir);
+    const { gameDir } = effective();
+    await fsp.mkdir(gameDir, { recursive: true });
+    return shell.openPath(gameDir);
   });
   handle('shell:openRepo', () => shell.openExternal(REPO_URL));
 
@@ -379,8 +419,11 @@ function openVerification(uri) {
   }
 }
 
-/** Lancement direct : Java officiel (ou personnalisé), identité du compte, jeu. */
-async function playDirect(event, account) {
+/**
+ * Lancement direct : Java officiel (ou personnalisé), identité du compte, jeu.
+ * Le composant Java vient du JSON de version du profil : Java 8 (1.8.9), Java 21 (1.21.x), Java 25 (26.x).
+ */
+async function playDirect(event, account, profile, eff) {
   const progress = (step, done, total) => {
     if (!event.sender.isDestroyed()) {
       event.sender.send('install:progress', { step, done, total, percent: total ? Math.round((done / total) * 100) : 100 });
@@ -390,10 +433,15 @@ async function playDirect(event, account) {
   let result;
   let identity;
   try {
-    let java = settings.javaPath;
+    let java = eff.javaPath;
     if (!java) {
       progress('java', 0, 1);
-      java = (await runtime.installRuntime({ runtimeDir, onProgress: ({ done, total }) => progress('java', done, total) })).java;
+      const component = await game.javaComponent(minecraftDir, profile.loader.versionId);
+      java = (await runtime.installRuntime({
+        runtimeDir,
+        component,
+        onProgress: ({ done, total }) => progress('java', done, total),
+      })).java;
     }
     progress('auth', 0, 1);
     identity = await accounts.launchIdentity(account.id, refreshWith);
@@ -401,17 +449,17 @@ async function playDirect(event, account) {
     result = await game.launchGame({
       java,
       minecraftDir,
-      gameDir: settings.gameDir,
-      versionId: C.FORGE_VERSION_ID,
+      gameDir: eff.gameDir,
+      versionId: profile.loader.versionId,
       identity,
-      ramMb: settings.ramMb,
+      ramMb: eff.ramMb,
       launcherVersion: app.getVersion(),
     });
   } finally {
     launching = false;
   }
   // partie en cours : aucune mise à jour tant que le jeu n'est pas fermé
-  games.add(result.child);
+  games.set(result.child, eff.gameDir);
   result.child.once('exit', () => {
     games.delete(result.child);
     updater?.activityEnded();

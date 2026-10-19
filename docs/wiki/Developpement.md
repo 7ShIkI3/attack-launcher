@@ -22,10 +22,11 @@ npm start
 | Commande | Rôle |
 | --- | --- |
 | `npm start` | Lance le launcher depuis les sources |
-| `npm test` | Tests unitaires (`node --test test/*.test.js`), sans réseau : manifestes, install_profile, chemins Maven, profils, téléchargements, connexion Microsoft simulée, comptes, skins, ligne de commande Java, runtime, mises à jour |
-| `npm run install-test -- [dossier] [--release]` | Installation **réelle** complète dans un dossier temporaire, puis contre-vérification indépendante de tous les hash. Sans `--release`, le jar du mod vient du build local (mode développeur). Refuse de toucher au vrai `.minecraft` |
-| `npm run launch-test -- <dossier>` | Lancement direct **réel** avec un compte hors ligne factice, jusqu'à l'écran titre (cherche « Forge Mod Loader has successfully loaded N mods » et vérifie qu'ATTACK Client est chargé). `--keep` laisse le jeu ouvert |
-| `npm run screenshot -- <dossier>` | Ouvre l'app dans des dossiers isolés et capture chaque page (`home`, `mods`, `settings`, `account`, `changelog`) |
+| `npm test` | Tests unitaires (`node --test test/*.test.js`), sans réseau : catalogue des profils, manifestes, install_profile, profil Fabric, packs de mods, chemins Maven, profils, téléchargements, connexion Microsoft simulée, comptes, skins, ligne de commande Java (anciens et nouveaux formats), runtime, mises à jour |
+| `npm run install-test -- [dossier] [--profile <id>] [--release] [--shaders] [--cycle]` | Installation **réelle** complète d'un profil (`forge-1.8.9` par défaut, `fabric-1.21.1`, `fabric-26.3`) dans un dossier temporaire, puis contre-vérification indépendante de tous les hash. Sans `--release`, le jar du mod vient du build local (mode développeur). `--shaders` installe aussi Iris ; `--cycle` coupe puis remet les shaders et vérifie qu'un jar ajouté à la main n'est jamais touché. Refuse de toucher au vrai `.minecraft` |
+| `npm run launch-test -- <dossier> [--profile <id>]` | Lancement direct **réel** avec un compte hors ligne factice, jusqu'à l'écran titre. Forge : « Forge Mod Loader has successfully loaded N mods ». Fabric : liste « Loading N mods » + « Sound engine started », avec le mod `attack` dans la liste. Installe le Java du profil (8, 21 ou 25). `--keep` laisse le jeu ouvert |
+| `node scripts/resolve-pack.js [profil] [--check]` | Fige les packs de mods Fabric depuis l'API Modrinth dans `src/main/packs/` (outil de développement : le launcher n'appelle jamais cette API) |
+| `npm run screenshot -- <dossier>` | Ouvre l'app dans des dossiers isolés et capture chaque page (`home`, `mods`, `settings`, `account`, `changelog`) ; `ATTACK_PROFILE=fabric-1.21.1` choisit le profil affiché |
 | `npm run icons` | Régénère les icônes PNG à partir des polygones du logo (`scripts/make-icons.js`) |
 | `npm run update-test -- <dossier>` | Mise à jour **réelle** 0.2.0 vers 0.2.1 sans GitHub (voir plus bas) |
 | `npm run dist` | Construit `dist/ATTACK-Launcher-Setup-*.exe` (NSIS) avec `latest.yml` et `.blockmap`, et `dist/ATTACK-Launcher-Portable-*.exe` ; **ne publie rien** (`--publish never`) |
@@ -50,18 +51,24 @@ et minuteurs dans `updates.js`), ce qui permet de les simuler.
 
 ## Tests unitaires (`npm test`)
 
-Les 85 tests tournent en moins d'une seconde et n'ont besoin ni du réseau ni d'Electron.
+Les 144 tests tournent en quelques secondes et n'ont besoin ni du réseau ni d'Electron. Les fixtures de `test/fixtures/` sont les vrais JSON de Mojang (1.21.1, 26.3, réduits à quelques bibliothèques) et de Fabric (profils 0.19.5).
 
 | Fichier | Ce qu'il vérifie |
 | --- | --- |
 | `auth.test.js` | Connexion complète par code d'appareil, `slow_down`, erreurs XSTS, 403 « app non validée », jeu non possédé, Game Pass, code expiré, rafraîchissement, tenant `consumers` |
 | `accounts.test.js` | Refresh token chiffré sur disque et absent de la vue publique, jeton Minecraft en mémoire et rafraîchi, plusieurs comptes, compte hors ligne, ID client, skin |
 | `skins.test.js` | Contrôle du PNG, skin actif, corps multipart, envoi, réinitialisation, erreurs Mojang |
-| `http.test.js` | Hôtes https autorisés seulement, téléchargement vérifié, hash faux rejeté (`.part` supprimé), redirection hors liste refusée, parallélisme |
+| `http.test.js` | Hôtes https autorisés seulement, téléchargement vérifié (SHA-1, SHA-256, SHA-512), hash faux rejeté (`.part` supprimé), redirection hors liste refusée, parallélisme |
+| `catalog.test.js` | Les 3 profils, règles exactes des jars ATTACK, dossiers de jeu et de jars par profil, alias de `constants.js`, hôtes autorisés |
+| `fabric.test.js` | Adresse du profil Fabric, validation stricte (vrais profils 1.21.1 et 26.3, profils piégés refusés), plan de téléchargement avec ou sans hash, JSON de version écrit |
+| `modpack.test.js` | Packs figés valides (versions demandées), validation (URL, hash, noms), installation, Iris selon l'option, jars gérés supprimés, jars du joueur intacts, échec sans suppression |
+| `game-modern.test.js` | Fusion Fabric + Minecraft, arguments modernes (1.21.1 et 26.3), un seul `-cp`, variables sans découpage, natives de 26.x, détection d'une partie |
+| `installer.test.js` | Étapes de l'installateur avec un faux réseau (`fetch` remplacé) : Fabric Loader (hash figés, SHA-512, profil piégé refusé avant tout téléchargement), jar ATTACK d'une release (profil, SHA-256, erreurs), pack et fichier d'état (échec au milieu, jar verrouillé) |
+| `multi-profils.test.js` | Réglages par profil et migration de l'ancien fichier, profils du launcher officiel, jar ATTACK par release, progression par chargeur, état d'un profil Fabric |
 | `forge.test.js` | Lecteur ZIP, extraction de `install_profile.json` et du jar universal, installateur piégé refusé, bibliothèques, JSON de version |
 | `mojang.test.js` | Manifeste, règles par plateforme, bibliothèques et natives, assets, chemins incohérents refusés |
 | `maven.test.js` | Chemins et URL Maven, coordonnées malveillantes, `safeJoin` |
-| `game.test.js` | Fusion Forge + 1.8.9, classpath, ligne de commande Java, masquage du jeton, natives, runtime Java |
+| `game.test.js` | Fusion Forge + 1.8.9 (ancien format), classpath, ligne de commande Java, masquage du jeton, natives, runtime Java |
 | `profiles.test.js` | `-Xmx`, fusion du profil, `.bak`, fichier illisible jamais écrasé |
 | `updates.test.js` | Versions semver, mode installé / portable / sources, vérifications, report pendant une partie ou une installation, fermeture, détection d'une partie |
 | `misc.test.js` | Release GitHub et SHA-256, jar de développement, réglages, launcher officiel, progression, état d'installation, version du mod |
@@ -71,8 +78,10 @@ Les 85 tests tournent en moins d'une seconde et n'ont besoin ni du réseau ni d'
 Ces scripts ne font **rien** dans ton vrai `.minecraft` : ils travaillent dans le dossier que tu indiques.
 
 ```bash
-npm run install-test -- C:\temp\essai          # installe Minecraft, Forge, mod, profil, puis recontrôle tous les hash
+npm run install-test -- C:\temp\essai          # profil 1.8.9 : Minecraft, Forge, mod, profil, puis recontrôle tous les hash
 npm run launch-test -- C:\temp\essai           # Java officiel + jeu jusqu'à l'écran titre
+npm run install-test -- C:\temp\fab --profile fabric-1.21.1 --cycle   # Fabric, pack de mods, cycle des shaders
+npm run launch-test -- C:\temp\fab --profile fabric-1.21.1            # Java 21 + jeu jusqu'à l'écran titre
 npm run update-test -- C:\temp\maj             # mise à jour automatique de bout en bout
 ```
 
@@ -98,6 +107,7 @@ sans `--keep`, l'app de test est désinstallée ensuite. Détails dans l'en-têt
 | `ATTACK_SCREENSHOT_INSTALL=1` | Clique d'abord sur INSTALLER (installation réelle dans les dossiers donnés) |
 | `ATTACK_SCREENSHOT_PLAY=1` | Clique sur JOUER avec le compte actif |
 | `ATTACK_SCREENSHOT_SIZE=940x600` | Taille de fenêtre (bornée par la taille minimale) |
+| `ATTACK_PROFILE=fabric-1.21.1` | Profil affiché (`forge-1.8.9` par défaut, `fabric-1.21.1`, `fabric-26.3`) |
 
 Les images de `docs/images/` sont de vraies captures du launcher, prises le 2026-10-19 avec un compte factice
 (« Raphou ») et un skin de test. Garde les PNG sous environ 1 Mo.
@@ -107,7 +117,8 @@ Les images de `docs/images/` sont de vraies captures du launcher, prises le 2026
 | Variable | Effet |
 | --- | --- |
 | `ATTACK_MS_CLIENT_ID` | ID client Azure à utiliser (priorité inférieure à celui des Réglages) |
-| `ATTACK_DEV_JAR_DIR` | Dossier des jars du mod pour le mode développeur |
+| `ATTACK_DEV_JAR_DIR` | Dossier des jars du mod pour le mode développeur, profil 1.8.9 |
+| `ATTACK_DEV_JAR_DIR_FABRIC_1_21_1`, `ATTACK_DEV_JAR_DIR_FABRIC_26_3` | Idem pour les profils Fabric (par défaut `Documents\attack-client-fabric\versions\<mc>\build\libs`) |
 | `ATTACK_USER_DATA`, `ATTACK_MINECRAFT_DIR`, `ATTACK_RUNTIME_DIR` | Dossiers de données, `.minecraft` et runtime Java : **réservés aux tests**, jamais utilisés par une installation normale |
 
 ## Conventions

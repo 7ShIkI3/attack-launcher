@@ -1,8 +1,8 @@
 {
   "name": "attack-launcher",
   "productName": "ATTACK Launcher",
-  "version": "0.4.0",
-  "description": "Launcher d'ATTACK Client (Minecraft 1.8.9 PvP) : installe Forge et le mod, connexion Microsoft, lancement direct du jeu et mise à jour automatique.",
+  "version": "0.5.0-beta.1",
+  "description": "Launcher d'ATTACK Client (Minecraft PvP : 1.8.9 Forge, 1.21.1 et 26.3 Fabric) : installe le chargeur, le pack de mods et le mod, connexion Microsoft, lancement direct du jeu et mise à jour automatique.",
   "main": "src/main/main.js",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",

@@ -1,6 +1,7 @@
 'use strict';
-// Profil « ATTACK Client » dans launcher_profiles.json du launcher officiel. On fusionne : les autres profils
-// et réglages restent intacts, et une copie .bak est faite avant chaque écriture.
+// Profils ATTACK dans launcher_profiles.json du launcher officiel (« ATTACK Client » pour Forge 1.8.9, « ATTACK 1.21.1 »
+// et « ATTACK 26.3 » pour Fabric). On fusionne : les autres profils et réglages restent intacts, et une copie .bak
+// est faite avant chaque écriture.
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
@@ -16,20 +17,21 @@ function withXmx(javaArgs, ramMb) {
 }
 
 /**
- * Renvoie une copie de `data` (contenu de launcher_profiles.json, ou null) avec le profil ATTACK à jour.
- * options : { gameDir, ramMb, javaPath, icon, now }.
+ * Renvoie une copie de `data` (contenu de launcher_profiles.json, ou null) avec un profil ATTACK à jour.
+ * options : { id, name, versionId, gameDir, ramMb, javaPath, icon, now } ; sans id / name / versionId, c'est le profil
+ * historique « ATTACK Client » (Forge 1.8.9).
  */
-function mergeProfile(data, { gameDir, ramMb, javaPath, icon, now = new Date() }) {
+function mergeProfile(data, { id = PROFILE_ID, name = PROFILE_NAME, versionId = FORGE_VERSION_ID, gameDir, ramMb, javaPath, icon, now = new Date() }) {
   const result = data && typeof data === 'object' ? structuredClone(data) : {};
   if (!result.profiles || typeof result.profiles !== 'object') result.profiles = {};
   if (!result.settings) result.settings = {};
   if (!result.version) result.version = 3;
-  const previous = result.profiles[PROFILE_ID] || {};
+  const previous = result.profiles[id] || {};
   const profile = {
     ...previous,
-    name: PROFILE_NAME,
+    name,
     type: 'custom',
-    lastVersionId: FORGE_VERSION_ID,
+    lastVersionId: versionId,
     gameDir,
     javaArgs: withXmx(previous.javaArgs, ramMb),
     created: previous.created || now.toISOString(),
@@ -38,15 +40,20 @@ function mergeProfile(data, { gameDir, ramMb, javaPath, icon, now = new Date() }
   if (icon) profile.icon = icon;
   if (javaPath) profile.javaDir = javaPath;
   else delete profile.javaDir;
-  result.profiles[PROFILE_ID] = profile;
+  result.profiles[id] = profile;
   return result;
 }
 
-/** Met le profil ATTACK en dernier utilisé : avec le tri « par dernière partie », il est présélectionné. */
-function markLastUsed(data, now = new Date()) {
+/** Options de mergeProfile qui viennent d'une entrée du catalogue (catalog.js). */
+function identityOf(profile) {
+  return { id: profile.launcherProfileId, name: profile.name, versionId: profile.loader.versionId };
+}
+
+/** Met un profil ATTACK en dernier utilisé : avec le tri « par dernière partie », il est présélectionné. */
+function markLastUsed(data, now = new Date(), id = PROFILE_ID) {
   const result = structuredClone(data);
-  if (!result.profiles?.[PROFILE_ID]) throw new Error('Profil ATTACK absent : installe le client d’abord');
-  result.profiles[PROFILE_ID].lastUsed = now.toISOString();
+  if (!result.profiles?.[id]) throw new Error('Profil ATTACK absent : installe le client d’abord');
+  result.profiles[id].lastUsed = now.toISOString();
   return result;
 }
 
@@ -81,6 +88,7 @@ async function updateProfiles(minecraftDir, transform) {
 module.exports = {
   PROFILES_FILE,
   withXmx,
+  identityOf,
   mergeProfile,
   markLastUsed,
   readProfiles,

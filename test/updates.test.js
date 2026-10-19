@@ -297,4 +297,51 @@ test('détection d\'une partie : ligne de commande Java avec la version Forge du
   assert.equal(calls[0].options.windowsHide, true);
   const encoded = calls[0].args[calls[0].args.indexOf('-EncodedCommand') + 1];
   assert.equal(Buffer.from(encoded, 'base64').toString('utf16le'), game.JAVA_PROCESSES_PS);
+
+  // mêmes lignes en liste (pour comparer leur --gameDir) ; PowerShell indisponible ou autre système : liste vide
+  assert.deepEqual(await game.runningGameLines({ platform: 'win32', run: run(`${gradle}\r\n${forge}\r\n`) }), [forge]);
+  assert.deepEqual(await game.runningGameLines({ platform: 'win32', run: run('', new Error('ENOENT')) }), []);
+  assert.deepEqual(await game.runningGameLines({ platform: 'linux', run: run(forge) }), []);
+});
+
+test('installation : seule une partie jouée dans le dossier de jeu du profil bloque, lancée ici ou par le launcher officiel', () => {
+  const forgeDir = 'C:\\Users\\x\\AppData\\Roaming\\.attack';
+  const f121Dir = `${forgeDir}\\profiles\\fabric-1.21.1`;
+  const f263Dir = `${forgeDir}\\profiles\\fabric-26.3`;
+  const FORGE_ID = '1.8.9-forge1.8.9-11.15.1.2318-1.8.9';
+  const line = (versionId, gameDir) => `"C:\\runtime\\bin\\javaw.exe" -Xmx3072M -cp a.jar net.minecraft.client.main.Main --username Steve --version ${versionId} --gameDir ${gameDir} --assetsDir C:\\Users\\x\\AppData\\Roaming\\.minecraft\\assets`;
+
+  // --gameDir lu dans la ligne de commande : sans guillemets, entre guillemets (espaces), en fin de ligne, avec « = »
+  assert.equal(game.gameDirOfCommandLine(line(FORGE_ID, forgeDir)), forgeDir);
+  assert.equal(game.gameDirOfCommandLine(line(FORGE_ID, '"C:\\Users\\Jean Dupont\\AppData\\Roaming\\.attack"')), 'C:\\Users\\Jean Dupont\\AppData\\Roaming\\.attack');
+  assert.equal(game.gameDirOfCommandLine(`javaw.exe Main --version x --gameDir ${forgeDir}  `), forgeDir);
+  assert.equal(game.gameDirOfCommandLine(`javaw.exe Main --gameDir=${f121Dir} --version x`), f121Dir);
+  assert.equal(game.gameDirOfCommandLine('javaw.exe Main --version x'), null, 'absent');
+  assert.equal(game.gameDirOfCommandLine('javaw.exe Main --gameDir .attack --version x'), null, 'chemin relatif');
+  assert.equal(game.gameDirOfCommandLine('javaw.exe Main --gameDir --assetsDir C:\\a'), null, 'valeur manquante');
+
+  // partie du launcher officiel (ligne de commande seulement) : bloque son dossier, pas celui d'un autre profil
+  const official = [line(FORGE_ID, forgeDir)];
+  assert.equal(game.gameBlocksInstall(forgeDir, [], official), true);
+  assert.equal(game.gameBlocksInstall(f121Dir, [], official), false, 'le dossier de Forge contient celui de Fabric mais ce n’est pas le même');
+  assert.equal(game.gameBlocksInstall(f263Dir, [], official), false);
+  assert.equal(game.gameBlocksInstall(forgeDir, [], [line('fabric-loader-0.19.5-1.21.1', f121Dir)]), false, 'Fabric 1.21.1 ne gêne pas Forge');
+  assert.equal(game.gameBlocksInstall(f121Dir, [], [line('fabric-loader-0.19.5-1.21.1', f121Dir), line(FORGE_ID, forgeDir)]), true);
+  // casse, séparateur final et « .. » ne changent rien
+  assert.equal(game.gameBlocksInstall('c:\\USERS\\X\\appdata\\roaming\\.ATTACK\\', [], official), true);
+  assert.equal(game.gameBlocksInstall(`${f121Dir}\\..\\..`, [], official), true);
+  assert.equal(game.gameBlocksInstall(f121Dir.toUpperCase(), [], [line('fabric-loader-0.19.5-1.21.1', f121Dir.toLowerCase())]), true);
+
+  // parties lancées par ce launcher : dossier mémorisé de chacune, seul celui-là bloque
+  assert.equal(game.gameBlocksInstall(f121Dir, [f121Dir], []), true);
+  assert.equal(game.gameBlocksInstall(f121Dir, [forgeDir, f263Dir], []), false);
+  assert.equal(game.gameBlocksInstall(f121Dir, [f263Dir, f121Dir.toUpperCase()], []), true);
+
+  // comparaison impossible (pas de --gameDir lisible) : on bloque par prudence, quel que soit le dossier
+  assert.equal(game.gameBlocksInstall(f121Dir, [], [`javaw.exe Main --version ${FORGE_ID}`]), true);
+  assert.equal(game.gameBlocksInstall(f121Dir, [], [`javaw.exe Main --version ${FORGE_ID} --gameDir .attack`]), true);
+
+  // aucune partie : rien ne bloque
+  assert.equal(game.gameBlocksInstall(f121Dir), false);
+  assert.equal(game.gameBlocksInstall(f121Dir, [], []), false);
 });

@@ -1,0 +1,85 @@
+{
+  "profileId": "fabric-1.21.1",
+  "mc": "1.21.1",
+  "loader": "fabric",
+  "mods": [
+    {
+      "slug": "fabric-api",
+      "name": "Fabric API",
+      "version": "0.116.17",
+      "versionNumber": "0.116.17+1.21.1",
+      "filename": "fabric-api-0.116.17+1.21.1.jar",
+      "url": "https://cdn.modrinth.com/data/P7dR8mSH/versions/Mys3P7lK/fabric-api-0.116.17%2B1.21.1.jar",
+      "sha512": "98c478217da19181f0e4df3ea6c2da6bdbda271c7544a4aea048513a49b444f1ff5b71dc0df6303017c48e8ff69b7bb6af6179bdf0d0e09ab3c1ee08411857a8",
+      "sha1": "810b2b0195371a012906241d8b85a32a1d6de53c",
+      "size": 2452735
+    },
+    {
+      "slug": "sodium",
+      "name": "Sodium",
+      "version": "0.6.13",
+      "versionNumber": "mc1.21.1-0.6.13-fabric",
+      "filename": "sodium-fabric-0.6.13+mc1.21.1.jar",
+      "url": "https://cdn.modrinth.com/data/AANobbMI/versions/u1OEbNKx/sodium-fabric-0.6.13%2Bmc1.21.1.jar",
+      "sha512": "13032e064c554fc8671573dadb07bc70e6ea2f68706c65c086c4feb1d2f664346a3414cbf9d1367b42b8d063a35e40f2f967ef9af31642e1f0093b852161fe91",
+      "sha1": "928a2598178c3a58b0638bab842f467d2e49251a",
+      "size": 1297761
+    },
+    {
+      "slug": "lithium",
+      "name": "Lithium",
+      "version": "0.15.4",
+      "versionNumber": "mc1.21.1-0.15.4-fabric",
+      "filename": "lithium-fabric-0.15.4+mc1.21.1.jar",
+      "url": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/N08Z8wog/lithium-fabric-0.15.4%2Bmc1.21.1.jar",
+      "sha512": "182064b00e6315e2255b857eaab8eb759e6b042ebd4cc8b855ff0d93f875a5a7188fac49f878d7b29d4ef7e6b6341190ad7f6f6f39f4a6d2c62003468b08e4c6",
+      "sha1": "7d82a004403b7780d4443d8e40361a55cfd0ae63",
+      "size": 797454
+    },
+    {
+      "slug": "ferrite-core",
+      "name": "FerriteCore",
+      "version": "7.0.3",
+      "versionNumber": "7.0.3-fabric",
+      "filename": "ferritecore-7.0.3-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/uXXizFIs/versions/sOzRw3CG/ferritecore-7.0.3-fabric.jar",
+      "sha512": "3ad31620fac4ff44327dc7dedbe162b2d978f3f246dc16255a6e400ce9592a0d326fe36a626f3c1bf30a11f813093cbb4dcc107af039cff724d0cdf648541fdf",
+      "sha1": "a8a6a34fcda177da2828cedef44e0e538cf78aad",
+      "size": 123450
+    },
+    {
+      "slug": "immediatelyfast",
+      "name": "ImmediatelyFast",
+      "version": "1.6.15",
+      "versionNumber": "1.6.15+1.21.1-fabric",
+      "filename": "ImmediatelyFast-Fabric-1.6.15+1.21.1.jar",
+      "url": "https://cdn.modrinth.com/data/5ZwdcRci/versions/aLnBqxFW/ImmediatelyFast-Fabric-1.6.15%2B1.21.1.jar",
+      "sha512": "d4ac2d574d80000cd59b0b362706a6f86778bfc717748dca854f05ee8d09ce158738488e58c6b8ee05d5e54017f05b6c66c3bcaa3fa357d38cbfd75893dda9f4",
+      "sha1": "5067bdff1d5cc6d2dd89986f98bd8bd7ae62fb98",
+      "size": 342235
+    },
+    {
+      "slug": "modmenu",
+      "name": "Mod Menu",
+      "version": "11.0.5",
+      "versionNumber": "11.0.5",
+      "filename": "modmenu-11.0.5.jar",
+      "url": "https://cdn.modrinth.com/data/mOgUt4GM/versions/6lgOkclV/modmenu-11.0.5.jar",
+      "sha512": "92e8e96267ff18d320903090f2ad9b32408a218919f5a0d578e232ad774c89d49a34a8271806652be7d6283f24e98432bc4af7f95855e78b843f9100d68696c7",
+      "sha1": "2321d890a25b5985eba576d7cd8fe9a9c136e33d",
+      "size": 975846
+    },
+    {
+      "slug": "iris",
+      "name": "Iris Shaders",
+      "version": "1.8.8",
+      "versionNumber": "1.8.8+1.21.1-fabric",
+      "filename": "iris-fabric-1.8.8+mc1.21.1.jar",
+      "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/zsoi0dso/iris-fabric-1.8.8%2Bmc1.21.1.jar",
+      "sha512": "2e6ba2ffa1e1a6799288245a7e0ac68ee8df1d41b98362189df58f535cae34fa9277801e4136633467341b7dae5be0e5c698011b480b3d91b66d3dd4f7567aa6",
+      "sha1": "4e0df4011503b4b36ba69877ea7247c1a47fea00",
+      "size": 2690177,
+      "optional": true
+    }
+  ]
+}

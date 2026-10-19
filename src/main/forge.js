@@ -5,6 +5,13 @@ const { readEntries, readEntry } = require('./zip');
 const { mavenPath, mavenUrl } = require('./maven');
 const { FORGE_MAVEN, MOJANG_LIBRARIES } = require('./constants');
 
+/** Adresse de l'installateur Forge d'un profil du catalogue (Maven Forge officiel). */
+function installerUrl(profile) {
+  const version = profile.loader.fullVersion;
+  if (profile.loader.type !== 'forge' || !/^[0-9][0-9A-Za-z._-]*$/.test(version || '')) throw new Error(`Profil Forge invalide : ${profile.id}`);
+  return `${FORGE_MAVEN}net/minecraftforge/forge/${version}/forge-${version}-installer.jar`;
+}
+
 /** Lit l'installateur (Buffer) : { install, versionInfo, universal: Buffer }. */
 function readInstallProfile(installerBuffer) {
   const entries = readEntries(installerBuffer);
@@ -65,4 +72,4 @@ function buildVersionJson(versionInfo, resolved) {
   return { ...versionInfo, libraries };
 }
 
-module.exports = { readInstallProfile, clientLibraries, normalizeRepository, libraryPlan, buildVersionJson };
+module.exports = { installerUrl, readInstallProfile, clientLibraries, normalizeRepository, libraryPlan, buildVersionJson };
