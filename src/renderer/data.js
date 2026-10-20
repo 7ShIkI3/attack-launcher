@@ -77,7 +77,7 @@
 
   const CHANGELOG = [
     {
-      version: 'Launcher 0.5.0 (bêta)', version_en: 'Launcher 0.5.0 (beta)', date: '2026-10-19',
+      version: 'Launcher 0.5.0', date: '2026-10-20',
       fr: 'Trois profils au choix sur l’accueil : 1.8.9 (Forge, comme avant), 1.21.1 et 26.3 (Fabric). Chacun a son dossier de jeu et son Java officiel (8, 21 ou 25). Les profils Fabric installent un pack de mods de performance figé, vérifié par SHA-512 : Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast, Mod Menu, et Iris pour les shaders en option.',
       en: 'Three profiles to pick from on the home page: 1.8.9 (Forge, as before), 1.21.1 and 26.3 (Fabric). Each has its own game folder and official Java (8, 21 or 25). Fabric profiles install a pinned performance mod pack, checked by SHA-512: Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast, Mod Menu, and Iris for optional shaders.',
     },
