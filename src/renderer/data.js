@@ -77,6 +77,16 @@
 
   const CHANGELOG = [
     {
+      version: 'ATTACK Client 3.1', date: '2026-10-20',
+      fr: 'En 1.21.1 et 26.3, Maj droite ouvre le même menu qu’en 1.8.9 : onglets, recherche, 39 mods à activer et régler (HUD complet, viseur, FOV, Fullbright, ToggleSprint, Auto Text…), éditeur de HUD par glisser-déposer et écran Personnaliser. Tes réglages FPS, CPS et touches sont repris.',
+      en: 'On 1.21.1 and 26.3, Right Shift opens the same menu as on 1.8.9: tabs, search, 39 mods to toggle and tune (full HUD, crosshair, FOV, Fullbright, ToggleSprint, Auto Text…), drag-and-drop HUD editor and Customize screen. Your FPS, CPS and keystrokes settings are kept.',
+    },
+    {
+      version: 'ATTACK Client 2.3.1', date: '2026-10-20',
+      fr: 'Moins de saccades en combat : minimap calculée par petits morceaux, capes et pseudos sans déchets mémoire à chaque image, FPS Boost plus léger, Motion Blur qui ne se recharge plus à chaque menu.',
+      en: 'Fewer stutters in combat: minimap computed in small steps, capes and nametags without per-frame garbage, lighter FPS Boost, Motion Blur no longer reloaded with every menu.',
+    },
+    {
       version: 'Launcher 0.5.0', date: '2026-10-20',
       fr: 'Trois profils au choix sur l’accueil : 1.8.9 (Forge, comme avant), 1.21.1 et 26.3 (Fabric). Chacun a son dossier de jeu et son Java officiel (8, 21 ou 25). Les profils Fabric installent un pack de mods de performance figé, vérifié par SHA-512 : Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast, Mod Menu, et Iris pour les shaders en option.',
       en: 'Three profiles to pick from on the home page: 1.8.9 (Forge, as before), 1.21.1 and 26.3 (Fabric). Each has its own game folder and official Java (8, 21 or 25). Fabric profiles install a pinned performance mod pack, checked by SHA-512: Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast, Mod Menu, and Iris for optional shaders.',
