@@ -13,6 +13,7 @@ const modpack = require('./modpack');
 const installer = require('./installer');
 const settingsStore = require('./settings');
 const profiles = require('./profiles');
+const jvmargs = require('./jvmargs');
 const launch = require('./launch');
 const auth = require('./auth');
 const runtime = require('./runtime');
@@ -184,6 +185,11 @@ function registerIpc() {
   handle('settings:set', async (_event, patch) => {
     // pas de changement de profil pendant une installation ou un lancement : ils travaillent sur le profil choisi au départ
     const safePatch = (installing || launching) && patch && typeof patch === 'object' ? { ...patch, profileId: undefined } : patch;
+    // arguments Java refusés : message clair plutôt qu'un retour silencieux à l'ancienne valeur
+    if (safePatch && typeof safePatch === 'object' && 'jvmArgs' in safePatch) {
+      const parsed = jvmargs.parseJvmArgs(safePatch.jvmArgs);
+      if (!parsed.ok) throw new Error(jvmargs.describe(parsed));
+    }
     const previous = settings;
     settings = settingsStore.sanitize(safePatch, settings);
     try {
@@ -363,7 +369,7 @@ function registerIpc() {
       if (account && (account.type === 'msa' || eff.devMode)) return await playDirect(event, account, profile, eff);
       // sans compte : profil présélectionné dans le launcher officiel
       await profiles.updateProfiles(minecraftDir, (data) => profiles.markLastUsed(profiles.mergeProfile(data, {
-        ...profiles.identityOf(profile), gameDir: eff.gameDir, ramMb: eff.ramMb, javaPath: eff.javaPath, icon: profileIcon(),
+        ...profiles.identityOf(profile), gameDir: eff.gameDir, ramMb: eff.ramMb, javaPath: eff.javaPath, jvmArgs: eff.jvmArgs, icon: profileIcon(),
       }), new Date(), profile.launcherProfileId));
       const plan = launch.openLauncher();
       return { ok: true, mode: 'official', detected: Boolean(plan.detected) };
@@ -453,6 +459,7 @@ async function playDirect(event, account, profile, eff) {
       versionId: profile.loader.versionId,
       identity,
       ramMb: eff.ramMb,
+      jvmArgs: eff.jvmArgs,
       launcherVersion: app.getVersion(),
     });
   } finally {
@@ -553,6 +560,16 @@ async function captureScreens() {
     await wait(500);
     const image = await win.webContents.capturePage();
     await fsp.writeFile(path.join(dir, `${page}.png`), image.toPNG());
+  }
+  if (process.env.ATTACK_SCREENSHOT_JVM) {
+    // champ « Arguments Java » : un argument refusé (message sous le champ), puis un argument accepté
+    await js("window.showPage && window.showPage('settings')");
+    for (const [name, value] of [['jvm-refused', '-javaagent:C:\\evil.jar'], ['jvm-saved', '-XX:+UseStringDeduplication']]) {
+      await js(`(() => { const f = document.getElementById('jvm-args'); f.value = ${JSON.stringify(value)};
+        document.getElementById('jvm-args-save').click(); f.scrollIntoView({ block: 'center' }); })()`);
+      await wait(1500);
+      await fsp.writeFile(path.join(dir, `${name}.png`), (await win.webContents.capturePage()).toPNG());
+    }
   }
   // historique complet des versions (fenêtre « Tout voir » de l'accueil)
   await js("window.showPage && window.showPage('home'); document.getElementById('changelog-all').click()");

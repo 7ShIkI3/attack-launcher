@@ -163,6 +163,19 @@
           </div>
         </div>
 
+        <div class="card setting">
+          <div class="setting-text">
+            <h3 data-i18n="settings.jvmArgs">Arguments Java</h3>
+            <p class="muted" id="jvm-args-help">Ajoutés après les réglages par défaut, pour ce profil seulement. Laisse vide si tu ne sais pas.</p>
+          </div>
+          <div class="setting-control path">
+            <input type="text" id="jvm-args" spellcheck="false" maxlength="1000" data-i18n-placeholder="settings.jvmArgsPlaceholder" placeholder="Ex. : -XX:+UseStringDeduplication">
+            <button class="btn" id="jvm-args-save" data-i18n="common.save">Enregistrer</button>
+            <button class="btn ghost" id="jvm-args-reset" data-i18n="common.reset">Par défaut</button>
+          </div>
+          <p class="warn hidden" id="jvm-args-warn"></p>
+        </div>
+
         <!-- Profils Fabric seulement : Iris (shaders) est un mod optionnel du pack -->
         <div class="card setting hidden" id="shaders-card">
           <div class="setting-text">

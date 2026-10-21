@@ -75,7 +75,9 @@ connexion (HTTP …) » indiquent un refus du service : réessaie plus tard.
 | « Installation incomplète » au clic sur JOUER | Un des quatre voyants de l'accueil n'est pas vert | Clique sur **INSTALLER** |
 
 **Le jeu se ferme tout de suite** : ouvre le dernier `game-*.log` (Journaux du jeu). Pense à la mémoire allouée (Réglages :
-2 à 3 Go suffisent pour la 1.8.9, 3 à 4 Go pour 1.21.1 et 26.3 avec le pack, plus ne donne pas plus de FPS). Si tu n'as pas de compte connecté, JOUER ouvre le launcher
+2 à 3 Go suffisent pour la 1.8.9, 3 à 4 Go pour 1.21.1 et 26.3 avec le pack, plus ne donne pas plus de FPS). Si tu as mis des
+**arguments Java** (Réglages), vide le champ avec « Par défaut » : une option inconnue de ta version de Java (par exemple
+`-XX:+UseZGC` sur Java 8) empêche la JVM de démarrer, et le journal le dit en première ligne. Si tu n'as pas de compte connecté, JOUER ouvre le launcher
 officiel : c'est lui qui lance alors le jeu, et c'est son journal qu'il faut lire.
 
 **JOUER ouvre le launcher officiel au lieu du jeu** : aucun compte actif (ou compte hors ligne hors mode développeur). Ajoute un

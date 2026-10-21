@@ -276,23 +276,30 @@
 
   // --- réglages ---
   let savedTimer = null;
+  /** Enregistre `patch` ; renvoie le message d'erreur du processus principal, ou null si tout est enregistré. */
   async function save(patch) {
+    let failure = null;
     try {
       settings = await api.setSettings(patch);
     } catch (error) {
       // enregistrement refusé : on reprend les réglages réellement en vigueur côté processus principal
       settings = await api.getSettings();
-      setMessage(t('error.generic', { message: error.message }), 'error');
+      // Electron préfixe le message (« Error invoking remote method … Error: ») : on ne garde que le nôtre
+      failure = String(error.message).replace(/^Error invoking remote method '[^']*': (Error: )?/, '');
+      setMessage(t('error.generic', { message: failure }), 'error');
     }
     renderSettings();
     renderProfiles();
     renderMods();
     if ('profileId' in patch) renderStatus();
-    $('saved').classList.remove('hidden');
-    clearTimeout(savedTimer);
-    savedTimer = setTimeout(() => $('saved').classList.add('hidden'), 1600);
+    if (!failure) {
+      $('saved').classList.remove('hidden');
+      clearTimeout(savedTimer);
+      savedTimer = setTimeout(() => $('saved').classList.add('hidden'), 1600);
+    }
     if (['profileId', 'gameDir', 'devMode', 'devJarDir', 'shaders'].some((key) => key in patch)) refreshStatus();
     if ('devMode' in patch || 'msClientId' in patch) refreshAccounts();
+    return failure;
   }
 
   function formatRam(mb) {
@@ -306,6 +313,7 @@
       $('settings-profile').textContent = `${profile.label} · ${loaderName(profile)}`;
       $('ram-help').textContent = isFabric(profile) ? t('settings.ramHelpModern', { mc: profile.mc }) : t('settings.ramHelp');
       $('java-help').textContent = t('settings.javaHelp', { java: profile.javaMajor, mc: profile.mc });
+      $('jvm-args-help').textContent = t('settings.jvmArgsHelp', { java: profile.javaMajor });
       $('dev-help').textContent = t('settings.devHelp', { glob: profile.jarGlob });
       $('shaders-card').classList.toggle('hidden', !isFabric(profile));
       $('shaders').checked = Boolean(settings.shaders);
@@ -321,6 +329,12 @@
     $('java-mode').querySelectorAll('button').forEach((b) => b.classList.toggle('active', (b.dataset.value === 'custom') === custom));
     $('java-custom').classList.toggle('hidden', !custom);
     $('java-path').value = settings.javaPath;
+    // texte en cours de saisie gardé, sauf si le profil a changé : on affiche alors celui du nouveau profil
+    const jvmField = $('jvm-args');
+    const otherProfile = jvmField.dataset.profile !== settings.profileId;
+    if (otherProfile || document.activeElement !== jvmField) jvmField.value = settings.jvmArgs || '';
+    if (otherProfile) $('jvm-args-warn').classList.add('hidden');
+    jvmField.dataset.profile = settings.profileId;
     $('lang').querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.value === settings.lang));
     $('dev-mode').checked = settings.devMode;
     $('dev-dir-row').classList.toggle('hidden', !settings.devMode);
@@ -351,6 +365,19 @@
     const file = await api.pickJava();
     if (file) save({ javaPath: file });
   });
+  async function saveJvmArgs(value) {
+    const typed = value.trim();
+    const failure = await save({ jvmArgs: typed });
+    // refusé : le texte tapé reste dans le champ pour être corrigé
+    $('jvm-args').value = failure ? typed : settings.jvmArgs || '';
+    $('jvm-args-warn').textContent = failure || '';
+    $('jvm-args-warn').classList.toggle('hidden', !failure);
+  }
+  $('jvm-args-save').addEventListener('click', () => saveJvmArgs($('jvm-args').value));
+  $('jvm-args').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') saveJvmArgs(e.target.value);
+  });
+  $('jvm-args-reset').addEventListener('click', () => saveJvmArgs(''));
   $('lang').addEventListener('click', async (e) => {
     const value = e.target.dataset?.value;
     if (!value) return;

@@ -171,3 +171,19 @@ test('runtime Java : fichiers du manifeste (hash exigé, chemins sûrs)', () => 
   assert.throws(() => runtime.runtimeFiles({ files: { '../evil.exe': { type: 'file', downloads: { raw: { sha1: SHA } } } } }), /suspect/);
   assert.throws(() => runtime.runtimeFiles({ files: { 'bin/x': { type: 'file', downloads: { raw: { sha1: 'court' } } } } }), /Hash/);
 });
+
+test('arguments Java du joueur : après ceux par défaut, avant -cp ; refusés au lancement s’ils sont invalides', async () => {
+  const version = await game.resolveVersion(MC, FORGE.id, read);
+  const { classpath } = game.libraryPlan(version, MC, WIN64);
+  const options = {
+    java: 'C:\\rt\\bin\\javaw.exe', version, minecraftDir: MC, gameDir: 'C:\\g', nativesDir: 'C:\\natives', classpath,
+    identity: IDENTITY, ramMb: 3072, launcherVersion: '0.5.2', platform: 'win32',
+  };
+  const a = game.buildCommand({ ...options, jvmArgs: '-XX:+UseStringDeduplication  -XX:MaxGCPauseMillis=30' }).args;
+  const extra = a.indexOf('-XX:+UseStringDeduplication');
+  assert.ok(extra > a.indexOf('-XX:G1HeapRegionSize=32M'), 'après les arguments par défaut');
+  assert.equal(a[extra + 1], '-XX:MaxGCPauseMillis=30');
+  assert.ok(extra < a.indexOf('-cp'));
+  assert.deepEqual(game.buildCommand(options).args, game.buildCommand({ ...options, jvmArgs: '' }).args);
+  assert.throws(() => game.buildCommand({ ...options, jvmArgs: '-javaagent:C:\\x.jar' }), /Argument Java refusé/);
+});

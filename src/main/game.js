@@ -11,6 +11,7 @@ const catalog = require('./catalog');
 const { mavenPath, safeJoin } = require('./maven');
 const { readEntries, readEntry } = require('./zip');
 const { DEFAULT_JVM_ARGS } = require('./constants');
+const jvmargs = require('./jvmargs');
 
 const HIDDEN = '<masqué>';
 
@@ -125,7 +126,7 @@ function nativesSubdirs(version) {
 }
 
 /** Ligne de commande du format moderne (`arguments`) : le JSON de version fournit -cp, java.library.path et la marque. */
-function modernCommand({ java, version, minecraftDir, nativesDir, classpath, identity, ramMb, launcherVersion, platform, values, assetsDir }) {
+function modernCommand({ java, version, minecraftDir, nativesDir, classpath, identity, ramMb, extraJvmArgs, launcherVersion, platform, values, assetsDir }) {
   const env = mojang.currentEnv(platform);
   const modernValues = {
     ...values,
@@ -142,7 +143,7 @@ function modernCommand({ java, version, minecraftDir, nativesDir, classpath, ide
     resolution_height: '',
   };
   const fromJson = expandArguments(version.arguments.jvm, modernValues, env);
-  const jvmArgs = [`-Xmx${ramMb}M`, ...DEFAULT_JVM_ARGS.split(' '), ...fromJson];
+  const jvmArgs = [`-Xmx${ramMb}M`, ...jvmargs.baseArgs(DEFAULT_JVM_ARGS, extraJvmArgs), ...extraJvmArgs, ...fromJson];
   // ajoutés seulement s'ils manquent : jamais deux fois
   if (!fromJson.some((a) => a === '-cp' || a === '-classpath' || a === '--class-path')) jvmArgs.push('-cp', modernValues.classpath);
   if (!fromJson.some((a) => a.startsWith('-Djava.library.path='))) jvmArgs.push(`-Djava.library.path=${nativesDir}`);
@@ -163,8 +164,12 @@ function modernCommand({ java, version, minecraftDir, nativesDir, classpath, ide
  * Ligne de commande Java : { command, args, redacted }.
  * identity = { name, uuid, accessToken, userType } ; `redacted` est la version à journaliser (jeton masqué).
  * Deux formats de JSON de version : `minecraftArguments` (1.8.9 + Forge) et `arguments` avec règles (Fabric 1.21.1 / 26.3).
+ * `jvmArgs` : arguments Java ajoutés par le joueur (Réglages), placés après ceux par défaut ; ils sont revérifiés ici.
  */
-function buildCommand({ java, version, minecraftDir, gameDir, nativesDir, classpath, identity, ramMb, launcherVersion = '0', platform = process.platform }) {
+function buildCommand({ java, version, minecraftDir, gameDir, nativesDir, classpath, identity, ramMb, jvmArgs: extra = '', launcherVersion = '0', platform = process.platform }) {
+  const parsed = jvmargs.parseJvmArgs(extra);
+  if (!parsed.ok) throw new Error(jvmargs.describe(parsed));
+  const extraJvmArgs = parsed.args;
   const assetsDir = path.join(minecraftDir, 'assets');
   const values = {
     auth_player_name: identity.name,
@@ -181,12 +186,12 @@ function buildCommand({ java, version, minecraftDir, gameDir, nativesDir, classp
     version_type: 'release',
   };
   if (version.arguments) {
-    return modernCommand({ java, version, minecraftDir, gameDir, nativesDir, classpath, identity, ramMb, launcherVersion, platform, values, assetsDir });
+    return modernCommand({ java, version, minecraftDir, gameDir, nativesDir, classpath, identity, ramMb, extraJvmArgs, launcherVersion, platform, values, assetsDir });
   }
   const gameArgs = version.minecraftArguments.split(' ').filter(Boolean)
     .map((arg) => arg.replace(/\$\{(\w+)\}/g, (match, key) => (key in values ? values[key] : match)));
 
-  const jvmArgs = [`-Xmx${ramMb}M`, ...DEFAULT_JVM_ARGS.split(' ')];
+  const jvmArgs = [`-Xmx${ramMb}M`, ...jvmargs.baseArgs(DEFAULT_JVM_ARGS, extraJvmArgs), ...extraJvmArgs];
   if (platform === 'win32') jvmArgs.push('-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump');
   jvmArgs.push(
     `-Djava.library.path=${nativesDir}`,
@@ -218,10 +223,10 @@ function timestamp(date = new Date()) {
 
 /**
  * Prépare et lance le jeu. Renvoie { pid, logFile, child }. La sortie du jeu va dans <gameDir>/logs/launcher/game-*.log.
- * options : { java, minecraftDir, gameDir, versionId, identity, ramMb, launcherVersion }
+ * options : { java, minecraftDir, gameDir, versionId, identity, ramMb, jvmArgs, launcherVersion }
  */
 async function launchGame(options) {
-  const { java, minecraftDir, gameDir, versionId, identity, ramMb, launcherVersion } = options;
+  const { java, minecraftDir, gameDir, versionId, identity, ramMb, jvmArgs, launcherVersion } = options;
   if (!fs.existsSync(java)) throw new Error(`Java introuvable : ${java}`);
   const version = await resolveVersion(minecraftDir, versionId);
   const { classpath, natives } = libraryPlan(version, minecraftDir);
@@ -231,7 +236,7 @@ async function launchGame(options) {
   await extractNatives(natives, nativesDir);
   for (const sub of nativesSubdirs(version)) await fsp.mkdir(safeJoin(nativesDir, sub), { recursive: true });
   await fsp.mkdir(gameDir, { recursive: true });
-  const command = buildCommand({ java, version, minecraftDir, gameDir, nativesDir, classpath, identity, ramMb, launcherVersion });
+  const command = buildCommand({ java, version, minecraftDir, gameDir, nativesDir, classpath, identity, ramMb, jvmArgs, launcherVersion });
 
   const logDir = path.join(gameDir, 'logs', 'launcher');
   await fsp.mkdir(logDir, { recursive: true });

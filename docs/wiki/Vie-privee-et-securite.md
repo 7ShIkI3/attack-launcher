@@ -65,7 +65,7 @@ Détails utiles :
 | Emplacement | Contenu | Chiffré ? | Réf. |
 | --- | --- | --- | --- |
 | `%APPDATA%\ATTACK Launcher\accounts.json` | Pour chaque compte : identifiant (UUID), pseudo, type, image du skin (`data:` URL), modèle de bras, date d'ajout ; **refresh token** | Le refresh token : **oui** (DPAPI). Le reste : non (pas de secret) | `accounts.js:67-75` |
-| `%APPDATA%\ATTACK Launcher\settings.json` | Mémoire, dossier de jeu, Java, langue, mode développeur, dossier des jars de test, ID client Azure (pas un secret) | Non | `settings.js:53-74` |
+| `%APPDATA%\ATTACK Launcher\settings.json` | Mémoire, dossier de jeu, Java, arguments Java, langue, mode développeur, dossier des jars de test, ID client Azure (pas un secret) | Non | `settings.js:53-74` |
 | `%APPDATA%\ATTACK Launcher\logs\updater.log` | Journal des mises à jour (dates, versions, erreurs) ; passe en `.old` au-delà de 1 Mo | Non | `main.js:74-90` |
 | `%LOCALAPPDATA%\ATTACK Launcher\runtime` | Java 8 officiel de Mojang | Non | `main.js:33-35` |
 | `%LOCALAPPDATA%\attack-launcher-updater` | Mise à jour téléchargée en attente d'installation (cache d'`electron-updater`) | Non | `app-update.yml` généré par electron-builder |
@@ -88,6 +88,7 @@ Détails utiles :
 | Profil Fabric piégé | JSON de `meta.fabricmc.net` validé strictement (id, version de Minecraft, classe Knot, dépôts `maven.fabricmc.net` / Mojang seulement, hash bien formés, une seule option Java acceptée (valeur exacte de `-DFabricMcEmu=`), aucun argument du jeu), puis réécrit à partir des seuls champs connus ; SHA-1 de `fabric-loader` et `intermediary` figés dans le catalogue | `fabric.js`, `catalog.js` |
 | Mod du pack falsifié ou mal nommé | Adresse figée sur `cdn.modrinth.com` uniquement, SHA-512 et taille vérifiés avant de garder le fichier, nom de fichier sans chemin, jars du joueur jamais supprimés | `modpack.js` |
 | Chemins malveillants (`..`, absolus) dans des manifestes | `safeJoin` refuse de sortir du dossier ; coordonnées Maven validées ; chemins du runtime Java contrôlés ; extraction des natives par `safeJoin` | `maven.js:5-25`, `maven.js:40-47`, `runtime.js:36-50`, `game.js:75-91` |
+| Argument Java piégé (tutoriel qui fait coller une option) | Liste d'autorisation : seules `-Xms`/`-Xss`/`-Xmn`, les `-XX:` à valeur simple (sans celles qui lancent une commande, lisent ou écrivent un fichier) et quelques `-D` sans risque passent. Refusés notamment : agents Java, `-Xbootclasspath`, `-Xrun`, `-Dfabric.addMods` (chargerait un jar), `-Dminecraft.api.*` (enverrait le jeton ailleurs), `-XX:VMOptionsFile`, vidages mémoire (contiendraient le jeton). Vérifié à l'enregistrement et revérifié au lancement | `jvmargs.js`, `main.js` (`settings:set`), `game.js` (`buildCommand`) |
 | Fuite du jeton Minecraft | Gardé en mémoire ; jamais transmis à la page ; masqué dans les journaux (`--accessToken`, `--session`, ou toute occurrence) | `accounts.js:27`, `preload.js:1-3`, `game.js:133-139` |
 | Vol du refresh token sur disque | Chiffré par `safeStorage` (DPAPI) ; si le chiffrement est indisponible, la connexion échoue plutôt que d'écrire en clair | `main.js:50-58` |
 | Page d'interface compromise | `contextIsolation`, `sandbox`, pas de `nodeIntegration` ; CSP stricte ; ouverture de fenêtres et navigation bloquées ; messages IPC acceptés uniquement depuis `index.html`, par une liste fixe de canaux | `main.js:66-71`, `main.js:434-445`, `index.html:5-6`, `preload.js` |
@@ -111,7 +112,7 @@ Détails utiles :
 - **DPAPI** protège contre la copie du fichier vers un autre compte ou PC, pas contre un programme qui s'exécute sous ta
   propre session Windows.
 - **Jeton visible pendant la partie** dans les arguments du processus Java, comme avec tout launcher.
-- **Pas d'option pour couper la vérification des mises à jour** (Réglages : mémoire, dossier de jeu, Java, langue, mode
+- **Pas d'option pour couper la vérification des mises à jour** (Réglages : mémoire, dossier de jeu, Java, arguments Java, langue, mode
   développeur, ID client). La version portable la fait aussi. Seul un pare-feu l'empêche.
 - **Durées de conservation chez les tiers** (Microsoft, Mojang, GitHub, Forge) : non vérifiées, elles dépendent de leurs
   politiques.

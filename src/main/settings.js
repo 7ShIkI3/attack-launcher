@@ -2,13 +2,14 @@
 // Réglages du launcher (settings.json dans le dossier de données de l'app). Toute valeur venant de l'interface
 // passe par sanitize() : type, bornes et chemins absolus.
 // Réglages globaux (mémoire, langue, mode développeur, ID client Azure, profil choisi) + réglages PAR PROFIL
-// (dossier de jeu, Java, dossier des jars de développement, shaders) rangés dans `profiles`.
+// (dossier de jeu, Java, arguments Java ajoutés, dossier des jars de développement, shaders) rangés dans `profiles`.
 // Les clés à plat gameDir / javaPath / devJarDir / shaders d'un fichier ou d'une modification s'appliquent au profil
 // courant : c'est ce qui migre l'ancien fichier (réglages globaux) vers le profil forge-1.8.9.
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const catalog = require('./catalog');
+const jvmargs = require('./jvmargs');
 const { defaultGameDir, defaultDevJarDir } = require('./paths');
 
 const LANGS = ['fr', 'en'];
@@ -37,7 +38,7 @@ function clientId(settings, env = process.env) {
 
 /** Réglages par défaut d'un profil du catalogue. */
 function profileDefaults(env, profile) {
-  const values = { gameDir: defaultGameDir(env, profile), javaPath: '', devJarDir: defaultDevJarDir(env, profile) };
+  const values = { gameDir: defaultGameDir(env, profile), javaPath: '', jvmArgs: '', devJarDir: defaultDevJarDir(env, profile) };
   if (catalog.isFabric(profile)) values.shaders = false;
   return values;
 }
@@ -82,12 +83,17 @@ function sanitizeProfile(input, base, profile, otherDirs = []) {
     const java = cleanPath(input.javaPath, base.javaPath, { allowEmpty: true });
     s.javaPath = java === '' || /javaw?\.exe$|\/java$/i.test(java) ? java : base.javaPath;
   }
+  if ('jvmArgs' in input) {
+    // invalide : on garde l'ancienne valeur (l'interface reçoit l'erreur de settings:set)
+    const args = jvmargs.normalize(input.jvmArgs);
+    if (args !== null) s.jvmArgs = args;
+  }
   if ('devJarDir' in input) s.devJarDir = cleanPath(input.devJarDir, base.devJarDir);
   if (catalog.isFabric(profile) && typeof input.shaders === 'boolean') s.shaders = input.shaders;
   return s;
 }
 
-const PROFILE_KEYS = ['gameDir', 'javaPath', 'devJarDir', 'shaders'];
+const PROFILE_KEYS = ['gameDir', 'javaPath', 'jvmArgs', 'devJarDir', 'shaders'];
 
 /** Fusionne `input` sur `base` en ne gardant que des valeurs valides. */
 function sanitize(input, base = defaults()) {
@@ -125,7 +131,7 @@ function sanitize(input, base = defaults()) {
 }
 
 /**
- * Réglages effectifs d'un profil (le courant par défaut), à plat : globaux + gameDir, javaPath, devJarDir, shaders.
+ * Réglages effectifs d'un profil (le courant par défaut), à plat : globaux + gameDir, javaPath, jvmArgs, devJarDir, shaders.
  * C'est cette vue que reçoivent l'installateur, le lancement et l'interface.
  */
 function forProfile(settings, profileId = settings.profileId) {
@@ -139,6 +145,7 @@ function forProfile(settings, profileId = settings.profileId) {
     profileId: id,
     gameDir: own.gameDir,
     javaPath: own.javaPath,
+    jvmArgs: own.jvmArgs || '',
     devJarDir: own.devJarDir,
     shaders: Boolean(own.shaders),
   };
