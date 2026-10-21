@@ -34,7 +34,7 @@ anglais (Réglages → Langue).
 
 Elle suit le profil choisi sur l'accueil :
 
-- **1.8.9** : vitrine des **60 modules** inclus dans ATTACK Client, filtrables par catégorie (Combat, HUD, Visuel,
+- **1.8.9** : vitrine des **61 modules** inclus dans ATTACK Client, filtrables par catégorie (Combat, HUD, Visuel,
   Performance, Utilitaire). C'est une liste d'information (`src/renderer/data.js`) : on active et règle chaque module
   **en jeu**, depuis le menu ATTACK, pas dans le launcher.
 - **1.21.1 et 26.3** : le mod ATTACK (avec sa version installée, ou « à installer ») et les mods du **pack figé** avec leur

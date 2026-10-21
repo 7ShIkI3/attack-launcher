@@ -46,6 +46,7 @@
     { name: 'FPS Boost', icon: 'FX', cat: 'perf', fr: 'Réglages de rendu pour plus d’images par seconde.', en: 'Rendering tweaks for higher frame rates.' },
     { name: 'Scoreboard', icon: 'SB', cat: 'utility', fr: 'Tableau des scores déplaçable et allégé.', en: 'Movable, cleaner scoreboard.' },
     { name: 'Chat', icon: 'CT', cat: 'utility', fr: 'Messages répétés regroupés et chat plus propre.', en: 'Stacks repeated messages, cleaner chat.' },
+    { name: 'Amis', en_name: 'Friends', icon: 'AM', cat: 'utility', fr: 'Ajoute tes amis ATTACK par pseudo et discute en privé (touche N) ; messages effacés après 24 h.', en: 'Add your ATTACK friends by name and chat privately (N key); messages erased after 24 h.' },
     { name: 'Nick Hider', icon: 'NH', cat: 'utility', fr: 'Masque ton pseudo à l’écran (enregistrements).', en: 'Hides your name on screen (recordings).' },
     // ATTACK Client 2.1
     { name: 'Perspective', icon: 'PE', cat: 'visual', fr: 'Tourne la caméra autour de toi sans changer ta direction (interdit sur Hypixel).', en: 'Turn the camera around you without changing direction (banned on Hypixel).' },
@@ -76,6 +77,11 @@
   ];
 
   const CHANGELOG = [
+    {
+      version: 'ATTACK Client 2.4', date: '2026-10-21',
+      fr: 'Menu Amis (touche N, ou l’onglet Amis du menu) : ajoute un ami par son pseudo s’il utilise ATTACK Client, accepte les demandes, vois qui est en ligne et discute en privé. Les messages sont effacés 24 h après leur envoi ; rien n’est envoyé avant ta première ouverture du menu.',
+      en: 'Friends menu (N key, or the Friends tab of the menu): add a friend by name if they use ATTACK Client, accept requests, see who is online and chat privately. Messages are erased 24 h after they are sent; nothing is sent before you first open the menu.',
+    },
     {
       version: 'ATTACK Client 3.1', date: '2026-10-20',
       fr: 'En 1.21.1 et 26.3, Maj droite ouvre le même menu qu’en 1.8.9 : onglets, recherche, 39 mods à activer et régler (HUD complet, viseur, FOV, Fullbright, ToggleSprint, Auto Text…), éditeur de HUD par glisser-déposer et écran Personnaliser. Tes réglages FPS, CPS et touches sont repris.',
