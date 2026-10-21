@@ -423,3 +423,17 @@ test('état d’un profil vide, et le profil Forge reste sans pack (champ forge 
   assert.equal(forgeStatus.loader, false);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('arguments Java : propres à chaque profil, normalisés, valeur invalide ignorée', () => {
+  let s = settings.sanitize({ jvmArgs: '  -XX:+UseStringDeduplication   -Xss4M ' }, settings.defaults(ENV));
+  assert.equal(settings.forProfile(s).jvmArgs, '-XX:+UseStringDeduplication -Xss4M');
+  assert.equal(settings.forProfile(s, 'fabric-1.21.1').jvmArgs, '', 'le réglage est propre à chaque profil');
+  s = settings.sanitize({ jvmArgs: '-javaagent:C:\\evil.jar' }, s);
+  assert.equal(settings.forProfile(s).jvmArgs, '-XX:+UseStringDeduplication -Xss4M', 'ancienne valeur gardée');
+  s = settings.sanitize({ profiles: { 'fabric-26.3': { jvmArgs: '-XX:+UseZGC' } } }, s);
+  assert.equal(settings.forProfile(s, 'fabric-26.3').jvmArgs, '-XX:+UseZGC');
+  assert.equal(settings.forProfile(settings.sanitize({ jvmArgs: '' }, s)).jvmArgs, '');
+  // ancien fichier sans la clé
+  const old = settings.sanitize({ profiles: { 'forge-1.8.9': { gameDir: 'D:\\jeu' } } }, settings.defaults(ENV));
+  assert.equal(settings.forProfile(old).jvmArgs, '');
+});

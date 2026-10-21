@@ -239,3 +239,17 @@ test('variable non résolue : le message ne cite que son nom, jamais l’argumen
     java: 'java', version, minecraftDir: MC, gameDir: GAME_DIR, nativesDir: NATIVES, classpath, identity: IDENTITY, ramMb: 2048, platform: 'win32',
   }), (error) => /variable de lancement non résolue : zzz/i.test(error.message) && !error.message.includes(TOKEN));
 });
+
+test('Fabric : arguments Java du joueur après ceux par défaut, avant ceux du JSON (-cp une seule fois)', async () => {
+  const version = await game.resolveVersion(MC, 'fabric-loader-0.19.5-1.21.1', read);
+  const { classpath } = game.libraryPlan(version, MC, mojang.currentEnv('win32', 'x64'));
+  const a = game.buildCommand({
+    java: 'C:\\rt\\bin\\javaw.exe', version, minecraftDir: MC, gameDir: GAME_DIR, nativesDir: NATIVES, classpath,
+    identity: IDENTITY, ramMb: 3072, jvmArgs: '-XX:+UseZGC -XX:+ZGenerational', launcherVersion: '0.5.2', platform: 'win32',
+  }).args;
+  const extra = a.indexOf('-XX:+UseZGC');
+  assert.ok(extra > a.indexOf('-XX:G1HeapRegionSize=32M'));
+  assert.equal(a[extra + 1], '-XX:+ZGenerational');
+  assert.ok(extra < a.indexOf('-cp'));
+  assert.equal(count(a, (x) => x === '-cp'), 1);
+});

@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { PROFILE_ID, PROFILE_NAME, FORGE_VERSION_ID, DEFAULT_JVM_ARGS } = require('./constants');
+const jvmargs = require('./jvmargs');
 
 const PROFILES_FILE = 'launcher_profiles.json';
 
@@ -16,24 +17,34 @@ function withXmx(javaArgs, ramMb) {
   return [xmx, ...args].join(' ');
 }
 
+/** Arguments Java du profil (sans -Xmx) : défauts + `extra` ; sans `extra`, défauts si ATTACK avait ajouté les siens. */
+function javaArgsFor(extra, previous) {
+  if (extra.length > 0) return [...jvmargs.baseArgs(DEFAULT_JVM_ARGS, extra), ...extra].join(' ');
+  return jvmargs.writtenExtra(DEFAULT_JVM_ARGS, previous) ? DEFAULT_JVM_ARGS : previous;
+}
+
 /**
  * Renvoie une copie de `data` (contenu de launcher_profiles.json, ou null) avec un profil ATTACK à jour.
- * options : { id, name, versionId, gameDir, ramMb, javaPath, icon, now } ; sans id / name / versionId, c'est le profil
+ * options : { id, name, versionId, gameDir, ramMb, javaPath, jvmArgs, icon, now } ; sans id / name / versionId, c'est le profil
  * historique « ATTACK Client » (Forge 1.8.9).
+ * Arguments Java : avec des `jvmArgs` (Réglages), ceux par défaut + les siens. Sans : si le profil contient des arguments
+ * écrits par ATTACK (défauts + options autorisées), retour aux défauts ; sinon ceux du profil sont gardés (modifiés à la
+ * main dans le launcher officiel) et seul -Xmx change.
  */
-function mergeProfile(data, { id = PROFILE_ID, name = PROFILE_NAME, versionId = FORGE_VERSION_ID, gameDir, ramMb, javaPath, icon, now = new Date() }) {
+function mergeProfile(data, { id = PROFILE_ID, name = PROFILE_NAME, versionId = FORGE_VERSION_ID, gameDir, ramMb, javaPath, jvmArgs, icon, now = new Date() }) {
   const result = data && typeof data === 'object' ? structuredClone(data) : {};
   if (!result.profiles || typeof result.profiles !== 'object') result.profiles = {};
   if (!result.settings) result.settings = {};
   if (!result.version) result.version = 3;
   const previous = result.profiles[id] || {};
+  const extra = jvmargs.argsOf(jvmArgs);
   const profile = {
     ...previous,
     name,
     type: 'custom',
     lastVersionId: versionId,
     gameDir,
-    javaArgs: withXmx(previous.javaArgs, ramMb),
+    javaArgs: withXmx(javaArgsFor(extra, previous.javaArgs), ramMb),
     created: previous.created || now.toISOString(),
     lastUsed: previous.lastUsed || now.toISOString(),
   };

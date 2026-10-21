@@ -48,7 +48,7 @@ Elle suit le profil choisi sur l'accueil :
 Les réglages sont enregistrés automatiquement dans `%APPDATA%\ATTACK Launcher\settings.json` et appliqués au profil
 au prochain clic sur JOUER. Toute valeur passe par `sanitize()` (`src/main/settings.js`) : type, bornes, chemins absolus.
 Certains réglages sont **globaux** (mémoire, langue, mode développeur, ID client Azure, profil choisi), d'autres **propres à
-chaque profil** (dossier de jeu, Java, dossier des jars de développement, shaders) : un badge en haut de la page rappelle
+chaque profil** (dossier de jeu, Java, arguments Java, dossier des jars de développement, shaders) : un badge en haut de la page rappelle
 le profil concerné. Un ancien `settings.json` (réglages tous globaux) est migré tout seul : son dossier de jeu, son Java
 et son dossier de jars deviennent ceux du profil 1.8.9.
 
@@ -57,6 +57,7 @@ et son dossier de jars deviennent ceux du profil 1.8.9.
 | Mémoire allouée | 1 Go minimum, par pas de 256 Mo, 2 Go par défaut. Le curseur monte jusqu'à la mémoire de ce PC (entre 4 et 16 Go). Un avertissement apparaît au-delà de la moitié de la mémoire du PC. Valeur transmise au jeu en `-Xmx`. |
 | Dossier de jeu | Par profil : `%APPDATA%\.attack` (1.8.9) ou `%APPDATA%\.attack\profiles\fabric-<version>` (Fabric) par défaut : mods, réglages, captures et mondes d'ATTACK Client, séparés de ton `.minecraft`. Deux profils ne peuvent pas partager le même dossier : le launcher garde l'ancien (et l'installation refuse un dossier déjà marqué par un autre profil). |
 | Java | Par profil : « Fourni par Minecraft » (runtime officiel du profil : Java 8, 21 ou 25, installé par le launcher) ou « Personnalisé » (chemin d'un `javaw.exe` ou `java.exe`). |
+| Arguments Java | Par profil, vide par défaut. Options ajoutées **après** les arguments par défaut (G1GC...) : pour la JVM, la dernière valeur d'une option l'emporte, donc tu peux aussi en remplacer une (`-XX:MaxGCPauseMillis=30`). Exception : un seul ramasse-miettes à la fois ; si tu en choisis un autre (`-XX:+UseZGC`, `-XX:+UseParallelGC`...), les options G1 par défaut sont retirées. Séparées par des espaces, 1000 caractères et 40 options au plus. **Liste d'autorisation** (`src/main/jvmargs.js`) : `-Xms`, `-Xss`, `-Xmn` ; `-XX:+Nom`, `-XX:-Nom`, `-XX:Nom=valeur` (valeur simple, sans chemin), sauf les options qui lancent une commande, lisent ou écrivent un fichier (`OnError`, `VMOptionsFile`, `ErrorFile`, `HeapDump...`, `StartFlightRecording`...) ou règlent la mémoire maximale (`-Xmx`, `MaxRAM`, `MaxHeapSize` : c'est le curseur Mémoire) ; et les propriétés `sun.java2d.*`, `file.encoding`, `sun.jnu.encoding`, `user.language`, `user.country`, `java.net.preferIPv4Stack`. Tout le reste est refusé, parce que beaucoup d'options chargent du code (`-javaagent`, `-Xbootclasspath`, `-Dfabric.addMods`) ou détournent la connexion (`-Dminecraft.api.session.host` enverrait ton jeton ailleurs). Un argument refusé est expliqué sous le champ, l'ancienne valeur est gardée. Une option que ta version de Java ne connaît pas empêche le jeu de démarrer : lis alors `game-*.log`. |
 | Shaders (Iris) | Profils Fabric seulement : ajoute Iris au pack de mods (version qui va avec Sodium). Appliqué à la prochaine installation (bouton INSTALLER) ; coupé, Iris est retiré à l'installation suivante. |
 | Langue | Français ou English. |
 | Mode développeur | Voir plus bas. |
@@ -87,7 +88,7 @@ bouton vers la page Releases (version portable). Voir [Installation et mises à 
 | Journal | `<dossier de jeu>\logs\launcher\game-*.log` | Celui du launcher officiel |
 
 Le lancement direct : natives extraites dans `<.minecraft>\versions\<version du profil>\natives-attack`, classpath du
-chargeur + Minecraft, mémoire des Réglages, arguments Java par défaut du launcher officiel (G1GC...), configuration log4j de
+chargeur + Minecraft, mémoire des Réglages, arguments Java par défaut du launcher officiel (G1GC...) puis ceux des Réglages, configuration log4j de
 Mojang (qui corrige aussi la faille Log4Shell des anciennes versions). Marque envoyée au jeu :
 `-Dminecraft.launcher.brand=attack-launcher` (`src/main/game.js:97-130`).
 
@@ -101,8 +102,11 @@ partie » du launcher officiel, il est présélectionné.
 `attack-client`, inchangé), **« ATTACK 1.21.1 »** (`attack-fabric-1.21.1`) ou **« ATTACK 26.3 »** (`attack-fabric-26.3`) :
 
 - version : Forge 1.8.9 (`1.8.9-forge1.8.9-11.15.1.2318-1.8.9`) ou Fabric Loader (`fabric-loader-0.19.5-1.21.1`,
-  `fabric-loader-0.19.5-26.3`), dossier de jeu séparé, `-Xmx` tiré des Réglages, autres
-  arguments Java conservés (ceux du launcher officiel par défaut), Java personnalisé si choisi, icône ATTACK ;
+  `fabric-loader-0.19.5-26.3`), dossier de jeu séparé, `-Xmx` tiré des Réglages, Java personnalisé si choisi,
+  icône ATTACK ;
+- arguments Java : si tu en as mis dans Réglages, ceux par défaut suivis des tiens ; sinon, ceux déjà dans le profil
+  sont conservés (tu as pu les modifier dans le launcher officiel) et seul `-Xmx` change. Quand tu vides le champ,
+  les arguments qu'ATTACK avait écrits (défauts + options autorisées) sont retirés : le profil revient aux défauts ;
 - **fusion, pas remplacement** : tes autres profils et réglages restent intacts, la date de création du profil est gardée ;
 - une copie `launcher_profiles.json.bak` est faite avant **chaque** écriture, et l'écriture est atomique (fichier
   temporaire puis renommage) ;

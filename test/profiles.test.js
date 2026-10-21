@@ -77,3 +77,21 @@ test('écriture : sauvegarde .bak, JSON valide ; fichier illisible jamais écras
   assert.equal(fs.readFileSync(file, 'utf8'), '{ cassé');
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('arguments Java du joueur : écrits avec ceux par défaut ; sans eux, ceux du profil restent', () => {
+  const first = profiles.mergeProfile(EXISTING, OPTIONS);
+  first.profiles[C.PROFILE_ID].javaArgs = '-Xmx3072M -XX:+UseG1GC -Dperso=1';
+  const withArgs = profiles.mergeProfile(first, { ...OPTIONS, jvmArgs: '-XX:+UseStringDeduplication' }).profiles[C.PROFILE_ID];
+  assert.equal(withArgs.javaArgs, `-Xmx3072M ${C.DEFAULT_JVM_ARGS} -XX:+UseStringDeduplication`);
+  assert.equal(profiles.mergeProfile(first, { ...OPTIONS, jvmArgs: '' }).profiles[C.PROFILE_ID].javaArgs, '-Xmx3072M -XX:+UseG1GC -Dperso=1');
+  // valeur invalide (fichier modifié à la main) : rien d'ajouté
+  assert.equal(profiles.mergeProfile(null, { ...OPTIONS, jvmArgs: '-javaagent:x.jar' }).profiles[C.PROFILE_ID].javaArgs,
+    profiles.withXmx(undefined, 3072));
+});
+
+test('arguments Java vidés : ceux écrits par ATTACK retirés du profil officiel (ZGC puis Par défaut)', () => {
+  const zgc = profiles.mergeProfile(null, { ...OPTIONS, jvmArgs: '-XX:+UseZGC' });
+  assert.equal(zgc.profiles[C.PROFILE_ID].javaArgs, '-Xmx3072M -XX:+UnlockExperimentalVMOptions -XX:+UseZGC');
+  const reset = profiles.mergeProfile(zgc, { ...OPTIONS, jvmArgs: '' });
+  assert.equal(reset.profiles[C.PROFILE_ID].javaArgs, profiles.withXmx(undefined, 3072));
+});

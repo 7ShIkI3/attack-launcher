@@ -61,6 +61,7 @@ réseau ou du chiffrement reçoivent leur dépendance en paramètre (un « trans
 | `accounts.js` | Comptes enregistrés (`accounts.json`) : refresh token chiffré, jeton Minecraft en mémoire |
 | `skins.js` | Lecture, envoi et réinitialisation du skin chez Mojang ; contrôle du PNG |
 | `settings.js`, `paths.js` | Réglages validés (`settings.json`, globaux + par profil, migration de l'ancien format) et dossiers par défaut de chaque profil |
+| `jvmargs.js` | Arguments Java ajoutés par le joueur : découpage, limites, liste d'autorisation (`-Xms`/`-Xss`/`-Xmn`, `-XX:` à valeur simple, quelques `-D`) |
 | `updates.js` | Contrôleur des mises à jour du launcher (par-dessus `electron-updater`) |
 
 Les noeuds les plus connectés du graphe de dépendances du dépôt sont `AccountStore`, `UpdateController`,

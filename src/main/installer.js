@@ -300,7 +300,7 @@ async function installMod(gameDir, settings, report, net, profile = catalog.get(
 async function installProfile(mcDir, gameDir, settings, icon, report, profile = catalog.get()) {
   report('profile', 0, 1, 'Profil du launcher officiel');
   await profiles.updateProfiles(mcDir, (data) =>
-    profiles.mergeProfile(data, { ...profiles.identityOf(profile), gameDir, ramMb: settings.ramMb, javaPath: settings.javaPath, icon }));
+    profiles.mergeProfile(data, { ...profiles.identityOf(profile), gameDir, ramMb: settings.ramMb, javaPath: settings.javaPath, jvmArgs: settings.jvmArgs, icon }));
   report('profile', 1, 1);
 }
 
