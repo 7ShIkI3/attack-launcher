@@ -9,7 +9,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const API = 'https://api.modrinth.com/v2';
-const USER_AGENT = '7ShIkI3/attack-launcher/0.5.0 (github.com/7ShIkI3/attack-launcher)';
+const USER_AGENT = '7ShIkI3/attack-launcher/0.5.2 (github.com/7ShIkI3/attack-launcher)';
 const OUT_DIR = path.join(__dirname, '..', 'src', 'main', 'packs');
 const CDN_HOST = 'cdn.modrinth.com';
 
@@ -23,12 +23,12 @@ const SPECS = {
     mc: '1.21.1',
     mods: [
       { slug: 'fabric-api', name: 'Fabric API', versionNumber: '0.116.17+1.21.1', version: '0.116.17' },
-      { slug: 'sodium', name: 'Sodium', versionNumber: 'mc1.21.1-0.6.13-fabric', version: '0.6.13' },
+      { slug: 'sodium', name: 'Sodium', versionNumber: 'mc1.21.1-0.8.13-fabric', version: '0.8.13' },
       { slug: 'lithium', name: 'Lithium', versionNumber: 'mc1.21.1-0.15.4-fabric', version: '0.15.4' },
       { slug: 'ferrite-core', name: 'FerriteCore', versionNumber: '7.0.3-fabric', version: '7.0.3' },
       { slug: 'immediatelyfast', name: 'ImmediatelyFast', versionNumber: '1.6.15+1.21.1-fabric', version: '1.6.15' },
       { slug: 'modmenu', name: 'Mod Menu', versionNumber: '11.0.5', version: '11.0.5' },
-      { slug: 'iris', name: 'Iris Shaders', versionNumber: '1.8.8+1.21.1-fabric', version: '1.8.8', optional: true },
+      { slug: 'iris', name: 'Iris Shaders', versionNumber: '1.8.14-beta.1+1.21.1-fabric', version: '1.8.14-beta.1', optional: true },
     ],
   },
   'fabric-26.3': {
