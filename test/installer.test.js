@@ -31,6 +31,8 @@ function fakeFetch(url, init) {
   requested.push(String(url));
   const route = routes.get(String(url));
   if (route === undefined) return Promise.resolve(new Response('absent', { status: 404 }));
+  // une fonction fabrique une Response neuve à chaque appel (body.cancel() sur un clone ne se termine jamais sous Node)
+  if (typeof route === 'function') return Promise.resolve(route());
   return Promise.resolve(new Response(route, { status: 200 }));
 }
 test.before(() => {
@@ -331,6 +333,18 @@ test('release GitHub : un launcher en préversion lit les dernières releases (p
   routes.delete(LIST_URL);
   await assert.rejects(installer.installMod(tempDir(), { devMode: false }, noReport, {}, profile, '0.5.0-beta.1'), (error) => error.code === 'NO_RELEASE');
   fs.rmSync(beta, { recursive: true, force: true });
+});
+
+test('limite de l’API GitHub (403 + x-ratelimit-remaining: 0, sans jeton) : code clair avec le délai, pas « HTTP 403 »', async () => {
+  const reset = Math.floor(Date.now() / 1000) + 25 * 60;
+  routes.set(RELEASE_URL, () => new Response('{"message":"API rate limit exceeded"}', {
+    status: 403, headers: { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(reset) },
+  }));
+  await assert.rejects(installer.installMod(tempDir(), { devMode: false }, noReport, {}, catalog.get('forge-1.8.9'), '0.5.2'),
+    (error) => error.code === 'GITHUB_RATE_LIMIT' && /dans 2[456] min/.test(error.message));
+  // un 403 ordinaire (sans en-tête de limite) reste une erreur HTTP
+  routes.set(RELEASE_URL, () => new Response('forbidden', { status: 403 }));
+  await assert.rejects(installer.installMod(tempDir(), { devMode: false }, noReport, {}, catalog.get('forge-1.8.9'), '0.5.2'), (error) => error.status === 403);
 });
 
 test('release GitHub : pas de jar pour ce profil = erreur claire (NO_PROFILE_JAR) ; jar altéré rejeté', async () => {

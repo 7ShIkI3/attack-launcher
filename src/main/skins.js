@@ -44,7 +44,7 @@ function activeSkin(profile) {
 
 function failure(response, action) {
   const status = response.status;
-  if (status === 401) return new SkinError('EXPIRED', 'Session Minecraft expirée : reconnecte le compte.');
+  if (status === 401) return new SkinError('SESSION_EXPIRED', 'Session Minecraft expirée : reconnecte le compte.');
   if (status === 429) return new SkinError('RATE_LIMITED', 'Trop de changements de skin : réessaie dans une minute.');
   if (status === 400) {
     const detail = response.data?.errorMessage || response.data?.error || '';

@@ -279,6 +279,10 @@ async function installMod(gameDir, settings, report, net, profile = catalog.get(
       if (error.status === 404 || error.code === 'NO_RELEASE') {
         throw new InstallError('NO_RELEASE', "Aucune release d'ATTACK Client n'est encore publiée sur GitHub.");
       }
+      if (error.rateLimited) {
+        const minutes = error.retryAfterMs ? Math.max(1, Math.ceil(error.retryAfterMs / 60000)) : 60;
+        throw new InstallError('GITHUB_RATE_LIMIT', `GitHub limite les requêtes depuis ta connexion : réessaie dans ${minutes} min.`);
+      }
       throw error;
     }
     let asset;

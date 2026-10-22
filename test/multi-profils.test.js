@@ -152,6 +152,36 @@ test('dossier de jeu : refusé s’il est déjà celui d’un autre profil (cass
 
 const NOW = new Date('2026-10-19T12:00:00.000Z');
 
+test('relecture du fichier : un profil qui a pris le dossier par défaut d’un autre (parti ailleurs) le garde ; doublons résolus', async () => {
+  const dirOf = (s, id) => settings.forProfile(s, id).gameDir;
+  // à chaud : Fabric 1.21.1 déménage, puis Forge prend l'ancien dossier par défaut de Fabric 1.21.1 (libre)
+  let s = settings.sanitize({ profileId: 'fabric-1.21.1', gameDir: 'D:\\x' }, settings.defaults(ENV));
+  s = settings.sanitize({ profileId: 'forge-1.8.9', gameDir: GAME_121 }, s);
+  assert.equal(dirOf(s, 'forge-1.8.9'), GAME_121);
+  // relu depuis le disque : les deux dossiers sont conservés (avant : Forge revenait à .attack sans rien dire)
+  const reread = settings.sanitize(JSON.parse(JSON.stringify(s)), settings.defaults(ENV));
+  assert.equal(dirOf(reread, 'forge-1.8.9'), GAME_121);
+  assert.equal(dirOf(reread, 'fabric-1.21.1'), 'D:\\x');
+  assert.equal(dirOf(reread, 'fabric-26.3'), dirOf(settings.defaults(ENV), 'fabric-26.3'));
+  // échange de dossiers entre deux profils dans le fichier : accepté
+  const swapped = settings.sanitize({ profiles: { 'forge-1.8.9': { gameDir: GAME_121 }, 'fabric-1.21.1': { gameDir: path.join(ENV.APPDATA, '.attack') } } }, settings.defaults(ENV));
+  assert.equal(dirOf(swapped, 'forge-1.8.9'), GAME_121);
+  assert.equal(dirOf(swapped, 'fabric-1.21.1'), path.join(ENV.APPDATA, '.attack'));
+  // fichier édité à la main avec deux fois le même dossier : le premier du catalogue le garde, l'autre revient au défaut
+  const dup = settings.sanitize({ profiles: { 'fabric-1.21.1': { gameDir: 'D:\\meme' }, 'fabric-26.3': { gameDir: 'd:\\MEME\\' } } }, settings.defaults(ENV));
+  assert.equal(dirOf(dup, 'fabric-1.21.1'), 'D:\\meme');
+  assert.equal(dirOf(dup, 'fabric-26.3'), dirOf(settings.defaults(ENV), 'fabric-26.3'));
+  // enregistrement : fichier temporaire puis renommage, pas de reste ; fichier illisible mis de côté en .corrupt
+  const dir = tempDir('settings-');
+  const file = path.join(dir, 'settings.json');
+  await Promise.all([settings.save(file, { ...s, ramMb: 1024 }), settings.save(file, { ...s, ramMb: 4096 })]);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).ramMb, 4096, 'le dernier enregistrement gagne');
+  assert.deepEqual(fs.readdirSync(dir), ['settings.json']);
+  fs.writeFileSync(file, '{"ramMb": 40');
+  assert.equal((await settings.load(file, ENV)).ramMb, 2048);
+  assert.equal(fs.readFileSync(`${file}.corrupt`, 'utf8'), '{"ramMb": 40');
+});
+
 test('profils du launcher officiel : un profil par version, chacun avec son id, son nom et sa version', () => {
   const options = (profile) => ({
     ...profiles.identityOf(profile), gameDir: `C:\\jeu\\${profile.id}`, ramMb: 3072, javaPath: '', icon: 'data:image/png;base64,AAAA', now: NOW,

@@ -44,7 +44,10 @@ test('liste d’autorisation : options qui chargent du code, écrivent un fichie
     '-XX:Flags=x', '-Djava.system.class.loader=x', '-Djavax.net.ssl.trustStore=x', '-Dhttps.proxyHost=evil',
     '-XX:ErrorFile=C:\\x.log', '-XX:LogFile=x', '-XX:HeapDumpPath=x', '-XX:+HeapDumpOnOutOfMemoryError',
     '-XX:StartFlightRecording=filename=x', '-Xlog:gc:file=x', '-XX:MaxRAM=64G', '-XX:MaxHeapSize=8G',
-    '-XX:+EnableDynamicAgentLoading', '-Dfml.coreMods.load=x', '-Dlog4j.configurationFile=http://evil/x.xml']) {
+    '-XX:+EnableDynamicAgentLoading', '-Dfml.coreMods.load=x', '-Dlog4j.configurationFile=http://evil/x.xml',
+    // Java 24+ (profil 26.3) : cache AOT et archives CDS chargent des métadonnées de classes depuis un fichier relatif au dossier de jeu
+    '-XX:AOTCache=app.aot', '-XX:AOTConfiguration=app.aotconf', '-XX:AOTMode=record', '-XX:+DumpSharedSpaces',
+    '-XX:+AutoCreateSharedArchive', '-XX:SharedArchiveFile=x.jsa', '-XX:ArchiveClassesAtExit=x.jsa']) {
     assert.equal(jvm.parseJvmArgs(arg).ok, false, arg);
   }
   assert.equal(jvm.parseJvmArgs('-Xms1G -Xss4M -Xmn512M -XX:+UseG1GC -XX:ParallelGCThreads=4 -XX:+UnlockDiagnosticVMOptions '

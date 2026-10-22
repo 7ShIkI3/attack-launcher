@@ -12,10 +12,17 @@ const { ALLOWED_HOSTS } = require('./constants');
 const USER_AGENT = 'ATTACK-Launcher (+https://github.com/7ShIkI3/attack-launcher)';
 
 class HttpError extends Error {
-  constructor(status, url) {
+  constructor(status, url, headers = null) {
     super(`HTTP ${status} pour ${url}`);
     this.status = status;
     this.url = url;
+    // api.github.com répond 403 (pas 429) quand la limite sans jeton (60 requêtes/h par IP) est atteinte
+    this.rateLimited = status === 429 || (status === 403 && headers?.get?.('x-ratelimit-remaining') === '0');
+    if (this.rateLimited) {
+      this.code = 'RATE_LIMITED';
+      const reset = Number(headers?.get?.('x-ratelimit-reset'));
+      this.retryAfterMs = Number.isFinite(reset) && reset > 0 ? Math.max(0, reset * 1000 - Date.now()) : null;
+    }
   }
 }
 
@@ -51,7 +58,7 @@ async function request(url, { allowedHosts = ALLOWED_HOSTS, retries = 3, headers
     try {
       const response = await fetchChecked(url, headers, allowedHosts);
       if (response.ok) return response;
-      lastError = new HttpError(response.status, url);
+      lastError = new HttpError(response.status, url, response.headers);
       await response.body?.cancel();
       if (response.status < 500 && response.status !== 429) throw lastError;
     } catch (error) {

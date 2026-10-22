@@ -5,7 +5,7 @@
 Cette page décrit **le launcher** : ce qu'il envoie, à qui, ce qu'il garde sur ton PC, et comment il se protège.
 Elle ne couvre ni le mod ATTACK Client ni Minecraft lui-même, qui ont leurs propres connexions une fois le jeu lancé
 (Mojang, serveurs de jeu, API ATTACK des cosmétiques : voir le dépôt `attack-client`). Chaque affirmation a été
-vérifiée dans le code ; les références sont de la forme `fichier:ligne` (état du dépôt à la version 0.4.0).
+vérifiée dans le code ; les références sont de la forme `fichier:ligne` (état du dépôt à la version 0.5.x ; les numéros de ligne peuvent avoir bougé depuis, les noms de fonctions restent).
 
 ## En bref
 
@@ -67,7 +67,7 @@ Détails utiles :
 | `%APPDATA%\ATTACK Launcher\accounts.json` | Pour chaque compte : identifiant (UUID), pseudo, type, image du skin (`data:` URL), modèle de bras, date d'ajout ; **refresh token** | Le refresh token : **oui** (DPAPI). Le reste : non (pas de secret) | `accounts.js:67-75` |
 | `%APPDATA%\ATTACK Launcher\settings.json` | Mémoire, dossier de jeu, Java, arguments Java, langue, mode développeur, dossier des jars de test, ID client Azure (pas un secret) | Non | `settings.js:53-74` |
 | `%APPDATA%\ATTACK Launcher\logs\updater.log` | Journal des mises à jour (dates, versions, erreurs) ; passe en `.old` au-delà de 1 Mo | Non | `main.js:74-90` |
-| `%LOCALAPPDATA%\ATTACK Launcher\runtime` | Java 8 officiel de Mojang | Non | `main.js:33-35` |
+| `%LOCALAPPDATA%\ATTACK Launcher\runtime` | Java officiel de Mojang du profil (Java 8, 21 ou 25) | Non | `main.js:33-35` |
 | `%LOCALAPPDATA%\attack-launcher-updater` | Mise à jour téléchargée en attente d'installation (cache d'`electron-updater`) | Non | `app-update.yml` généré par electron-builder |
 | `%APPDATA%\.minecraft\...` | Versions, bibliothèques, ressources, `launcher_profiles.json` (+ `.bak`) | Non | [Installation](Installation-et-mises-a-jour.md) |
 | `%APPDATA%\.attack\...` | Mod, état d'installation `attack-launcher.json`, `logs\launcher\game-*.log` | Non | `installer.js:201-207`, `game.js:162-165` |

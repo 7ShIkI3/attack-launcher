@@ -149,15 +149,17 @@ SHA-512, SHA-1 et taille. Le launcher **n'appelle jamais l'API Modrinth** : il t
 | Mod | 1.21.1 | 26.3 |
 | --- | --- | --- |
 | Fabric API | 0.116.17+1.21.1 | 0.164.0+26.3 |
-| Sodium | 0.6.13 | 0.9.2 |
+| Sodium | 0.8.13 | 0.9.2 |
 | Lithium | 0.15.4 | 0.26.2 |
 | FerriteCore | 7.0.3 | 9.0.0 |
 | ImmediatelyFast | 1.6.15+1.21.1 | 1.17.1+26.3 |
 | Mod Menu | 11.0.5 | 21.0.0 |
-| Iris Shaders (optionnel, réglage **Shaders**) | 1.8.8 | 1.11.7 |
+| Iris Shaders (optionnel, réglage **Shaders**) | 1.8.14-beta.1 | 1.11.7 |
 
-- **Iris et Sodium vont ensemble** : Iris 1.8.8 déclare `sodium 0.6.x` (Sodium 0.6.13 convient, qui casse seulement
-  `iris < 1.8.7`) ; Iris 1.11.7 déclare `sodium 0.9.x` (Sodium 0.9.2, qui casse `iris <= 1.11.2`).
+- **Iris et Sodium vont ensemble** : en 1.21.1, Sodium 0.8.13 (dernière release, nouveau moteur de rendu) demande
+  Iris 1.8.14-beta.1, seule version d'Iris pour Sodium 0.8 en 1.21.1 (publiée en juin 2026, pas de release stable
+  depuis) ; Iris 1.8.8 (stable) ne marche qu'avec Sodium 0.6.x. En 26.3, Iris 1.11.7 déclare `sodium 0.9.x`
+  (Sodium 0.9.2, qui casse `iris <= 1.11.2`).
 - Mod Menu embarque déjà Text Placeholder API (dans `META-INF/jars`) : il n'y a pas de `placeholder-api` à côté.
 - **Validation** (`modpack.validatePack`) : adresse `https` sur `cdn.modrinth.com` uniquement, SHA-512 de 128 caractères
   hexadécimaux, nom de fichier `^[\w.+-]+\.jar$` (jamais un chemin), l'adresse doit désigner exactement ce fichier, pas de
@@ -169,8 +171,8 @@ SHA-512, SHA-1 et taille. Le launcher **n'appelle jamais l'API Modrinth** : il t
   (mod retiré, version changée, Iris coupé) est **supprimé**, après que tous les téléchargements ont réussi. Si un
   téléchargement échoue, les jars téléchargés pendant ce passage sont retirés (jamais deux versions du même mod côte à côte)
   et les anciens ne sont pas touchés ; si un ancien jar est verrouillé (jeu ouvert), il reste suivi et l'installation
-  s'arrête avec un message qui demande de fermer le jeu. L'installation est refusée tant qu'une partie lancée par le launcher
-  est ouverte. Les jars que **tu** ajoutes à `mods\` ne sont **jamais**
+  s'arrête avec un message qui demande de fermer le jeu. L'installation est refusée tant qu'une partie est ouverte dans le dossier
+  de jeu de ce profil (lancée ici ou par le launcher officiel) ; une partie d'un autre profil ne bloque pas. Les jars que **tu** ajoutes à `mods\` ne sont **jamais**
   touchés, pas plus que le jar ATTACK ; un nom suspect dans l'état (chemin, autre extension) est ignoré.
 - **État de l'accueil** : le voyant « Pack de mods » est vert quand chaque jar du pack est présent avec la bonne taille et
   qu'aucun ancien jar géré ne traîne. Activer ou couper les shaders le repasse à « à installer » jusqu'au prochain clic

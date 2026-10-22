@@ -128,10 +128,20 @@
 
   function errorText(result) {
     const key = `error.${result.code}`;
-    const text = t(key);
+    const text = t(key, { message: result.message || '' });
     if (text !== key) return text;
     // messages d'erreur du processus principal : déjà rédigés en français
     return window.I18n.lang === 'fr' && result.message ? result.message : t('error.generic', { message: result.message });
+  }
+
+  /** Appel au processus principal qui peut rejeter (disque, compte inconnu) : l'erreur s'affiche au lieu de figer la page. */
+  async function guarded(action, show = (text) => setMessage(text, 'error')) {
+    try {
+      return await action();
+    } catch (error) {
+      show(errorText({ code: error?.code || 'ERROR', message: String(error?.message || error).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') }));
+      return null;
+    }
   }
 
   async function runInstall() {
@@ -186,10 +196,10 @@
     else if (result.code === 'NOT_INSTALLED') await refreshStatus();
     else setMessage(errorText(result), 'error');
   });
-  $('repair-button').addEventListener('click', () => !busy && runInstall());
-  $('open-dir-button').addEventListener('click', () => api.openGameDir());
+  $('repair-button').addEventListener('click', () => !busy && !playing && runInstall());
+  $('open-dir-button').addEventListener('click', () => guarded(() => api.openGameDir()));
   $('repo-button').addEventListener('click', () => api.openRepo());
-  $('logs-button').addEventListener('click', () => api.openLogs());
+  $('logs-button').addEventListener('click', () => guarded(() => api.openLogs()));
 
   /** Accueil : les dernières versions (texte coupé à 3 lignes) ; « Tout voir » ouvre l'historique complet. */
   const CHANGELOG_ON_HOME = 3;
@@ -438,7 +448,8 @@
         if (!account.active) {
           const use = el('button', { class: 'btn', text: t('account.use') });
           use.addEventListener('click', async () => {
-            accountsView = await api.accounts.select(account.id);
+            const view = await guarded(() => api.accounts.select(account.id), (text) => accountMessage(text, 'error'));
+            if (view) accountsView = view;
             renderAccounts();
             renderStatus();
           });
@@ -446,7 +457,8 @@
         }
         const remove = el('button', { class: 'btn ghost danger', text: t('account.remove') });
         remove.addEventListener('click', async () => {
-          accountsView = await api.accounts.remove(account.id);
+          const view = await guarded(() => api.accounts.remove(account.id), (text) => accountMessage(text, 'error'));
+          if (view) accountsView = view;
           renderAccounts();
           renderStatus();
         });
@@ -501,11 +513,16 @@
       $('device-stage').textContent = t('login.xbox');
     }
   });
+  function showRefreshError(view) {
+    if (!view?.refreshError) return;
+    const key = view.refreshError.code === 'NETWORK' ? 'account.refreshOffline' : 'account.refreshError';
+    accountMessage(t(key, { message: errorText(view.refreshError) }), 'error');
+  }
   api.onAccountsChanged((view) => {
     accountsView = view;
     renderAccounts();
     renderStatus();
-    if (view.refreshError) accountMessage(t('account.refreshError', { message: errorText(view.refreshError) }), 'error');
+    showRefreshError(view);
   });
   $('device-copy').addEventListener('click', async () => {
     await api.accounts.copyCode();
@@ -568,10 +585,16 @@
       return;
     }
     $('update-action').disabled = true;
-    const result = await api.update.install();
-    $('update-action').disabled = false;
+    let result;
+    try {
+      result = await api.update.install();
+    } catch (error) {
+      result = { ok: false, code: 'INSTALL_FAILED', message: String(error?.message || error) };
+    } finally {
+      $('update-action').disabled = false;
+    }
     if (!result.ok) {
-      updateNote = t(`update.${result.code}`);
+      updateNote = t(`update.${result.code}`, { message: result.message || '' });
       renderUpdate();
     }
   });
@@ -598,6 +621,7 @@
     accountsView = await api.accounts.list();
     update = await api.update.state();
     applyLanguage();
+    showRefreshError(accountsView);
     await refreshStatus();
   }
 

@@ -17,13 +17,13 @@
     {
       "slug": "sodium",
       "name": "Sodium",
-      "version": "0.6.13",
-      "versionNumber": "mc1.21.1-0.6.13-fabric",
-      "filename": "sodium-fabric-0.6.13+mc1.21.1.jar",
-      "url": "https://cdn.modrinth.com/data/AANobbMI/versions/u1OEbNKx/sodium-fabric-0.6.13%2Bmc1.21.1.jar",
-      "sha512": "13032e064c554fc8671573dadb07bc70e6ea2f68706c65c086c4feb1d2f664346a3414cbf9d1367b42b8d063a35e40f2f967ef9af31642e1f0093b852161fe91",
-      "sha1": "928a2598178c3a58b0638bab842f467d2e49251a",
-      "size": 1297761
+      "version": "0.8.13",
+      "versionNumber": "mc1.21.1-0.8.13-fabric",
+      "filename": "sodium-fabric-0.8.13+mc1.21.1.jar",
+      "url": "https://cdn.modrinth.com/data/AANobbMI/versions/SMxNOGZ6/sodium-fabric-0.8.13%2Bmc1.21.1.jar",
+      "sha512": "8614a374593698069a80ac74de8cd9c28f3928d16819a0e0d6320b538e823f7e54e8be06d5ea5a9c268beb0e02073209d1f831a02dede851588b972367680853",
+      "sha1": "003c114c85ca88ef3362e018deb6aca0c682d6a1",
+      "size": 1574609
     },
     {
       "slug": "lithium",
@@ -72,13 +72,13 @@
     {
       "slug": "iris",
       "name": "Iris Shaders",
-      "version": "1.8.8",
-      "versionNumber": "1.8.8+1.21.1-fabric",
-      "filename": "iris-fabric-1.8.8+mc1.21.1.jar",
-      "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/zsoi0dso/iris-fabric-1.8.8%2Bmc1.21.1.jar",
-      "sha512": "2e6ba2ffa1e1a6799288245a7e0ac68ee8df1d41b98362189df58f535cae34fa9277801e4136633467341b7dae5be0e5c698011b480b3d91b66d3dd4f7567aa6",
-      "sha1": "4e0df4011503b4b36ba69877ea7247c1a47fea00",
-      "size": 2690177,
+      "version": "1.8.14-beta.1",
+      "versionNumber": "1.8.14-beta.1+1.21.1-fabric",
+      "filename": "iris-fabric-1.8.14-beta.1+mc1.21.1.jar",
+      "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/bAo1Qhte/iris-fabric-1.8.14-beta.1%2Bmc1.21.1.jar",
+      "sha512": "a7fbb629793c52f0be8b049f787cb598879239b1ad8e1de62e103c8b9efff140e3232b93ef1f14e505d262897d8cf9505b1126396429ad4056bff969c8674e52",
+      "sha1": "6776c0340845887477bfa463acc736ce7fcb6de5",
+      "size": 2791343,
       "optional": true
     }
   ]

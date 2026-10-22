@@ -116,12 +116,28 @@ function sanitize(input, base = defaults()) {
   if (catalog.isValidId(input.profileId)) s.profileId = input.profileId;
   // dossiers de jeu effectifs des autres profils (lus à chaque appel : ils suivent les modifications déjà faites)
   const otherDirs = (id) => catalog.list().filter((p) => p.id !== id).map((p) => s.profiles[p.id].gameDir);
-  // réglages rangés par profil (fichier enregistré)
+  // réglages rangés par profil (fichier enregistré). Les dossiers de jeu sont arbitrés en deux temps, sinon le profil
+  // lu en premier serait comparé aux dossiers PAR DÉFAUT des suivants et perdrait, à la relecture, un dossier pourtant
+  // libre (l'autre profil ayant déménagé) : un profil qui ne change pas de dossier garde le sien ; parmi ceux qui
+  // changent, dans l'ordre du catalogue, un dossier déjà pris est refusé et l'ancien conservé.
   if (input.profiles && typeof input.profiles === 'object') {
+    const current = {};
+    const wanted = {};
     for (const profile of catalog.list()) {
       const entry = input.profiles[profile.id];
-      if (entry && typeof entry === 'object') s.profiles[profile.id] = sanitizeProfile(entry, s.profiles[profile.id], profile, otherDirs(profile.id));
+      current[profile.id] = s.profiles[profile.id];
+      wanted[profile.id] = entry && typeof entry === 'object' ? sanitizeProfile(entry, s.profiles[profile.id], profile) : s.profiles[profile.id];
     }
+    const taken = catalog.list().filter((p) => sameDir(wanted[p.id].gameDir, current[p.id].gameDir)).map((p) => wanted[p.id].gameDir);
+    for (const profile of catalog.list()) {
+      const next = wanted[profile.id];
+      if (sameDir(next.gameDir, current[profile.id].gameDir)) continue;
+      if (taken.some((dir) => sameDir(dir, next.gameDir))) {
+        next.gameDir = taken.some((dir) => sameDir(dir, current[profile.id].gameDir)) ? defaultGameDir(process.env, profile) : current[profile.id].gameDir;
+      }
+      taken.push(next.gameDir);
+    }
+    for (const profile of catalog.list()) s.profiles[profile.id] = wanted[profile.id];
   }
   // clés à plat : elles concernent le profil courant (ancien fichier de réglages, modification faite dans l'interface)
   if (PROFILE_KEYS.some((key) => key in input)) {
@@ -151,18 +167,38 @@ function forProfile(settings, profileId = settings.profileId) {
   };
 }
 
+/**
+ * Lit le fichier ; illisible (coupure pendant une écriture, édition à la main) : il est mis de côté en `.corrupt`
+ * plutôt qu'écrasé en silence par les défauts au prochain enregistrement, et les défauts sont rendus.
+ */
 async function load(file, env = process.env) {
   if (!fs.existsSync(file)) return defaults(env);
   try {
     return sanitize(JSON.parse(await fsp.readFile(file, 'utf8')), defaults(env));
   } catch {
+    try {
+      await fsp.copyFile(file, `${file}.corrupt`);
+    } catch {
+      // le fichier d'origine reste en place : rien de plus à faire
+    }
     return defaults(env);
   }
 }
 
-async function save(file, settings) {
-  await fsp.mkdir(path.dirname(file), { recursive: true });
-  await fsp.writeFile(file, `${JSON.stringify(settings, null, 2)}\n`, 'utf8');
+let saving = Promise.resolve();
+
+/** Écriture atomique (fichier temporaire puis renommage), les enregistrements successifs étant mis en file. */
+function save(file, settings) {
+  const text = `${JSON.stringify(settings, null, 2)}\n`;
+  const run = async () => {
+    await fsp.mkdir(path.dirname(file), { recursive: true });
+    const tmp = `${file}.${process.pid}.tmp`;
+    await fsp.writeFile(tmp, text, 'utf8');
+    await fsp.rename(tmp, file);
+  };
+  const next = saving.then(run, run);
+  saving = next.catch(() => {});
+  return next;
 }
 
 module.exports = {

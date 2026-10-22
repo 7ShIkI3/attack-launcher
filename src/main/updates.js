@@ -11,6 +11,9 @@ const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const BUSY_RETRY_MS = 10 * 60 * 1000;
 /** Adresse fixe : on n'ouvre jamais un lien fourni par le serveur de mise à jour. */
 const RELEASES_URL = `https://github.com/${GITHUB_REPO}/releases/latest`;
+/** Raisons renvoyées par busy() : ce qui empêche une mise à jour, et le code reçu par l'interface. */
+const BUSY_LABELS = { install: 'installation en cours', launch: 'lancement en cours', game: 'partie en cours' };
+const BUSY_CODES = { install: 'BUSY', launch: 'LAUNCHING', game: 'GAME_RUNNING' };
 
 const VERSION_RE = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/;
 
@@ -119,6 +122,14 @@ class UpdateController {
       const percent = Math.floor(progress.percent || 0);
       if (this.state.phase === 'downloading' && percent !== this.state.percent) this.setState({ percent });
     });
+    // sans écouteur, un « error » émis par electron-updater (installateur disparu ou bloqué par l'antivirus au
+    // redémarrage, par exemple) devient une exception non gérée du processus principal
+    u.on('error', (error) => {
+      const message = error?.message || String(error);
+      this.log(`electron-updater : ${message}`);
+      this.installing = false;
+      if (this.state.phase !== 'downloading' || !this.token?.cancelled) this.setState({ phase: 'error', message });
+    });
     this.log(`Launcher ${this.currentVersion}, mode ${this.mode}`);
     this.check();
     this.interval = this.timers.setInterval(() => this.check(), CHECK_INTERVAL_MS);
@@ -132,7 +143,7 @@ class UpdateController {
 
   /** Reporte la vérification (partie ou installation en cours) et réessaie plus tard. */
   defer(reason) {
-    this.log(`Mise à jour reportée : ${reason === 'game' ? 'partie en cours' : 'installation en cours'}`);
+    this.log(`Mise à jour reportée : ${BUSY_LABELS[reason] || BUSY_LABELS.install}`);
     this.timers.clearTimeout(this.retry);
     this.retry = this.timers.setTimeout(() => {
       this.retry = null;
@@ -215,10 +226,18 @@ class UpdateController {
   async install() {
     if (this.mode !== 'nsis' || this.state.phase !== 'ready') return { ok: false, code: 'NO_UPDATE' };
     const reason = await this.busy();
-    if (reason) return { ok: false, code: reason === 'game' ? 'GAME_RUNNING' : 'BUSY' };
+    if (reason) return { ok: false, code: BUSY_CODES[reason] || 'BUSY' };
     this.installing = true;
     this.log(`Redémarrage pour installer la version ${this.state.version}`);
-    this.updater.quitAndInstall(true, true);
+    try {
+      this.updater.quitAndInstall(true, true);
+    } catch (error) {
+      // installateur téléchargé introuvable ou refusé : on reste ouvert, l'interface affiche l'erreur
+      this.installing = false;
+      this.log(`Installation impossible : ${error.message}`);
+      this.setState({ phase: 'error', message: error.message });
+      return { ok: false, code: 'INSTALL_FAILED', message: error.message };
+    }
     return { ok: true };
   }
 

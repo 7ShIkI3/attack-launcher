@@ -111,7 +111,8 @@ function createUpdateLog() {
 
 /** Raison de ne rien faire côté mise à jour : installation, lancement ou partie en cours (même par le launcher officiel). */
 async function busyReason() {
-  if (installing || launching) return 'install';
+  if (installing) return 'install';
+  if (launching) return 'launch';
   if (games.size > 0 || (await game.detectRunningGame())) return 'game';
   return null;
 }
@@ -161,9 +162,13 @@ async function skinDataUrl(url) {
 
 const refreshWith = (refreshToken) => auth.refreshAccount(transport, settingsStore.clientId(settings), refreshToken);
 
+/** Erreur du dernier rafraîchissement du compte actif au démarrage ({ code, message }), effacée par un succès ou un changement de compte. */
+let lastRefreshError = null;
+
 function accountsView() {
   return {
     accounts: accounts.list(),
+    refreshError: lastRefreshError,
     hasClientId: Boolean(settingsStore.clientId(settings)),
     clientIdFromEnv: settingsStore.clientIdSource(settings) === 'env',
     clientIdDefault: settingsStore.clientIdSource(settings) === 'default',
@@ -270,10 +275,12 @@ function registerIpc() {
   handle('accounts:copyCode', () => login?.userCode && clipboard.writeText(login.userCode));
   handle('accounts:select', async (_event, id) => {
     await accounts.setActive(String(id));
+    lastRefreshError = null;
     return accountsView();
   });
   handle('accounts:remove', async (_event, id) => {
     await accounts.remove(String(id));
+    lastRefreshError = null;
     return accountsView();
   });
   handle('accounts:addOffline', async (_event, name) => {
@@ -330,6 +337,8 @@ function registerIpc() {
       pendingSkin = null;
       return await afterSkinChange(account, skin);
     } catch (error) {
+      // skin peut-être déjà changé chez Mojang (échec après l'envoi) : la page reçoit l'erreur et abandonne l'image choisie
+      pendingSkin = null;
       return publicError(error);
     }
   });
@@ -358,13 +367,18 @@ function registerIpc() {
 
   // --- jeu ---
   handle('game:play', async (event) => {
-    updater?.activityStarted('game');
+    // pas de lancement pendant une installation : elle réécrit mods/ et le jar du mod (l'interface le bloque déjà)
+    if (installing) return { ok: false, code: 'BUSY', message: 'Installation en cours' };
+    let started = false;
     try {
       const profile = currentProfile();
       const eff = effective();
       const status = await installer.status({ minecraftDir, gameDir: eff.gameDir, profile, shaders: eff.shaders });
       if (!status.installed) return { ok: false, code: 'NOT_INSTALLED', message: 'Installation incomplète' };
       const account = accounts.active();
+      // une partie va démarrer : le téléchargement de mise à jour s'arrête et reprendra à la fin
+      started = true;
+      updater?.activityStarted('game');
       // un compte hors ligne ne sert qu'en mode développeur
       if (account && (account.type === 'msa' || eff.devMode)) return await playDirect(event, account, profile, eff);
       // sans compte : profil présélectionné dans le launcher officiel
@@ -372,8 +386,12 @@ function registerIpc() {
         ...profiles.identityOf(profile), gameDir: eff.gameDir, ramMb: eff.ramMb, javaPath: eff.javaPath, jvmArgs: eff.jvmArgs, icon: profileIcon(),
       }), new Date(), profile.launcherProfileId));
       const plan = launch.openLauncher();
+      // le launcher officiel prend la main : la vérification reportée réessaiera dans 10 min, quand la partie qu'il
+      // lance sera détectable par busy() (processus javaw)
       return { ok: true, mode: 'official', detected: Boolean(plan.detected) };
     } catch (error) {
+      // lancement raté (Java, compte, spawn) : rien ne tourne, la mise à jour reportée peut repartir
+      if (started) updater?.activityEnded();
       return publicError(error);
     }
   });
@@ -584,10 +602,11 @@ async function refreshActiveAccount() {
   if (!account || account.type !== 'msa' || !settingsStore.clientId(settings)) return;
   try {
     await accounts.refresh(account.id, refreshWith);
-    send('accounts:changed', accountsView());
+    lastRefreshError = null;
   } catch (error) {
-    send('accounts:changed', { ...accountsView(), refreshError: { code: error.code || 'ERROR', message: error.message } });
+    lastRefreshError = { code: error.code || 'ERROR', message: error.message };
   }
+  send('accounts:changed', accountsView());
 }
 
 if (!app.requestSingleInstanceLock()) {

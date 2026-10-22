@@ -75,7 +75,7 @@ test('versions figées demandées (1.21.1 et 26.3)', () => {
   const version = (id, slug) => modpack.loadPack(catalog.get(id)).mods.find((m) => m.slug === slug).version;
   assert.deepEqual(
     ['fabric-api', 'sodium', 'lithium', 'ferrite-core', 'immediatelyfast', 'modmenu', 'iris'].map((s) => version('fabric-1.21.1', s)),
-    ['0.116.17', '0.6.13', '0.15.4', '7.0.3', '1.6.15', '11.0.5', '1.8.8'],
+    ['0.116.17', '0.8.13', '0.15.4', '7.0.3', '1.6.15', '11.0.5', '1.8.14-beta.1'],
   );
   assert.deepEqual(
     ['fabric-api', 'sodium', 'lithium', 'ferrite-core', 'immediatelyfast', 'modmenu', 'iris'].map((s) => version('fabric-26.3', s)),
