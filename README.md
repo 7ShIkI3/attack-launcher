@@ -90,7 +90,7 @@ Get-FileHash .\ATTACK-Launcher-Setup-x.y.z.exe -Algorithm SHA256
 bannière « Redémarrer » ; la version portable affiche seulement un avis avec un lien vers la page Releases.
 Rien n'est jamais installé pendant une partie. Détails : [Installation et mises à jour](docs/wiki/Installation-et-mises-a-jour.md).
 
-**Pour les développeurs** (Node.js 22.12 ou plus récent) :
+**Pour les développeurs** (Node.js 22.12 ou plus récent ; `package.json` déclare `node >= 20` pour les scripts hors Electron) :
 
 ```bash
 npm install

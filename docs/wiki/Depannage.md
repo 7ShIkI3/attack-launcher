@@ -72,7 +72,7 @@ connexion (HTTP …) » indiquent un refus du service : réessaie plus tard.
 | « Fichiers manquants (N) : lance Vérifier / réparer l'installation » | Un fichier du jeu est absent au moment de JOUER | Clique sur **Vérifier / réparer l'installation** |
 | « Java introuvable : <chemin> » | Le Java personnalisé choisi dans Réglages n'existe plus | Repasse sur « Fourni par Minecraft » ou choisis un autre `javaw.exe` |
 | « Runtime Java … indisponible » | Mojang ne publie pas le runtime pour ta plateforme | À signaler |
-| « Installation incomplète » au clic sur JOUER | Un des quatre voyants de l'accueil n'est pas vert | Clique sur **INSTALLER** |
+| « Installation incomplète » au clic sur JOUER | Un des voyants de l'accueil (quatre pour 1.8.9, cinq pour Fabric) n'est pas vert | Clique sur **INSTALLER** |
 
 **Le jeu se ferme tout de suite** : ouvre le dernier `game-*.log` (Journaux du jeu). Pense à la mémoire allouée (Réglages :
 2 à 3 Go suffisent pour la 1.8.9, 3 à 4 Go pour 1.21.1 et 26.3 avec le pack, plus ne donne pas plus de FPS). Si tu as mis des

@@ -171,8 +171,8 @@ SHA-512, SHA-1 et taille. Le launcher **n'appelle jamais l'API Modrinth** : il t
   (mod retiré, version changée, Iris coupé) est **supprimé**, après que tous les téléchargements ont réussi. Si un
   téléchargement échoue, les jars téléchargés pendant ce passage sont retirés (jamais deux versions du même mod côte à côte)
   et les anciens ne sont pas touchés ; si un ancien jar est verrouillé (jeu ouvert), il reste suivi et l'installation
-  s'arrête avec un message qui demande de fermer le jeu. L'installation est refusée tant qu'une partie lancée par le launcher
-  est ouverte. Les jars que **tu** ajoutes à `mods\` ne sont **jamais**
+  s'arrête avec un message qui demande de fermer le jeu. L'installation est refusée tant qu'une partie est ouverte dans le dossier
+  de jeu de ce profil (lancée ici ou par le launcher officiel) ; une partie d'un autre profil ne bloque pas. Les jars que **tu** ajoutes à `mods\` ne sont **jamais**
   touchés, pas plus que le jar ATTACK ; un nom suspect dans l'état (chemin, autre extension) est ignoré.
 - **État de l'accueil** : le voyant « Pack de mods » est vert quand chaque jar du pack est présent avec la bonne taille et
   qu'aucun ancien jar géré ne traîne. Activer ou couper les shaders le repasse à « à installer » jusqu'au prochain clic

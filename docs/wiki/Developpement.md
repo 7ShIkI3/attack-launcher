@@ -51,7 +51,7 @@ et minuteurs dans `updates.js`), ce qui permet de les simuler.
 
 ## Tests unitaires (`npm test`)
 
-Les 144 tests tournent en quelques secondes et n'ont besoin ni du réseau ni d'Electron. Les fixtures de `test/fixtures/` sont les vrais JSON de Mojang (1.21.1, 26.3, réduits à quelques bibliothèques) et de Fabric (profils 0.19.5).
+Les 167 tests tournent en quelques secondes et n'ont besoin ni du réseau ni d'Electron. Les fixtures de `test/fixtures/` sont les vrais JSON de Mojang (1.21.1, 26.3, réduits à quelques bibliothèques) et de Fabric (profils 0.19.5).
 
 | Fichier | Ce qu'il vérifie |
 | --- | --- |

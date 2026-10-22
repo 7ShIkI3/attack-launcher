@@ -82,7 +82,7 @@ bouton vers la page Releases (version portable). Voir [Installation et mises à 
 
 | | Avec un compte connecté | Sans compte |
 | --- | --- | --- |
-| Ce que fait JOUER | Lance directement le jeu | Ouvre le launcher Minecraft officiel sur le profil « ATTACK Client » |
+| Ce que fait JOUER | Lance directement le jeu | Ouvre le launcher Minecraft officiel sur le profil du même nom que celui choisi (« ATTACK Client », « ATTACK 1.21.1 » ou « ATTACK 26.3 ») |
 | Java | Celui des Réglages, sinon le runtime officiel de Mojang (installé par le launcher) | Celui du launcher officiel (ou celui du profil, si tu en as choisi un dans Réglages) |
 | Connexion au jeu | Jeton Minecraft fourni par le launcher | Connexion gérée par le launcher officiel |
 | Journal | `<dossier de jeu>\logs\launcher\game-*.log` | Celui du launcher officiel |

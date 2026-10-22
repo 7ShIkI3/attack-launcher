@@ -100,7 +100,7 @@ test('uploadSkin : refuse avant tout envoi une image ou un modele invalides', as
 });
 
 test('erreurs Mojang traduites : 401 expire, 429 trop de changements, 400 refuse', async () => {
-  for (const [status, code] of [[401, 'EXPIRED'], [429, 'RATE_LIMITED'], [400, 'REFUSED'], [500, 'MOJANG']]) {
+  for (const [status, code] of [[401, 'SESSION_EXPIRED'], [429, 'RATE_LIMITED'], [400, 'REFUSED'], [500, 'MOJANG']]) {
     const { transport } = fakeTransport([{ status, data: { errorMessage: 'Invalid skin' } }]);
     await assert.rejects(skins.uploadSkin(transport, 'j', png(64, 64), 'classic'), { code });
   }

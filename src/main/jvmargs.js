@@ -16,7 +16,7 @@ const MAX_ARGS = 40;
 const SIZE = /^-X(ms|ss|mn)\d+[kKmMgG]?$/;
 const XX = /^-XX:(?:[+-]([A-Za-z][A-Za-z0-9]*)|([A-Za-z][A-Za-z0-9]*)=([\w.,+-]+))$/;
 // options -XX refusées même avec une valeur simple (un vidage mémoire écrirait aussi le jeton Minecraft sur le disque)
-const XX_REFUSED = /^(OnError|OnOutOfMemoryError|VMOptionsFile|Flags|CompileCommand|CompileOnly|CompileCommandFile|CompilerDirectivesFile|StartFlightRecording|FlightRecorderOptions|SharedArchiveFile|ArchiveClassesAtExit|MaxRAM|MaxRAMPercentage|MaxRAMFraction|MaxHeapSize|EnableDynamicAgentLoading)$|File|Path|Dir|HeapDump/;
+const XX_REFUSED = /^(OnError|OnOutOfMemoryError|VMOptionsFile|Flags|CompileCommand|CompileOnly|CompileCommandFile|CompilerDirectivesFile|StartFlightRecording|FlightRecorderOptions|SharedArchiveFile|ArchiveClassesAtExit|MaxRAM|MaxRAMPercentage|MaxRAMFraction|MaxHeapSize|EnableDynamicAgentLoading|DumpSharedSpaces|DynamicDumpSharedSpaces|AutoCreateSharedArchive|RecordDynamicDumpInfo)$|^AOT|File|Path|Dir|HeapDump|Archive|Dump/;
 const PROPERTY = /^-D([\w.]+)=([\w.,+-]*)$/;
 const PROPERTIES = /^(sun\.java2d\.\w+|file\.encoding|sun\.jnu\.encoding|user\.language|user\.country|java\.net\.preferIPv4Stack)$/;
 

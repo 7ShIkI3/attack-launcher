@@ -86,7 +86,17 @@ function libraryPlan(version, minecraftDir, env = mojang.currentEnv()) {
 
 /** Extrait les natives (.dll) dans `dir`, en sautant META-INF et les dossiers. */
 async function extractNatives(natives, dir) {
-  await fsp.rm(dir, { recursive: true, force: true });
+  try {
+    await fsp.rm(dir, { recursive: true, force: true });
+  } catch (error) {
+    // une partie de ce profil tourne déjà : Windows refuse de supprimer ses DLL chargées (EPERM/EBUSY)
+    if (['EPERM', 'EBUSY', 'EACCES'].includes(error.code)) {
+      const busy = new Error('Une partie de ce profil est déjà ouverte : ferme-la avant d’en lancer une autre.');
+      busy.code = 'GAME_RUNNING';
+      throw busy;
+    }
+    throw error;
+  }
   await fsp.mkdir(dir, { recursive: true });
   let count = 0;
   for (const { file, exclude } of natives) {
