@@ -37,6 +37,7 @@
     { name: 'Zoom', icon: 'ZM', cat: 'visual', fr: 'Zoom fluide à la molette.', en: 'Smooth scroll-wheel zoom.' },
     { name: 'Crosshair', icon: 'CH', cat: 'visual', fr: 'Viseur personnalisé : forme, couleur, taille.', en: 'Custom crosshair: shape, colour, size.' },
     { name: 'Block Overlay', icon: 'BO', cat: 'visual', fr: 'Contour et remplissage du bloc visé.', en: 'Outline and fill for the targeted block.' },
+    { name: 'Clear Glass', icon: 'CG', cat: 'visual', fr: 'Verre sans bordure : le verre blanc devient invisible, le verre teinté une couleur unie.', en: 'Borderless glass: clear glass becomes invisible, stained glass a flat colour.' },
     { name: 'Motion Blur', icon: 'MB', cat: 'visual', fr: 'Flou de mouvement réglable.', en: 'Adjustable motion blur.' },
     { name: 'Fullbright', icon: 'FB', cat: 'visual', fr: 'Voir clair partout, même de nuit.', en: 'See clearly everywhere, even at night.' },
     { name: 'FOV', icon: 'FO', cat: 'visual', fr: 'Champ de vision fixe, sans effet de vitesse.', en: 'Fixed field of view, no speed effect.' },
@@ -77,6 +78,16 @@
   ];
 
   const CHANGELOG = [
+    {
+      version: 'ATTACK Client 2.5', date: '2026-10-22',
+      fr: 'Nouveau module Clear Glass (Visuel, 62e) : verre sans bordure ni traits, le verre blanc devient invisible et le verre teinté une couleur unie, sans pack de ressources. Corrigé : décimales du Speed HUD, ailes avec la cape physique, réglages qui perdaient leurs commentaires, messages d’amis parfois cachés, petites fuites de mémoire graphique.',
+      en: 'New Clear Glass module (Visual, 62nd): borderless glass, clear glass becomes invisible and stained glass a flat colour, no resource pack needed. Fixed: Speed HUD decimals, wings with the physics cape, settings losing their comments, friend messages sometimes hidden, small graphics memory leaks.',
+    },
+    {
+      version: 'Launcher 0.5.3', date: '2026-10-22',
+      fr: 'Réglage Arguments Java par profil (Réglages). Pack 1.21.1 à jour : Sodium 0.8.13 et Iris 1.8.14 (bêta). Corrigé : un dossier de jeu déplacé pouvait être oublié au redémarrage ; mise à jour du launcher et lancement plus robustes, messages d’erreur plus clairs.',
+      en: 'Per-profile Java arguments setting (Settings). Updated 1.21.1 pack: Sodium 0.8.13 and Iris 1.8.14 (beta). Fixed: a moved game folder could be forgotten on restart; sturdier launcher updates and game launch, clearer error messages.',
+    },
     {
       version: 'ATTACK Client 2.4', date: '2026-10-21',
       fr: 'Menu Amis (touche N, ou l’onglet Amis du menu) : ajoute un ami par son pseudo s’il utilise ATTACK Client, accepte les demandes, vois qui est en ligne et discute en privé. Les messages sont effacés 24 h après leur envoi ; rien n’est envoyé avant ta première ouverture du menu.',

@@ -38,7 +38,7 @@ flowchart LR
 | Dépôt | Rôle |
 | --- | --- |
 | `7ShIkI3/attack-launcher` | Ce launcher. Les releases (launcher et jar du mod) sont publiées ici. |
-| `7ShIkI3/attack-client` | Le mod Forge « ATTACK Client » (61 modules, interface, cosmétiques, amis et chat). |
+| `7ShIkI3/attack-client` | Le mod Forge « ATTACK Client » (62 modules, interface, cosmétiques, amis et chat). |
 | `attack-client-fabric` | Le mod Fabric ATTACK pour 1.21.1 et 26.3 (un jar `attack-fabric-<version>+mc<mc>.jar` par version de Minecraft). |
 | `7ShIkI3/attack-server` | L'API Node des cosmétiques partagés (capes, ailes). |
 | ATTACK Practice | Plugin PandaSpigot 1.8.8 : serveur PvP 1v1 (pas encore sur GitHub). |
