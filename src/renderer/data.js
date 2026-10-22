@@ -79,6 +79,11 @@
 
   const CHANGELOG = [
     {
+      version: 'ATTACK Client 3.1.1', date: '2026-10-22',
+      fr: 'En 26.3, les clics de souris sont bien reconnus : le CPS et les Keystrokes comptent le bon bouton, et le clic gauche active à nouveau les mods dans le menu. L’écran Cosmétiques (1.21.1 et 26.3) prend le style du menu.',
+      en: 'On 26.3, mouse clicks are read correctly: CPS and Keystrokes count the right button, and a left click toggles mods in the menu again. The Cosmetics screen (1.21.1 and 26.3) now matches the menu style.',
+    },
+    {
       version: 'ATTACK Client 2.5.1', date: '2026-10-22',
       fr: 'Nouveau réglage Taille des ailes (Cosmétiques, de 50 à 150 %) : les autres joueurs ATTACK te voient à ta taille. Corrigé : le bout des ailes Ange et Phénix n’est plus coupé.',
       en: 'New Wing size setting (Cosmetics, 50 to 150%): other ATTACK players see you at your size. Fixed: the tips of the Angel and Phoenix wings are no longer cut off.',
