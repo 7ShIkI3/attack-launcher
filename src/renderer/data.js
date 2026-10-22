@@ -79,6 +79,11 @@
 
   const CHANGELOG = [
     {
+      version: 'ATTACK Client 2.5.1', date: '2026-10-22',
+      fr: 'Nouveau réglage Taille des ailes (Cosmétiques, de 50 à 150 %) : les autres joueurs ATTACK te voient à ta taille. Corrigé : le bout des ailes Ange et Phénix n’est plus coupé.',
+      en: 'New Wing size setting (Cosmetics, 50 to 150%): other ATTACK players see you at your size. Fixed: the tips of the Angel and Phoenix wings are no longer cut off.',
+    },
+    {
       version: 'ATTACK Client 2.5', date: '2026-10-22',
       fr: 'Nouveau module Clear Glass (Visuel, 62e) : verre sans bordure ni traits, le verre blanc devient invisible et le verre teinté une couleur unie, sans pack de ressources. Corrigé : décimales du Speed HUD, ailes avec la cape physique, réglages qui perdaient leurs commentaires, messages d’amis parfois cachés, petites fuites de mémoire graphique.',
       en: 'New Clear Glass module (Visual, 62nd): borderless glass, clear glass becomes invisible and stained glass a flat colour, no resource pack needed. Fixed: Speed HUD decimals, wings with the physics cape, settings losing their comments, friend messages sometimes hidden, small graphics memory leaks.',
