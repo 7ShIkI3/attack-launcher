@@ -79,6 +79,16 @@
 
   const CHANGELOG = [
     {
+      version: 'ATTACK Client 3.3.1', date: '2026-10-23',
+      fr: 'En 1.21.1 et 26.3 : ta cape ATTACK est en tissu, comme en 1.8.9 : elle se courbe quand tu cours et ondule au vent. Réglages « Cape en tissu » et « Vent » dans les Cosmétiques.',
+      en: 'On 1.21.1 and 26.3: your ATTACK cape is made of cloth, as on 1.8.9: it curves when you run and waves in the wind. “Cloth cape” and “Wind” settings in Cosmetics.',
+    },
+    {
+      version: 'ATTACK Client 2.5.2', date: '2026-10-23',
+      fr: 'En 1.8.9 : la taille des ailes (50 à 150 %) se règle enfin avec un curseur dans l’onglet Ailes des Cosmétiques.',
+      en: 'On 1.8.9: wing size (50 to 150%) can finally be set with a slider in the Wings tab of Cosmetics.',
+    },
+    {
       version: 'Launcher 0.5.10', date: '2026-10-23',
       fr: 'La connexion Microsoft abandonne au bout de 30 secondes si un serveur ne répond plus, au lieu de rester bloquée. En anglais, les erreurs courantes (Java introuvable, fichiers manquants, mémoire) sont enfin traduites.',
       en: 'Microsoft sign-in now gives up after 30 seconds if a server stops answering, instead of hanging. In English, common errors (Java not found, missing files, memory) are now translated.',
