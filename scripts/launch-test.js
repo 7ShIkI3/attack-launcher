@@ -99,7 +99,7 @@ async function main() {
   }
   if (!keep) {
     await new Promise((r) => setTimeout(r, 4000));
-    process.kill(pid);
+    stop(); // le jeu a pu se fermer seul entre-temps : process.kill lèverait ESRCH alors que le test a réussi
     console.log('Jeu fermé.');
   }
 }

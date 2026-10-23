@@ -12,6 +12,7 @@
   let model = 'classic';
   let busy = false;
   let anim = 'walk';
+  let page = document.querySelector('.page.active')?.id.replace(/^page-/, '') || 'home';
 
   function message(text, kind = '') {
     const node = $('skin-message');
@@ -27,7 +28,7 @@
   function ensureViewer() {
     if (viewer || !window.skinview3d) return viewer;
     try {
-      viewer = new window.skinview3d.SkinViewer({ canvas: $('skin-canvas'), width: 240, height: 320 });
+      viewer = new window.skinview3d.SkinViewer({ canvas: $('skin-canvas'), width: 240, height: 320, renderPaused: page !== 'account' });
       viewer.zoom = 0.85;
       viewer.fov = 50;
       viewer.autoRotate = true;
@@ -79,7 +80,8 @@
     show(pending ? pending.dataUrl : account.skin, variant);
   }
 
-  async function run(action, okText) {
+  /** `forgetOnFailure` : le processus principal a abandonné l'image choisie même en cas d'échec (skins:apply). */
+  async function run(action, okText, { forgetOnFailure = false } = {}) {
     if (busy) return;
     busy = true;
     message(t('skin.working'));
@@ -90,6 +92,7 @@
       pending = null;
       message(okText, 'ok');
     } else if (result && result.code !== 'CANCELLED') {
+      if (forgetOnFailure) pending = null; // sinon « Appliquer » répondrait « Choisis d'abord une image »
       message(window.AttackUI.errorText(result), 'error');
     } else {
       message('');
@@ -114,7 +117,7 @@
     message('');
     render();
   });
-  $('skin-apply').addEventListener('click', () => run(() => api.skins.apply(model), t('skin.applied')));
+  $('skin-apply').addEventListener('click', () => run(() => api.skins.apply(model), t('skin.applied'), { forgetOnFailure: true }));
   $('skin-reset').addEventListener('click', () => {
     if (!window.confirm(t('skin.resetConfirm'))) return;
     run(() => api.skins.reset(), t('skin.resetDone'));
@@ -125,6 +128,11 @@
     render();
   }));
   document.querySelectorAll('#skin-anim .chip').forEach((button) => button.addEventListener('click', () => setAnimation(button.dataset.anim)));
+
+  document.addEventListener('attack:page', (e) => {
+    page = e.detail;
+    if (viewer) viewer.renderPaused = page !== 'account';
+  });
 
   // la liste des comptes vient d'être redessinée (connexion, changement de compte, skin mis à jour)
   document.addEventListener('attack:accounts', () => {
