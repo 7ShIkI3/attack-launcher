@@ -132,3 +132,39 @@ test('version du mod affichée : celle du jar, sans « v » en double', async ()
   assert.equal(status.modVersion, '2.1.0');
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('chaque code d’erreur du processus principal a son texte anglais (le français garde le message d’origine)', () => {
+  const dir = path.join(__dirname, '..', 'src', 'main');
+  const codes = new Set();
+  for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.js'))) {
+    const src = fs.readFileSync(path.join(dir, file), 'utf8');
+    for (const m of src.matchAll(/(?:Error\(|code: |code = )'([A-Z][A-Z_]{2,})'/g)) codes.add(m[1]);
+  }
+  const i18n = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'i18n.js'), 'utf8');
+  const en = i18n.slice(i18n.indexOf('    en: {'));
+  // INSTALL_FAILED et NO_UPDATE : réponses de la mise à jour, traduites par les clés update.*
+  const missing = [...codes].filter((c) => !['INSTALL_FAILED', 'NO_UPDATE'].includes(c) && !en.includes(`'error.${c}'`));
+  assert.deepEqual(missing, []);
+  for (const code of ['JAVA_NOT_FOUND', 'JAVA_UNAVAILABLE', 'FILES_MISSING', 'HEAP_TOO_BIG', 'PROFILES_UNREADABLE', 'INVALID_NAME', 'TIMEOUT']) {
+    assert.ok(codes.has(code), `${code} émis par le processus principal`);
+  }
+});
+
+test('erreurs corrigeables par le joueur : chacune porte son code (affiché traduit dans l’interface)', async () => {
+  const game = require('../src/main/game');
+  const runtime = require('../src/main/runtime');
+  const profiles = require('../src/main/profiles');
+  const { AccountStore } = require('../src/main/accounts');
+  const dir = tempDir();
+  await assert.rejects(game.launchGame({ java: path.join(dir, 'absent', 'javaw.exe'), minecraftDir: dir, gameDir: dir, versionId: 'x' }),
+    (e) => e.code === 'JAVA_NOT_FOUND');
+  assert.throws(() => runtime.selectRuntime({}, 'java-runtime-delta', 'windows-x64'), (e) => e.code === 'JAVA_UNAVAILABLE');
+  fs.writeFileSync(path.join(dir, 'launcher_profiles.json'), '{ abîmé');
+  await assert.rejects(profiles.readProfiles(dir), (e) => e.code === 'PROFILES_UNREADABLE');
+  await assert.rejects(new AccountStore(path.join(dir, 'accounts.json'), null).addOffline('a b'), (e) => e.code === 'INVALID_NAME');
+  assert.throws(() => game.buildCommand({
+    java: 'java', version: { id: '1.8.9', minecraftArguments: '', mainClass: 'M', assets: '1.8' }, minecraftDir: dir, gameDir: dir,
+    nativesDir: dir, classpath: [], identity: { name: 'a', uuid: 'u', accessToken: 't', userType: 'msa' }, ramMb: 2048, jvmArgs: '-Xms4G',
+  }), (e) => e.code === 'HEAP_TOO_BIG');
+  fs.rmSync(dir, { recursive: true, force: true });
+});

@@ -29,7 +29,7 @@ function selectRuntime(all, component, key = platformKey()) {
       return { key: candidate, version: entry.version?.name || 'inconnue', manifest: entry.manifest };
     }
   }
-  throw new Error(`Runtime Java ${component} indisponible pour ${key}`);
+  throw Object.assign(new Error(`Runtime Java ${component} indisponible pour ${key}`), { code: 'JAVA_UNAVAILABLE' });
 }
 
 /** Fichiers d'un manifeste de runtime : { files: [{ path, url, sha1, size, executable }], dirs: [] }. */

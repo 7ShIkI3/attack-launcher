@@ -181,7 +181,9 @@ function buildCommand({ java, version, minecraftDir, gameDir, nativesDir, classp
   if (!parsed.ok) throw new Error(jvmargs.describe(parsed));
   const extraJvmArgs = parsed.args;
   const heap = jvmargs.heapConflict(extraJvmArgs, ramMb);
-  if (heap) throw new Error(`Argument Java ${heap} plus grand que la mémoire allouée (${ramMb} Mo) : le jeu ne démarrerait pas. Baisse-le ou augmente la mémoire.`);
+  if (heap) {
+    throw Object.assign(new Error(`Argument Java ${heap} plus grand que la mémoire allouée (${ramMb} Mo) : le jeu ne démarrerait pas. Baisse-le ou augmente la mémoire.`), { code: 'HEAP_TOO_BIG' });
+  }
   const assetsDir = path.join(minecraftDir, 'assets');
   const values = {
     auth_player_name: identity.name,
@@ -239,11 +241,13 @@ function timestamp(date = new Date()) {
  */
 async function launchGame(options) {
   const { java, minecraftDir, gameDir, versionId, identity, ramMb, jvmArgs, launcherVersion } = options;
-  if (!fs.existsSync(java)) throw new Error(`Java introuvable : ${java}`);
+  if (!fs.existsSync(java)) throw Object.assign(new Error(`Java introuvable : ${java}`), { code: 'JAVA_NOT_FOUND' });
   const version = await resolveVersion(minecraftDir, versionId);
   const { classpath, natives } = libraryPlan(version, minecraftDir);
   const missing = [...classpath, ...natives.map((n) => n.file)].filter((f) => !fs.existsSync(f));
-  if (missing.length > 0) throw new Error(`Fichiers manquants (${missing.length}) : lance « Vérifier / réparer l'installation »`);
+  if (missing.length > 0) {
+    throw Object.assign(new Error(`Fichiers manquants (${missing.length}) : lance « Vérifier / réparer l'installation »`), { code: 'FILES_MISSING' });
+  }
   const nativesDir = path.join(minecraftDir, 'versions', versionId, 'natives-attack');
   await extractNatives(natives, nativesDir);
   for (const sub of nativesSubdirs(version)) await fsp.mkdir(safeJoin(nativesDir, sub), { recursive: true });

@@ -35,11 +35,11 @@ function assertAllowed(url, allowedHosts = ALLOWED_HOSTS) {
 }
 
 /** fetch qui suit les redirections à la main : chaque adresse est vérifiée AVANT d'être contactée. */
-async function fetchChecked(url, headers, allowedHosts, { method = 'GET', body } = {}) {
+async function fetchChecked(url, headers, allowedHosts, { method = 'GET', body, signal } = {}) {
   let current = url;
   for (let hop = 0; hop <= 5; hop++) {
     assertAllowed(current, allowedHosts);
-    const init = { method, headers: { 'User-Agent': USER_AGENT, ...headers }, redirect: 'manual' };
+    const init = { method, headers: { 'User-Agent': USER_AGENT, ...headers }, redirect: 'manual', signal };
     if (body !== undefined && method !== 'GET') init.body = body;
     const response = await fetch(current, init);
     const location = response.headers.get('location');

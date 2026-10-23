@@ -29,10 +29,17 @@ function isClientId(value) {
   return typeof value === 'string' && CLIENT_ID.test(value.trim());
 }
 
-/** Transport réel : fetch avec hôtes en liste blanche (redirections comprises). */
-function createTransport({ allowedHosts = ALLOWED_HOSTS } = {}) {
+/** Délai maximal d'un échange avec Microsoft, Xbox ou Minecraft (requête et lecture de la réponse). */
+const REQUEST_TIMEOUT_MS = 30000;
+
+/** Transport réel : fetch avec hôtes en liste blanche (redirections comprises) et délai maximal par requête. */
+function createTransport({ allowedHosts = ALLOWED_HOSTS, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
   const { fetchChecked } = require('./http');
   return async (method, url, { form, json, bearer, multipart } = {}) => {
+    // sans délai, un serveur qui ne répond plus bloquerait la connexion (et le bouton JOUER) environ 5 minutes
+    const signal = AbortSignal.timeout(timeoutMs);
+    const host = new URL(url).hostname;
+    const timedOut = () => new AuthError('TIMEOUT', `${host} ne répond pas : réessaie dans un instant.`);
     const headers = { Accept: 'application/json' };
     let body;
     if (multipart) {
@@ -50,12 +57,19 @@ function createTransport({ allowedHosts = ALLOWED_HOSTS } = {}) {
     if (bearer) headers.Authorization = `Bearer ${bearer}`;
     let response;
     try {
-      response = await fetchChecked(url, headers, allowedHosts, { method, body });
+      response = await fetchChecked(url, headers, allowedHosts, { method, body, signal });
     } catch (error) {
       if (error.message?.startsWith('Adresse refusée')) throw error;
-      throw new AuthError('NETWORK', `Connexion impossible à ${new URL(url).hostname}. Vérifie ta connexion Internet.`);
+      if (signal.aborted) throw timedOut();
+      throw new AuthError('NETWORK', `Connexion impossible à ${host}. Vérifie ta connexion Internet.`);
     }
-    const text = await response.text();
+    let text;
+    try {
+      text = await response.text();
+    } catch (error) {
+      if (signal.aborted) throw timedOut();
+      throw new AuthError('NETWORK', `Connexion coupée avec ${host}. Vérifie ta connexion Internet.`);
+    }
     let data = null;
     try {
       data = text ? JSON.parse(text) : null;

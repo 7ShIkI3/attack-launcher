@@ -163,3 +163,30 @@ test('ID client : format GUID attendu', () => {
   assert.equal(auth.isClientId('123'), false);
   assert.equal(auth.isClientId(undefined), false);
 });
+
+test('transport réel : serveur muet ou réponse bloquée = TIMEOUT rapide, réponse normale lue', async () => {
+  const http = require('node:http');
+  const server = http.createServer((req, res) => {
+    if (req.url === '/muet') return; // ne répond jamais
+    if (req.url === '/bloque') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.write('{"debut":'); // corps jamais terminé
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end('{"ok":true}');
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const transport = auth.createTransport({ allowedHosts: new Set(['127.0.0.1']), timeoutMs: 300 });
+  try {
+    for (const path of ['/muet', '/bloque']) {
+      const started = Date.now();
+      await assert.rejects(transport('GET', `${base}${path}`), (error) => error.code === 'TIMEOUT' && /ne répond pas/.test(error.message));
+      assert.ok(Date.now() - started < 3000, `${path} : abandon rapide`);
+    }
+    assert.deepEqual(await transport('GET', `${base}/ok`), { status: 200, data: { ok: true } });
+  } finally {
+    server.closeAllConnections();
+    server.close();
+  }
+});
