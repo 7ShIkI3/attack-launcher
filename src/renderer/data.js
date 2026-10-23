@@ -79,6 +79,11 @@
 
   const CHANGELOG = [
     {
+      version: 'ATTACK Client 3.2.1', date: '2026-10-23',
+      fr: 'En 1.21.1 et 26.3 : le logo ATTACK s’affiche à gauche du pseudo des joueurs ATTACK, comme en 1.8.9, de ta couleur d’accent et doré pour les admins. Réglage « Logo à côté du pseudo » dans les Cosmétiques.',
+      en: 'On 1.21.1 and 26.3: the ATTACK logo shows left of the name of ATTACK players, as on 1.8.9, in your accent colour and gold for admins. “Logo next to names” setting in Cosmetics.',
+    },
+    {
       version: 'Launcher 0.5.7', date: '2026-10-23',
       fr: 'Plus fiable : une coupure réseau ou l’antivirus ne font plus échouer l’installation, le jeu se lance hors ligne si Java est déjà là, et un double clic sur JOUER ne lance plus deux parties. Corrigé : comptes qui réapparaissaient après suppression, parties non reconnues dans un dossier avec accents, erreurs de réglages affichées au mauvais endroit.',
       en: 'More reliable: a network drop or the antivirus no longer breaks the installation, the game starts offline when Java is already there, and a double click on PLAY no longer starts two games. Fixed: accounts coming back after removal, games not recognised in a folder with accents, settings errors shown in the wrong place.',
