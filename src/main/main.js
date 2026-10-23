@@ -73,7 +73,12 @@ const cipher = {
     return safeStorage.encryptString(text);
   },
   decrypt(buffer) {
-    return safeStorage.decryptString(buffer);
+    try {
+      return safeStorage.decryptString(buffer);
+    } catch {
+      // autre session Windows, profil restauré ou accounts.json copié d'un autre PC : la clé DPAPI n'est plus la même
+      throw new auth.AuthError('SESSION_EXPIRED', 'Session illisible sur ce Windows : reconnecte ce compte.');
+    }
   },
 };
 
@@ -251,6 +256,7 @@ function registerIpc() {
     try {
       const result = await auth.loginWithDeviceCode(transport, settingsStore.clientId(settings), {
         onCode: ({ userCode, verificationUri, expiresIn }) => {
+          if (current.cancelled) return; // annulée pendant la demande du code : rien à montrer ni à ouvrir
           current.userCode = userCode;
           current.verificationUri = verificationUri;
           send('auth:event', { stage: 'code', userCode, verificationUri, expiresIn });
@@ -265,11 +271,14 @@ function registerIpc() {
     } catch (error) {
       return publicError(error);
     } finally {
-      login = null;
+      // une connexion annulée a déjà libéré la place : ne pas effacer celle qui a pu démarrer depuis
+      if (login === current) login = null;
     }
   });
   handle('accounts:cancel', () => {
+    // la boucle d'attente le verra à son prochain réveil ; une nouvelle connexion est possible tout de suite
     if (login) login.cancelled = true;
+    login = null;
   });
   handle('accounts:openVerification', () => login?.verificationUri && openVerification(login.verificationUri));
   handle('accounts:copyCode', () => login?.userCode && clipboard.writeText(login.userCode));
@@ -369,10 +378,17 @@ function registerIpc() {
   handle('game:play', async (event) => {
     // pas de lancement pendant une installation : elle réécrit mods/ et le jar du mod (l'interface le bloque déjà)
     if (installing) return { ok: false, code: 'BUSY', message: 'Installation en cours' };
+    if (launching) return { ok: false, code: 'LAUNCHING', message: 'Lancement déjà en cours' };
+    // posé avant le premier await : ni deuxième lancement ni installation pendant la préparation (Java, compte)
+    launching = true;
     let started = false;
     try {
       const profile = currentProfile();
       const eff = effective();
+      // une partie de ce profil tourne déjà : relancer réextrairait ses natives (DLL) sous ses pieds
+      if (game.gameBlocksInstall(eff.gameDir, [...games.values()])) {
+        return { ok: false, code: 'ALREADY_PLAYING', message: 'Une partie de ce profil est déjà ouverte : ferme-la avant d’en lancer une autre.' };
+      }
       const status = await installer.status({ minecraftDir, gameDir: eff.gameDir, profile, shaders: eff.shaders });
       if (!status.installed) return { ok: false, code: 'NOT_INSTALLED', message: 'Installation incomplète' };
       const account = accounts.active();
@@ -393,18 +409,20 @@ function registerIpc() {
       // lancement raté (Java, compte, spawn) : rien ne tourne, la mise à jour reportée peut repartir
       if (started) updater?.activityEnded();
       return publicError(error);
+    } finally {
+      launching = false;
     }
   });
   handle('game:openLogs', async () => {
     const dir = path.join(effective().gameDir, 'logs', 'launcher');
     await fsp.mkdir(dir, { recursive: true });
-    return shell.openPath(dir);
+    return openPathChecked(dir);
   });
 
   handle('shell:openGameDir', async () => {
     const { gameDir } = effective();
     await fsp.mkdir(gameDir, { recursive: true });
-    return shell.openPath(gameDir);
+    return openPathChecked(gameDir);
   });
   handle('shell:openRepo', () => shell.openExternal(REPO_URL));
 
@@ -433,6 +451,13 @@ function registerIpc() {
   handle('window:close', () => win?.close());
 }
 
+/** shell.openPath ne rejette jamais : il renvoie le message d'erreur, qu'on transforme en exception pour l'interface. */
+async function openPathChecked(dir) {
+  const error = await shell.openPath(dir);
+  if (error) throw new Error(error);
+  return '';
+}
+
 /** N'ouvre que la page de validation Microsoft renvoyée par le serveur (https, domaine Microsoft). */
 function openVerification(uri) {
   try {
@@ -453,36 +478,30 @@ async function playDirect(event, account, profile, eff) {
       event.sender.send('install:progress', { step, done, total, percent: total ? Math.round((done / total) * 100) : 100 });
     }
   };
-  launching = true;
-  let result;
-  let identity;
-  try {
-    let java = eff.javaPath;
-    if (!java) {
-      progress('java', 0, 1);
-      const component = await game.javaComponent(minecraftDir, profile.loader.versionId);
-      java = (await runtime.installRuntime({
-        runtimeDir,
-        component,
-        onProgress: ({ done, total }) => progress('java', done, total),
-      })).java;
-    }
-    progress('auth', 0, 1);
-    identity = await accounts.launchIdentity(account.id, refreshWith);
-    progress('launch', 0, 1);
-    result = await game.launchGame({
-      java,
-      minecraftDir,
-      gameDir: eff.gameDir,
-      versionId: profile.loader.versionId,
-      identity,
-      ramMb: eff.ramMb,
-      jvmArgs: eff.jvmArgs,
-      launcherVersion: app.getVersion(),
-    });
-  } finally {
-    launching = false;
+  // `launching` est posé et relâché par game:play, autour de tout le lancement
+  let java = eff.javaPath;
+  if (!java) {
+    progress('java', 0, 1);
+    const component = await game.javaComponent(minecraftDir, profile.loader.versionId);
+    java = (await runtime.installRuntime({
+      runtimeDir,
+      component,
+      onProgress: ({ done, total }) => progress('java', done, total),
+    })).java;
   }
+  progress('auth', 0, 1);
+  const identity = await accounts.launchIdentity(account.id, refreshWith);
+  progress('launch', 0, 1);
+  const result = await game.launchGame({
+    java,
+    minecraftDir,
+    gameDir: eff.gameDir,
+    versionId: profile.loader.versionId,
+    identity,
+    ramMb: eff.ramMb,
+    jvmArgs: eff.jvmArgs,
+    launcherVersion: app.getVersion(),
+  });
   // partie en cours : aucune mise à jour tant que le jeu n'est pas fermé
   games.set(result.child, eff.gameDir);
   result.child.once('exit', () => {

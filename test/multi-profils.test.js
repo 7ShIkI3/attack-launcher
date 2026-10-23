@@ -373,7 +373,7 @@ function fakeInstall(profile, { shaders = false } = {}) {
   put(path.join(minecraftDir, 'versions', profile.mc, `${profile.mc}.json`), JSON.stringify({ assetIndex: { id: '17' } }));
   put(path.join(minecraftDir, 'versions', profile.mc, `${profile.mc}.jar`));
   put(path.join(minecraftDir, 'assets', 'indexes', '17.json'));
-  put(path.join(minecraftDir, 'versions', vid, `${vid}.json`));
+  put(path.join(minecraftDir, 'versions', vid, `${vid}.json`), JSON.stringify({ id: vid }));
   put(path.join(minecraftDir, 'libraries', 'net', 'fabricmc', 'fabric-loader', profile.loader.version, `fabric-loader-${profile.loader.version}.jar`));
   put(path.join(minecraftDir, 'launcher_profiles.json'), JSON.stringify({ profiles: { [profile.launcherProfileId]: { name: profile.name } } }));
   put(path.join(gameDir, 'mods', profile.modFile), 'mod');
@@ -466,4 +466,15 @@ test('arguments Java : propres à chaque profil, normalisés, valeur invalide ig
   // ancien fichier sans la clé
   const old = settings.sanitize({ profiles: { 'forge-1.8.9': { gameDir: 'D:\\jeu' } } }, settings.defaults(ENV));
   assert.equal(settings.forProfile(old).jvmArgs, '');
+});
+
+test('état : JSON de version du chargeur tronqué (coupure pendant l’écriture) = chargeur à réinstaller', async () => {
+  const profile = catalog.get('fabric-1.21.1');
+  const { root, minecraftDir, gameDir } = fakeInstall(profile);
+  const vid = profile.loader.versionId;
+  fs.writeFileSync(path.join(minecraftDir, 'versions', vid, `${vid}.json`), '{"id":"fabric-loader');
+  const s = await installer.status({ minecraftDir, gameDir, profile });
+  assert.equal(s.loader, false);
+  assert.equal(s.installed, false);
+  fs.rmSync(root, { recursive: true, force: true });
 });

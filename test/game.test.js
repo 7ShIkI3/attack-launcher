@@ -187,3 +187,30 @@ test('arguments Java du joueur : après ceux par défaut, avant -cp ; refusés a
   assert.deepEqual(game.buildCommand(options).args, game.buildCommand({ ...options, jvmArgs: '' }).args);
   assert.throws(() => game.buildCommand({ ...options, jvmArgs: '-javaagent:C:\\x.jar' }), /Argument Java refusé/);
 });
+
+test('-Xms au-delà de la mémoire allouée : lancement refusé avec un message clair', () => {
+  const identity = { name: 'Steve', uuid: 'u', accessToken: 'tok', userType: 'msa' };
+  assert.throws(() => game.buildCommand({
+    java: 'java', version: { id: '1.8.9', minecraftArguments: '', mainClass: 'M', assets: '1.8' }, minecraftDir: 'C:\mc', gameDir: 'C:\g',
+    nativesDir: 'C:\n', classpath: [], identity, ramMb: 4096, jvmArgs: '-Xms8G',
+  }), /plus grand que la mémoire allouée/);
+});
+
+test('détection des parties : sortie PowerShell en UTF-8 (dossiers accentués)', () => {
+  assert.match(game.JAVA_PROCESSES_PS, /OutputEncoding=\[Text\.Encoding\]::UTF8/);
+});
+
+test('runtime Java : Mojang injoignable mais runtime déjà installé = utilisé tel quel', async () => {
+  const dir = tempDir();
+  const root = path.join(dir, 'jre-legacy', 'windows-x64');
+  fs.mkdirSync(path.join(root, 'bin'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'bin', 'javaw.exe'), '');
+  const offline = { allowedHosts: new Set(), retries: 0 };
+  await assert.rejects(runtime.installRuntime({ runtimeDir: dir, net: offline, platform: 'win32', arch: 'x64' }), /refusée/);
+  fs.writeFileSync(path.join(root, '.attack-runtime.json'), JSON.stringify({ component: 'jre-legacy', key: 'windows-x64', version: '8u51', manifestSha1: SHA }));
+  const result = await runtime.installRuntime({ runtimeDir: dir, net: offline, platform: 'win32', arch: 'x64' });
+  assert.equal(result.java, path.join(root, 'bin', 'javaw.exe'));
+  assert.equal(result.version, '8u51');
+  assert.equal(result.offline, true);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

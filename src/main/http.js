@@ -81,12 +81,63 @@ async function hashFile(file, algorithm = 'sha1') {
   return hash.digest('hex');
 }
 
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const LOCAL_ERRORS = ['ENOSPC', 'EPERM', 'EBUSY', 'EACCES', 'EROFS', 'EMFILE'];
+
+/**
+ * request() puis lecture du corps par `receive(response)`, avec de nouvelles tentatives si la connexion casse PENDANT le
+ * transfert (ECONNRESET, « terminated ») : request() ne couvre que la connexion et les en-têtes. Une erreur marquée
+ * `verification` (hash, taille) n'est jamais retentée.
+ */
+async function requestAndReceive(url, options, receive) {
+  const retries = options.retries ?? 3;
+  for (let attempt = 0; ; attempt++) {
+    const response = await request(url, options);
+    try {
+      return await receive(response);
+    } catch (error) {
+      // erreur du disque (plein, fichier verrouillé) : retélécharger n'y changerait rien
+      if (error.verification || LOCAL_ERRORS.includes(error.code) || attempt >= retries) throw error;
+      await wait(400 * 2 ** attempt);
+    }
+  }
+}
+
+function verificationError(message) {
+  return Object.assign(new Error(message), { verification: true });
+}
+
+/** Renommage qui réessaie quelques fois : sous Windows, l'antivirus ou OneDrive ouvrent souvent un fichier tout juste écrit. */
+async function renameRetry(from, to, attempts = 6) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fsp.rename(from, to);
+    } catch (error) {
+      if (attempt >= attempts || !['EPERM', 'EBUSY', 'EACCES'].includes(error.code)) throw error;
+      await wait(50 * 2 ** Math.min(attempt, 3));
+    }
+  }
+}
+
+/** Écriture atomique : fichier temporaire puis renommage ; une coupure pendant l'écriture ne laisse jamais un fichier tronqué. */
+async function writeFileAtomic(file, data) {
+  const tmp = `${file}.${process.pid}.tmp`;
+  try {
+    await fsp.writeFile(tmp, data);
+    await renameRetry(tmp, file);
+  } catch (error) {
+    await fsp.rm(tmp, { force: true });
+    throw error;
+  }
+}
+
 /** Télécharge un petit document en mémoire ; vérifie son SHA-1 si fourni. */
 async function fetchBuffer(url, { sha1, ...options } = {}) {
-  const response = await request(url, options);
-  const buffer = Buffer.from(await response.arrayBuffer());
-  if (sha1 && hashBuffer(buffer) !== sha1.toLowerCase()) throw new Error(`SHA-1 incorrect pour ${url}`);
-  return buffer;
+  return requestAndReceive(url, options, async (response) => {
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (sha1 && hashBuffer(buffer) !== sha1.toLowerCase()) throw verificationError(`SHA-1 incorrect pour ${url}`);
+    return buffer;
+  });
 }
 
 async function fetchJson(url, options) {
@@ -117,30 +168,31 @@ async function downloadFile(url, dest, expect = {}, options = {}) {
 
   await fsp.mkdir(path.dirname(dest), { recursive: true });
   const part = `${dest}.part`;
-  const response = await request(url, options);
-  const hash = crypto.createHash(algorithm);
-  let bytes = 0;
-  const body = Readable.fromWeb(response.body);
-  body.on('data', (chunk) => {
-    hash.update(chunk);
-    bytes += chunk.length;
-    onBytes?.(chunk.length);
+  return requestAndReceive(url, options, async (response) => {
+    const hash = crypto.createHash(algorithm);
+    let bytes = 0;
+    const body = Readable.fromWeb(response.body);
+    body.on('data', (chunk) => {
+      hash.update(chunk);
+      bytes += chunk.length;
+      onBytes?.(chunk.length);
+    });
+    try {
+      await pipeline(body, fs.createWriteStream(part));
+      const digest = hash.digest('hex');
+      if (accepted.length > 0 && !accepted.includes(digest)) {
+        throw verificationError(`${algorithm.toUpperCase()} incorrect pour ${path.basename(dest)} (reçu ${digest})`);
+      }
+      if (expect.size != null && bytes !== expect.size) {
+        throw verificationError(`Taille incorrecte pour ${path.basename(dest)} : ${bytes} au lieu de ${expect.size}`);
+      }
+      await renameRetry(part, dest);
+      return { skipped: false, bytes, [algorithm]: digest };
+    } catch (error) {
+      await fsp.rm(part, { force: true });
+      throw error;
+    }
   });
-  try {
-    await pipeline(body, fs.createWriteStream(part));
-    const digest = hash.digest('hex');
-    if (accepted.length > 0 && !accepted.includes(digest)) {
-      throw new Error(`${algorithm.toUpperCase()} incorrect pour ${path.basename(dest)} (reçu ${digest})`);
-    }
-    if (expect.size != null && bytes !== expect.size) {
-      throw new Error(`Taille incorrecte pour ${path.basename(dest)} : ${bytes} au lieu de ${expect.size}`);
-    }
-    await fsp.rename(part, dest);
-    return { skipped: false, bytes, [algorithm]: digest };
-  } catch (error) {
-    await fsp.rm(part, { force: true });
-    throw error;
-  }
 }
 
 /** Exécute fn sur chaque élément avec au plus `limit` tâches en parallèle ; s'arrête à la première erreur. */
@@ -158,7 +210,8 @@ async function pool(items, limit, fn) {
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  // limite absente ou invalide : une tâche à la fois (Math.min(undefined, n) donnerait NaN, donc aucun worker)
+  await Promise.all(Array.from({ length: Math.min(Math.max(1, Number(limit) || 1), items.length) }, worker));
   if (failed) throw failed;
   return results;
 }
@@ -174,5 +227,7 @@ module.exports = {
   fetchJson,
   fetchText,
   downloadFile,
+  renameRetry,
+  writeFileAtomic,
   pool,
 };

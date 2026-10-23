@@ -279,6 +279,7 @@ input[type='range']::-webkit-slider-thumb {
 .switch input:checked + span::before { transform: translateX(18px); }
 .warn { grid-column: 1 / -1; margin: 0; color: var(--warn); font-size: 12px; }
 .saved { color: var(--good); font-size: 12px; padding-top: 10px; }
+.saved.error { color: #ff8a80; max-width: 360px; text-align: right; }
 .page-head .badge { margin-top: 10px; white-space: nowrap; }
 .footnote { font-size: 11.5px; margin-top: 18px; }
 

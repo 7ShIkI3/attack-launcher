@@ -17,6 +17,8 @@ const SIZE = /^-X(ms|ss|mn)\d+[kKmMgG]?$/;
 const XX = /^-XX:(?:[+-]([A-Za-z][A-Za-z0-9]*)|([A-Za-z][A-Za-z0-9]*)=([\w.,+-]+))$/;
 // options -XX refusées même avec une valeur simple (un vidage mémoire écrirait aussi le jeton Minecraft sur le disque)
 const XX_REFUSED = /^(OnError|OnOutOfMemoryError|VMOptionsFile|Flags|CompileCommand|CompileOnly|CompileCommandFile|CompilerDirectivesFile|StartFlightRecording|FlightRecorderOptions|SharedArchiveFile|ArchiveClassesAtExit|MaxRAM|MaxRAMPercentage|MaxRAMFraction|MaxHeapSize|EnableDynamicAgentLoading|DumpSharedSpaces|DynamicDumpSharedSpaces|AutoCreateSharedArchive|RecordDynamicDumpInfo)$|^AOT|File|Path|Dir|HeapDump|Archive|Dump/;
+// options sûres que les motifs larges ci-dessus refuseraient (« Dir » dans MaxDirectMemorySize)
+const XX_ALLOWED = /^MaxDirectMemorySize$/;
 const PROPERTY = /^-D([\w.]+)=([\w.,+-]*)$/;
 const PROPERTIES = /^(sun\.java2d\.\w+|file\.encoding|sun\.jnu\.encoding|user\.language|user\.country|java\.net\.preferIPv4Stack)$/;
 
@@ -28,7 +30,7 @@ function refusal(arg) {
   if (xx) {
     const name = xx[1] || xx[2];
     if (/^(MaxRAM|MaxHeapSize)/.test(name)) return 'la mémoire se règle avec le curseur Mémoire allouée';
-    return XX_REFUSED.test(name) ? 'cette option lance une commande ou lit ou écrit un fichier' : null;
+    return XX_REFUSED.test(name) && !XX_ALLOWED.test(name) ? 'cette option lance une commande ou lit ou écrit un fichier' : null;
   }
   if (arg.startsWith('-XX:')) return 'valeur non autorisée (lettres, chiffres et . , + - seulement, pas de chemin)';
   const property = PROPERTY.exec(arg);
@@ -52,6 +54,19 @@ function parseJvmArgs(text) {
     if (reason) return { ok: false, arg, reason };
   }
   return { ok: true, args };
+}
+
+const UNIT_MB = { '': 1 / 1048576, k: 1 / 1024, m: 1, g: 1024 };
+
+/** Taille d'un -Xms/-Xss/-Xmn en Mo (sans unité : octets), sinon null. */
+function sizeMb(arg) {
+  const match = /^-X(?:ms|ss|mn)(\d+)([kKmMgG]?)$/.exec(arg);
+  return match ? Number(match[1]) * UNIT_MB[match[2].toLowerCase()] : null;
+}
+
+/** -Xms plus grand que la mémoire allouée (-Xmx) : la JVM refuse de démarrer. Renvoie l'argument fautif, sinon null. */
+function heapConflict(args, ramMb) {
+  return args.find((arg) => arg.startsWith('-Xms') && sizeMb(arg) > ramMb) || null;
 }
 
 /** Texte normalisé (espaces simples) d'une valeur valide, sinon null. */
@@ -98,4 +113,4 @@ function writtenExtra(defaults, javaArgs) {
   return null;
 }
 
-module.exports = { MAX_LENGTH, MAX_ARGS, parseJvmArgs, normalize, describe, argsOf, baseArgs, writtenExtra };
+module.exports = { MAX_LENGTH, MAX_ARGS, parseJvmArgs, normalize, describe, argsOf, baseArgs, writtenExtra, sizeMb, heapConflict };

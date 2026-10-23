@@ -82,7 +82,9 @@ function libraryDownloads(versionJson, env = currentEnv()) {
       files.push(artifactFile(lib.name, native, classifier));
     }
   }
-  return files;
+  // un même fichier cité deux fois serait téléchargé par deux tâches en parallèle dans le même .part
+  const seen = new Set();
+  return files.filter((file) => !seen.has(file.path) && seen.add(file.path));
 }
 
 function artifactFile(name, artifact, classifier) {

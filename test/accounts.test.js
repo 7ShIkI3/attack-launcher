@@ -136,3 +136,58 @@ test('setSkin : nouveau skin et modele enregistres, visibles dans la vue publiqu
   await assert.rejects(store.setSkin('inconnu', null, 'classic'), /Compte inconnu/);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('rafraîchissements simultanés du même compte : une seule chaîne Microsoft, partagée', async () => {
+  const dir = tempDir();
+  const store = new AccountStore(path.join(dir, 'accounts.json'), cipher);
+  await store.saveMicrosoft(login('R1', 0));
+  store.minecraft.delete(UUID);
+  let calls = 0;
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const refresh = async () => {
+    calls++;
+    await gate;
+    return login('R2');
+  };
+  const both = Promise.all([store.launchIdentity(UUID, refresh), store.launchIdentity(UUID, refresh)]);
+  release();
+  const [a, b] = await both;
+  assert.equal(calls, 1);
+  assert.equal(a.name, 'Raphou');
+  assert.equal(b.name, 'Raphou');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('compte supprimé pendant son rafraîchissement : il ne réapparaît pas', async () => {
+  const dir = tempDir();
+  const file = path.join(dir, 'accounts.json');
+  const store = new AccountStore(file, cipher);
+  await store.saveMicrosoft(login('R1'));
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const refreshing = store.refresh(UUID, async () => {
+    await gate;
+    return login('R2');
+  });
+  await store.remove(UUID);
+  release();
+  assert.equal(await refreshing, null);
+  assert.deepEqual(store.list(), []);
+  assert.deepEqual((await new AccountStore(file, cipher).load()).list(), []);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('sauvegardes simultanées : fichier toujours lisible, sans temporaire laissé ; fichier abîmé gardé en .corrupt', async () => {
+  const dir = tempDir();
+  const file = path.join(dir, 'accounts.json');
+  const store = new AccountStore(file, cipher);
+  await Promise.all([store.addOffline('Alpha'), store.addOffline('Bravo'), store.addOffline('Charlie')]);
+  assert.deepEqual((await new AccountStore(file, cipher).load()).list().map((a) => a.name).sort(), ['Alpha', 'Bravo', 'Charlie']);
+  assert.deepEqual(fs.readdirSync(dir), ['accounts.json']);
+  fs.writeFileSync(file, '{"accounts": [');
+  const broken = await new AccountStore(file, cipher).load();
+  assert.deepEqual(broken.list(), []);
+  assert.equal(fs.readFileSync(`${file}.corrupt`, 'utf8'), '{"accounts": [');
+  fs.rmSync(dir, { recursive: true, force: true });
+});

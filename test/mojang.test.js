@@ -101,3 +101,8 @@ test('assets : chemins objets/xx/hash, URL officielle, sans doublon', () => {
   });
   assert.throws(() => mojang.assetDownloads({ objects: { x: { hash: '../../etc', size: 1 } } }), /invalide/);
 });
+
+test('bibliothèque citée deux fois : un seul téléchargement (pas deux écritures du même .part)', () => {
+  const twice = { ...VERSION, libraries: [VERSION.libraries[0], VERSION.libraries[0]] };
+  assert.equal(mojang.libraryDownloads(twice, WIN64).length, 1);
+});

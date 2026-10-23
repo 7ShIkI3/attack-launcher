@@ -81,7 +81,8 @@ function sanitizeProfile(input, base, profile, otherDirs = []) {
   }
   if ('javaPath' in input) {
     const java = cleanPath(input.javaPath, base.javaPath, { allowEmpty: true });
-    s.javaPath = java === '' || /javaw?\.exe$|\/java$/i.test(java) ? java : base.javaPath;
+    // nom de fichier exact (pas « notjava.exe ») : java.exe, javaw.exe, ou java sous Linux / macOS
+    s.javaPath = java === '' || /(^|[\\/])javaw?\.exe$|[\\/]java$/i.test(java) ? java : base.javaPath;
   }
   if ('jvmArgs' in input) {
     // invalide : on garde l'ancienne valeur (l'interface reçoit l'erreur de settings:set)

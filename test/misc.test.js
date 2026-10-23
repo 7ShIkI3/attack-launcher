@@ -72,6 +72,8 @@ test('réglages : bornes, chemins absolus, langue (réglages à plat du profil c
   assert.equal(view({ gameDir: 'relatif\\dossier' }).gameDir, settings.forProfile(base).gameDir);
   assert.equal(view({ javaPath: 'C:\\Windows\\notepad.exe' }).javaPath, '');
   assert.equal(view({ javaPath: 'C:\\Java\\bin\\javaw.exe' }).javaPath, 'C:\\Java\\bin\\javaw.exe');
+  assert.equal(view({ javaPath: 'C:\\Java\\bin\\java.exe' }).javaPath, 'C:\\Java\\bin\\java.exe');
+  assert.equal(view({ javaPath: 'C:\\x\\notjava.exe' }).javaPath, '');
   assert.equal(view({ devMode: 'oui' }).devMode, false);
   assert.equal(settings.sanitize({ hack: 1 }, base).hack, undefined);
 });

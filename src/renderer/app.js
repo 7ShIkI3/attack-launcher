@@ -30,6 +30,8 @@
   function showPage(page) {
     document.querySelectorAll('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.page === page));
     document.querySelectorAll('.page').forEach((p) => p.classList.toggle('active', p.id === `page-${page}`));
+    // la vue 3D du skin ne dessine que sur la page Compte (sinon WebGL tourne en continu, même pendant une partie)
+    document.dispatchEvent(new CustomEvent('attack:page', { detail: page }));
   }
   window.showPage = showPage;
   document.querySelectorAll('.nav-item').forEach((b) => b.addEventListener('click', () => showPage(b.dataset.page)));
@@ -79,7 +81,9 @@
     statusToken++; // une lecture d'état déjà partie pour l'ancien profil sera ignorée
     status = null; // l'état du profil précédent ne doit pas rester affiché
     renderStatus();
-    await save({ profileId: id });
+    // changement refusé (disque plein, antivirus) : le profil revient en arrière, on le dit ici, sur l'accueil
+    const failure = await save({ profileId: id }, { showError: false });
+    if (failure) setMessage(t('error.generic', { message: failure }), 'error');
   }
 
   /** Mods du pack qui seront installés : tous, plus Iris seulement avec l'option Shaders. */
@@ -108,7 +112,7 @@
       ]));
     }
     const button = $('play-button');
-    button.disabled = busy || !status;
+    button.disabled = busy || playing || !status;
     $('play-label').textContent = busy ? t('home.installing') : status?.installed ? t('home.play') : t('home.install');
     const player = launchAccount();
     const installHint = t(isFabric(profile) ? 'home.installHintFabric' : 'home.installHintForge', { mc: profile.mc });
@@ -144,13 +148,33 @@
     }
   }
 
+  /** Appel au processus principal qui renvoie { ok, ... } : un rejet (IPC refusé) devient un échec affichable. */
+  async function call(action) {
+    try {
+      return await action();
+    } catch (error) {
+      return { ok: false, code: error?.code || 'ERROR', message: String(error?.message || error) };
+    }
+  }
+
+  // masquage différé de la barre de progression : annulé si une nouvelle installation ou un lancement commence
+  let hideProgressTimer = null;
+  function showProgress() {
+    clearTimeout(hideProgressTimer);
+    $('progress-bar').style.width = '0%';
+    $('progress').classList.remove('hidden');
+  }
+  function hideProgress(delay) {
+    clearTimeout(hideProgressTimer);
+    hideProgressTimer = setTimeout(() => $('progress').classList.add('hidden'), delay);
+  }
+
   async function runInstall() {
     busy = true;
     setMessage(t('home.profileNote'));
-    $('progress-bar').style.width = '0%';
-    $('progress').classList.remove('hidden');
+    showProgress();
     renderStatus();
-    const result = await api.install();
+    const result = await call(() => api.install());
     busy = false;
     if (result.ok) {
       $('progress-bar').style.width = '100%';
@@ -159,7 +183,7 @@
       setMessage(errorText(result), 'error');
     }
     await refreshStatus();
-    setTimeout(() => $('progress').classList.add('hidden'), result.ok ? 1500 : 0);
+    hideProgress(result.ok ? 1500 : 0);
     return result.ok;
   }
 
@@ -183,14 +207,13 @@
     const direct = Boolean(launchAccount());
     if (direct) {
       setMessage('');
-      $('progress-bar').style.width = '0%';
-      $('progress').classList.remove('hidden');
+      showProgress();
     }
-    const result = await api.play();
+    const result = await call(() => api.play());
     playing = false;
     renderProfiles();
     $('play-button').disabled = false;
-    if (direct) setTimeout(() => $('progress').classList.add('hidden'), result.ok ? 1200 : 0);
+    if (direct) hideProgress(result.ok ? 1200 : 0);
     if (result.ok && result.mode === 'direct') setMessage(t('home.launchedDirect', { name: result.name }), 'ok');
     else if (result.ok) setMessage(t(result.detected ? 'home.launched' : 'home.launchedUnknown', { name: profile.name }), 'ok');
     else if (result.code === 'NOT_INSTALLED') await refreshStatus();
@@ -286,8 +309,11 @@
 
   // --- réglages ---
   let savedTimer = null;
-  /** Enregistre `patch` ; renvoie le message d'erreur du processus principal, ou null si tout est enregistré. */
-  async function save(patch) {
+  /**
+   * Enregistre `patch` ; renvoie le message d'erreur du processus principal, ou null si tout est enregistré.
+   * `showError` : l'échec s'affiche en haut de la page Réglages (sinon l'appelant l'affiche).
+   */
+  async function save(patch, { showError = true } = {}) {
     let failure = null;
     try {
       settings = await api.setSettings(patch);
@@ -296,16 +322,21 @@
       settings = await api.getSettings();
       // Electron préfixe le message (« Error invoking remote method … Error: ») : on ne garde que le nôtre
       failure = String(error.message).replace(/^Error invoking remote method '[^']*': (Error: )?/, '');
-      setMessage(t('error.generic', { message: failure }), 'error');
     }
     renderSettings();
     renderProfiles();
     renderMods();
     if ('profileId' in patch) renderStatus();
-    if (!failure) {
-      $('saved').classList.remove('hidden');
-      clearTimeout(savedTimer);
-      savedTimer = setTimeout(() => $('saved').classList.add('hidden'), 1600);
+    // « Enregistré », ou l'erreur au même endroit : sur la page Réglages, pas sur l'accueil
+    const saved = $('saved');
+    clearTimeout(savedTimer);
+    saved.classList.toggle('error', Boolean(failure));
+    if (failure && !showError) {
+      saved.classList.add('hidden');
+    } else {
+      saved.textContent = failure ? t('error.generic', { message: failure }) : t('settings.saved');
+      saved.classList.remove('hidden');
+      savedTimer = setTimeout(() => saved.classList.add('hidden'), failure ? 6000 : 1600);
     }
     if (['profileId', 'gameDir', 'devMode', 'devJarDir', 'shaders'].some((key) => key in patch)) refreshStatus();
     if ('devMode' in patch || 'msClientId' in patch) refreshAccounts();
@@ -377,7 +408,7 @@
   });
   async function saveJvmArgs(value) {
     const typed = value.trim();
-    const failure = await save({ jvmArgs: typed });
+    const failure = await save({ jvmArgs: typed }, { showError: false });
     // refusé : le texte tapé reste dans le champ pour être corrigé
     $('jvm-args').value = failure ? typed : settings.jvmArgs || '';
     $('jvm-args-warn').textContent = failure || '';
