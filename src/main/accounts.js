@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { writeFileAtomic } = require('./http');
 
 const NAME = /^[A-Za-z0-9_]{3,16}$/;
 const REFRESH_MARGIN_MS = 5 * 60 * 1000;
@@ -25,6 +26,8 @@ class AccountStore {
     this.cipher = cipher;
     this.data = { version: 1, active: null, accounts: [] };
     this.minecraft = new Map(); // id -> { accessToken, expiresAt } (mémoire seulement)
+    this.refreshing = new Map(); // id -> promesse du rafraîchissement en cours (un seul à la fois par compte)
+    this.saving = Promise.resolve();
   }
 
   async load() {
@@ -33,16 +36,21 @@ class AccountStore {
       const data = JSON.parse(await fsp.readFile(this.file, 'utf8'));
       if (Array.isArray(data.accounts)) this.data = { version: 1, active: data.active || null, accounts: data.accounts };
     } catch {
-      // fichier abîmé : on repart d'une liste vide plutôt que de planter
+      // fichier abîmé : on repart d'une liste vide plutôt que de planter, en gardant une copie (la prochaine
+      // sauvegarde l'écraserait)
+      await fsp.copyFile(this.file, `${this.file}.corrupt`).catch(() => {});
     }
     return this;
   }
 
-  async save() {
-    await fsp.mkdir(path.dirname(this.file), { recursive: true });
-    const tmp = `${this.file}.tmp`;
-    await fsp.writeFile(tmp, `${JSON.stringify(this.data, null, 2)}\n`, 'utf8');
-    await fsp.rename(tmp, this.file);
+  /** Sauvegardes l'une après l'autre : deux écritures simultanées (rafraîchissement + skin) ne se mélangent pas. */
+  save() {
+    const run = async () => {
+      await fsp.mkdir(path.dirname(this.file), { recursive: true });
+      await writeFileAtomic(this.file, `${JSON.stringify(this.data, null, 2)}\n`);
+    };
+    this.saving = this.saving.then(run, run);
+    return this.saving;
   }
 
   /** Vue publique, sans aucun jeton. */
@@ -128,13 +136,25 @@ class AccountStore {
     return { name: account.name, uuid: account.id, accessToken: minecraft.accessToken, userType: 'msa' };
   }
 
-  /** Rafraîchit un compte Microsoft et enregistre le nouveau refresh token (chiffré). */
-  async refresh(id, refresh) {
+  /**
+   * Rafraîchit un compte Microsoft et enregistre le nouveau refresh token (chiffré). Un rafraîchissement déjà en cours
+   * pour ce compte (démarrage + clic sur Jouer) est partagé : une seule chaîne Microsoft / Xbox / Minecraft à la fois.
+   */
+  refresh(id, refresh) {
+    if (!this.refreshing.has(id)) {
+      this.refreshing.set(id, this.refreshNow(id, refresh).finally(() => this.refreshing.delete(id)));
+    }
+    return this.refreshing.get(id);
+  }
+
+  async refreshNow(id, refresh) {
     const account = this.get(id);
     if (!account || account.type !== 'msa') return null;
     const refreshToken = this.cipher.decrypt(Buffer.from(account.refreshToken, 'base64'));
     const result = await refresh(refreshToken);
     if (result.profile.id !== id) throw new Error('Le compte Microsoft a changé de profil Minecraft');
+    // compte supprimé pendant l'appel réseau : on ne le recrée pas
+    if (!this.get(id)) return null;
     await this.saveMicrosoft(result, { makeActive: false });
     return result.profile;
   }

@@ -128,6 +128,8 @@ class UpdateController {
       const message = error?.message || String(error);
       this.log(`electron-updater : ${message}`);
       this.installing = false;
+      // mise à jour prête (l'erreur vient d'une tentative d'installation) : elle reste proposée, on peut réessayer
+      if (this.state.phase === 'ready') return;
       if (this.state.phase !== 'downloading' || !this.token?.cancelled) this.setState({ phase: 'error', message });
     });
     this.log(`Launcher ${this.currentVersion}, mode ${this.mode}`);
@@ -232,10 +234,10 @@ class UpdateController {
     try {
       this.updater.quitAndInstall(true, true);
     } catch (error) {
-      // installateur téléchargé introuvable ou refusé : on reste ouvert, l'interface affiche l'erreur
+      // installateur téléchargé introuvable ou refusé : on reste ouvert, la bannière reste affichée avec l'erreur
+      // (passer en phase « error » la masquerait avant que le message ne s'affiche)
       this.installing = false;
       this.log(`Installation impossible : ${error.message}`);
-      this.setState({ phase: 'error', message: error.message });
       return { ok: false, code: 'INSTALL_FAILED', message: error.message };
     }
     return { ok: true };

@@ -257,6 +257,24 @@ test('Redémarrer pendant une partie ou une installation : refusé, rien n\'est 
   assert.equal(c.needsQuitCheck(), false); // quitAndInstall gère lui-même la fermeture
 });
 
+test('Redémarrer échoue (installateur bloqué) : la mise à jour reste prête, l’erreur est renvoyée à la bannière', async () => {
+  const { c, updater } = controller();
+  c.start();
+  await tick();
+  updater.downloads[0].finish();
+  await tick();
+  assert.equal(c.state.phase, 'ready');
+  updater.quitAndInstall = () => {
+    throw new Error('installateur introuvable');
+  };
+  assert.deepEqual(await c.install(), { ok: false, code: 'INSTALL_FAILED', message: 'installateur introuvable' });
+  assert.equal(c.state.phase, 'ready');
+  // erreur asynchrone d'electron-updater pendant une tentative : toujours proposée
+  updater.emit('error', new Error('refusé par l’antivirus'));
+  assert.equal(c.state.phase, 'ready');
+  c.stop();
+});
+
 test('fermeture avec une mise à jour prête : installée seulement si aucune partie ne tourne', async () => {
   for (const [reason, expected] of [['game', false], [null, true]]) {
     const { c, updater, box } = controller();
