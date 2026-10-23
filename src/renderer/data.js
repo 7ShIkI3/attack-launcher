@@ -79,6 +79,11 @@
 
   const CHANGELOG = [
     {
+      version: 'ATTACK Client 3.3', date: '2026-10-23',
+      fr: 'En 1.21.1 et 26.3 : les Amis (touche N) : ajoute un joueur ATTACK, vois qui est en ligne et discute en privé. Aussi : écran titre ATTACK, bouton « ATTACK Mods » dans le menu Échap, vue libre (Alt gauche), minuteurs de la perle et de la pomme d’or, et force du flou des menus réglable.',
+      en: 'On 1.21.1 and 26.3: Friends (N key): add an ATTACK player, see who is online and chat privately. Also: ATTACK title screen, “ATTACK Mods” button in the Escape menu, free look (left Alt), ender pearl and golden apple timers, and adjustable menu blur strength.',
+    },
+    {
       version: 'ATTACK Client 3.2.1', date: '2026-10-23',
       fr: 'En 1.21.1 et 26.3 : le logo ATTACK s’affiche à gauche du pseudo des joueurs ATTACK, comme en 1.8.9, de ta couleur d’accent et doré pour les admins. Réglage « Logo à côté du pseudo » dans les Cosmétiques.',
       en: 'On 1.21.1 and 26.3: the ATTACK logo shows left of the name of ATTACK players, as on 1.8.9, in your accent colour and gold for admins. “Logo next to names” setting in Cosmetics.',
