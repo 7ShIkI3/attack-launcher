@@ -90,7 +90,9 @@ class AccountStore {
 
   /** Compte hors ligne (mode développeur uniquement) : pseudo seul, jeton « 0 ». */
   async addOffline(name) {
-    if (!NAME.test(name || '')) throw new Error('Pseudo invalide (3 à 16 caractères : lettres, chiffres, _)');
+    if (!NAME.test(name || '')) {
+      throw Object.assign(new Error('Pseudo invalide (3 à 16 caractères : lettres, chiffres, _)'), { code: 'INVALID_NAME' });
+    }
     const id = offlineUuid(name);
     this.data.accounts = [...this.data.accounts.filter((a) => a.id !== id), { id, name, type: 'offline', addedAt: new Date().toISOString() }];
     this.data.active = id;

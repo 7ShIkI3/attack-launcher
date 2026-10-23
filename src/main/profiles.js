@@ -76,7 +76,7 @@ async function readProfiles(minecraftDir) {
   try {
     return JSON.parse(text.replace(/^﻿/, ''));
   } catch {
-    throw new Error(`${PROFILES_FILE} est illisible : il n'a pas été modifié`);
+    throw Object.assign(new Error(`${PROFILES_FILE} est illisible : il n'a pas été modifié`), { code: 'PROFILES_UNREADABLE' });
   }
 }
 

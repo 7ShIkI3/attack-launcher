@@ -253,3 +253,21 @@ test('Fabric : arguments Java du joueur après ceux par défaut, avant ceux du J
   assert.ok(extra < a.indexOf('-cp'));
   assert.equal(count(a, (x) => x === '-cp'), 1);
 });
+
+test('Windows ARM64 (1.21.1 et 26.3) : jars natifs x64 et arm64 au classpath, LWJGL choisit selon l’architecture de Java', async () => {
+  // Mojang liste toutes les architectures avec la seule règle « os = windows » ; les DLL sont rangées par architecture
+  // dans les jars (windows/x64/..., windows/arm64/...) et LWJGL extrait celle de la JVM (SharedLibraryExtractPath).
+  // Le launcher ne doit donc rien extraire lui-même ni filtrer par architecture : même plan sur x64 et sur arm64.
+  for (const mc of ['1.21.1', '26.3']) {
+    const version = await game.resolveVersion(MC, `fabric-loader-0.19.5-${mc}`, read);
+    const x64 = game.libraryPlan(version, MC, mojang.currentEnv('win32', 'x64'));
+    const arm64 = game.libraryPlan(version, MC, mojang.currentEnv('win32', 'arm64'));
+    assert.deepEqual(arm64.classpath, x64.classpath, `${mc} : même classpath sur ARM64`);
+    assert.deepEqual(arm64.natives, [], `${mc} : aucune extraction par le launcher`);
+    const jars = arm64.classpath.map((p) => path.basename(p));
+    assert.ok(jars.some((j) => /^lwjgl-3[\d.]+-natives-windows\.jar$/.test(j)), `${mc} : natives x64`);
+    assert.ok(jars.some((j) => /^lwjgl-3[\d.]+-natives-windows-arm64\.jar$/.test(j)), `${mc} : natives arm64`);
+    const extract = JSON.stringify(version.arguments.jvm);
+    if (mc === '26.3') assert.match(extract, /SharedLibraryExtractPath=\$\{natives_directory\}/);
+  }
+});
