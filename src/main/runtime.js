@@ -53,10 +53,6 @@ function javaExecutable(root, platform = process.platform) {
   return path.join(root, 'bin', platform === 'win32' ? 'javaw.exe' : 'java');
 }
 
-/**
- * Installe (ou vérifie) le runtime dans <runtimeDir>/<component>/<clé> et renvoie le chemin de javaw.exe.
- * onProgress({ done, total }) pendant les téléchargements.
- */
 /** Runtime déjà installé (marqueur écrit après vérification de chaque fichier), sans réseau ; null s'il n'y en a pas. */
 async function installedRuntime(runtimeDir, component, key, platform) {
   for (const candidate of [key, FALLBACK[key]].filter(Boolean)) {
@@ -72,6 +68,10 @@ async function installedRuntime(runtimeDir, component, key, platform) {
   return null;
 }
 
+/**
+ * Installe (ou vérifie) le runtime dans <runtimeDir>/<component>/<clé> et renvoie le chemin de javaw.exe.
+ * onProgress({ done, total }) pendant les téléchargements.
+ */
 async function installRuntime({ runtimeDir, component = 'jre-legacy', onProgress, net = {}, platform = process.platform, arch = process.arch }) {
   let all;
   try {

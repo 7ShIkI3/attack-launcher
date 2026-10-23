@@ -132,6 +132,8 @@ class AccountStore {
     if (!minecraft || minecraft.expiresAt - now() < REFRESH_MARGIN_MS) {
       await this.refresh(id, refresh);
       minecraft = this.minecraft.get(id);
+      // compte supprimé pendant le rafraîchissement
+      if (!minecraft) throw new Error('Aucun compte sélectionné');
     }
     return { name: account.name, uuid: account.id, accessToken: minecraft.accessToken, userType: 'msa' };
   }

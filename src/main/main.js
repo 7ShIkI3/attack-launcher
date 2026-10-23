@@ -256,6 +256,7 @@ function registerIpc() {
     try {
       const result = await auth.loginWithDeviceCode(transport, settingsStore.clientId(settings), {
         onCode: ({ userCode, verificationUri, expiresIn }) => {
+          if (current.cancelled) return; // annulée pendant la demande du code : rien à montrer ni à ouvrir
           current.userCode = userCode;
           current.verificationUri = verificationUri;
           send('auth:event', { stage: 'code', userCode, verificationUri, expiresIn });

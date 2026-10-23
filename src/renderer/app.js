@@ -81,7 +81,9 @@
     statusToken++; // une lecture d'état déjà partie pour l'ancien profil sera ignorée
     status = null; // l'état du profil précédent ne doit pas rester affiché
     renderStatus();
-    await save({ profileId: id });
+    // changement refusé (disque plein, antivirus) : le profil revient en arrière, on le dit ici, sur l'accueil
+    const failure = await save({ profileId: id }, { showError: false });
+    if (failure) setMessage(t('error.generic', { message: failure }), 'error');
   }
 
   /** Mods du pack qui seront installés : tous, plus Iris seulement avec l'option Shaders. */
@@ -307,8 +309,10 @@
 
   // --- réglages ---
   let savedTimer = null;
-  /** Enregistre `patch` ; renvoie le message d'erreur du processus principal, ou null si tout est enregistré. */
-  /** Enregistre un réglage. `showError` : l'échec s'affiche en haut de la page Réglages (sinon l'appelant l'affiche). */
+  /**
+   * Enregistre `patch` ; renvoie le message d'erreur du processus principal, ou null si tout est enregistré.
+   * `showError` : l'échec s'affiche en haut de la page Réglages (sinon l'appelant l'affiche).
+   */
   async function save(patch, { showError = true } = {}) {
     let failure = null;
     try {

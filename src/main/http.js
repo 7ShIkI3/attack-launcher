@@ -82,6 +82,7 @@ async function hashFile(file, algorithm = 'sha1') {
 }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const LOCAL_ERRORS = ['ENOSPC', 'EPERM', 'EBUSY', 'EACCES', 'EROFS', 'EMFILE'];
 
 /**
  * request() puis lecture du corps par `receive(response)`, avec de nouvelles tentatives si la connexion casse PENDANT le
@@ -95,7 +96,8 @@ async function requestAndReceive(url, options, receive) {
     try {
       return await receive(response);
     } catch (error) {
-      if (error.verification || attempt >= retries) throw error;
+      // erreur du disque (plein, fichier verrouillé) : retélécharger n'y changerait rien
+      if (error.verification || LOCAL_ERRORS.includes(error.code) || attempt >= retries) throw error;
       await wait(400 * 2 ** attempt);
     }
   }
