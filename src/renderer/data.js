@@ -79,6 +79,11 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.5.10', date: '2026-10-23',
+      fr: 'La connexion Microsoft abandonne au bout de 30 secondes si un serveur ne répond plus, au lieu de rester bloquée. En anglais, les erreurs courantes (Java introuvable, fichiers manquants, mémoire) sont enfin traduites.',
+      en: 'Microsoft sign-in now gives up after 30 seconds if a server stops answering, instead of hanging. In English, common errors (Java not found, missing files, memory) are now translated.',
+    },
+    {
       version: 'ATTACK Client 3.3', date: '2026-10-23',
       fr: 'En 1.21.1 et 26.3 : les Amis (touche N) : ajoute un joueur ATTACK, vois qui est en ligne et discute en privé. Aussi : écran titre ATTACK, bouton « ATTACK Mods » dans le menu Échap, vue libre (Alt gauche), minuteurs de la perle et de la pomme d’or, et force du flou des menus réglable.',
       en: 'On 1.21.1 and 26.3: Friends (N key): add an ATTACK player, see who is online and chat privately. Also: ATTACK title screen, “ATTACK Mods” button in the Escape menu, free look (left Alt), ender pearl and golden apple timers, and adjustable menu blur strength.',
