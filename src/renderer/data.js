@@ -79,6 +79,16 @@
 
   const CHANGELOG = [
     {
+      version: 'ATTACK Client 3.4', date: '2026-10-23',
+      fr: 'En 1.21.1 et 26.3 : tous les modules de la 1.8.9 sont là (58 au lieu de 41). Nouveaux : Minimap, Waypoints (/wp), Chat (heure, messages répétés regroupés), Nick Hider, Nametags, heure et météo, couleur des coups et de la brillance, contour de bloc, hitboxes, objets posés à plat, animations de la main, particules, flou de mouvement, saturation, flou des inventaires et verre clair.',
+      en: 'On 1.21.1 and 26.3: every 1.8.9 module is here (58 instead of 41). New: Minimap, Waypoints (/wp), Chat (timestamps, grouped repeats), Nick Hider, Nametags, time and weather, hit and glint colour, block outline, hitboxes, items lying flat, hand animations, particles, motion blur, saturation, inventory blur and clear glass.',
+    },
+    {
+      version: 'ATTACK Client 2.5.3', date: '2026-10-23',
+      fr: 'En 1.8.9 : l’écran titre ATTACK a maintenant le panorama de Minecraft en fond, flouté, qui tourne lentement derrière le logo.',
+      en: 'On 1.8.9: the ATTACK title screen now shows the Minecraft panorama in the background, blurred and slowly turning behind the logo.',
+    },
+    {
       version: 'ATTACK Client 3.3.1', date: '2026-10-23',
       fr: 'En 1.21.1 et 26.3 : ta cape ATTACK est en tissu, comme en 1.8.9 : elle se courbe quand tu cours et ondule au vent. Réglages « Cape en tissu » et « Vent » dans les Cosmétiques.',
       en: 'On 1.21.1 and 26.3: your ATTACK cape is made of cloth, as on 1.8.9: it curves when you run and waves in the wind. “Cloth cape” and “Wind” settings in Cosmetics.',
