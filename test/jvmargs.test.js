@@ -71,3 +71,13 @@ test('limites : longueur, nombre, type', () => {
   assert.equal(jvm.parseJvmArgs(42).ok, false);
   assert.match(jvm.describe(jvm.parseJvmArgs(42)), /^Arguments Java refusés/);
 });
+
+test('MaxDirectMemorySize accepté ; -Xms plus grand que la mémoire allouée détecté', () => {
+  assert.deepEqual(jvm.parseJvmArgs('-XX:MaxDirectMemorySize=1G'), { ok: true, args: ['-XX:MaxDirectMemorySize=1G'] });
+  assert.equal(jvm.parseJvmArgs('-XX:HeapDumpPath=x').ok, false);
+  assert.equal(jvm.sizeMb('-Xms2G'), 2048);
+  assert.equal(jvm.sizeMb('-Xms512m'), 512);
+  assert.equal(jvm.sizeMb('-Xss1048576'), 1);
+  assert.equal(jvm.heapConflict(['-Xms8G'], 4096), '-Xms8G');
+  assert.equal(jvm.heapConflict(['-Xms4G', '-Xmn8G'], 4096), null);
+});

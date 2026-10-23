@@ -180,6 +180,8 @@ function buildCommand({ java, version, minecraftDir, gameDir, nativesDir, classp
   const parsed = jvmargs.parseJvmArgs(extra);
   if (!parsed.ok) throw new Error(jvmargs.describe(parsed));
   const extraJvmArgs = parsed.args;
+  const heap = jvmargs.heapConflict(extraJvmArgs, ramMb);
+  if (heap) throw new Error(`Argument Java ${heap} plus grand que la mémoire allouée (${ramMb} Mo) : le jeu ne démarrerait pas. Baisse-le ou augmente la mémoire.`);
   const assetsDir = path.join(minecraftDir, 'assets');
   const values = {
     auth_player_name: identity.name,
@@ -264,7 +266,9 @@ async function launchGame(options) {
 }
 
 /** Lignes de commande des processus Java en cours (Windows), sans barre de progression parasite. */
-const JAVA_PROCESSES_PS = "$ProgressPreference='SilentlyContinue'; " +
+// sortie en UTF-8 : sinon PowerShell écrit dans la page de code OEM (850) et un --gameDir accentué (C:\Users\Raphaël)
+// arrive illisible, si bien que la partie n'est plus reconnue comme jouant dans ce dossier
+const JAVA_PROCESSES_PS = "[Console]::OutputEncoding=[Text.Encoding]::UTF8; $ProgressPreference='SilentlyContinue'; " +
   "Get-CimInstance Win32_Process -Filter \"Name='javaw.exe' OR Name='java.exe'\" | ForEach-Object { $_.CommandLine }";
 
 /**

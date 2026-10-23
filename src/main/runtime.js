@@ -57,8 +57,31 @@ function javaExecutable(root, platform = process.platform) {
  * Installe (ou vérifie) le runtime dans <runtimeDir>/<component>/<clé> et renvoie le chemin de javaw.exe.
  * onProgress({ done, total }) pendant les téléchargements.
  */
+/** Runtime déjà installé (marqueur écrit après vérification de chaque fichier), sans réseau ; null s'il n'y en a pas. */
+async function installedRuntime(runtimeDir, component, key, platform) {
+  for (const candidate of [key, FALLBACK[key]].filter(Boolean)) {
+    const root = path.join(runtimeDir, component, candidate);
+    const java = javaExecutable(root, platform);
+    try {
+      const marker = JSON.parse(await fsp.readFile(path.join(root, MARKER), 'utf8'));
+      if (marker.component === component && fs.existsSync(java)) return { java, root, version: marker.version, cached: true, offline: true };
+    } catch {
+      // pas installé pour cette clé
+    }
+  }
+  return null;
+}
+
 async function installRuntime({ runtimeDir, component = 'jre-legacy', onProgress, net = {}, platform = process.platform, arch = process.arch }) {
-  const all = await http.fetchJson(JAVA_RUNTIME_MANIFEST, net);
+  let all;
+  try {
+    all = await http.fetchJson(JAVA_RUNTIME_MANIFEST, net);
+  } catch (error) {
+    // hors ligne ou Mojang injoignable : un runtime déjà installé suffit pour jouer
+    const installed = await installedRuntime(runtimeDir, component, platformKey(platform, arch), platform);
+    if (installed) return installed;
+    throw error;
+  }
   const selected = selectRuntime(all, component, platformKey(platform, arch));
   const root = path.join(runtimeDir, component, selected.key);
   const java = javaExecutable(root, platform);
@@ -85,4 +108,4 @@ async function installRuntime({ runtimeDir, component = 'jre-legacy', onProgress
   return { java, root, version: selected.version, cached: false };
 }
 
-module.exports = { platformKey, selectRuntime, runtimeFiles, javaExecutable, installRuntime };
+module.exports = { platformKey, selectRuntime, runtimeFiles, javaExecutable, installedRuntime, installRuntime };

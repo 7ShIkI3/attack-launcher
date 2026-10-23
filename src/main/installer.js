@@ -77,7 +77,18 @@ function progressReporter(onProgress, steps = STEPS) {
 async function writeIfChanged(file, buffer) {
   await fsp.mkdir(path.dirname(file), { recursive: true });
   if (fs.existsSync(file) && (await fsp.readFile(file)).equals(buffer)) return;
-  await fsp.writeFile(file, buffer);
+  // atomique : un JSON de version tronqué (coupure pendant l'écriture) serait vu comme installé mais empêcherait de jouer
+  await http.writeFileAtomic(file, buffer);
+}
+
+/** Vrai si `file` existe et contient un JSON lisible. */
+async function isJsonFile(file) {
+  try {
+    JSON.parse(await fsp.readFile(file, 'utf8'));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function sizeOf(file) {
@@ -228,7 +239,7 @@ async function writeState(gameDir, state) {
   const file = path.join(gameDir, C.STATE_FILE);
   const tmp = `${file}.tmp`;
   await fsp.writeFile(tmp, `${JSON.stringify(state, null, 2)}\n`);
-  await fsp.rename(tmp, file);
+  await http.renameRetry(tmp, file);
 }
 
 /**
@@ -268,7 +279,7 @@ async function installMod(gameDir, settings, report, net, profile = catalog.get(
     const jar = mod.findDevJar(settings.devJarDir, profile);
     if (!jar) throw new InstallError('NO_DEV_JAR', `Aucun ${profile.attackJar.glob} dans ${settings.devJarDir}`);
     await fsp.copyFile(jar.file, `${dest}.part`);
-    await fsp.rename(`${dest}.part`, dest);
+    await http.renameRetry(`${dest}.part`, dest);
     info = { source: 'dev', version: mod.versionFromJarName(jar.name, profile), file: jar.file };
   } else {
     report('mod', 0, 1, 'Dernière release GitHub');
@@ -422,7 +433,7 @@ async function status({ minecraftDir, gameDir, profile: profileOption, shaders =
     profileId: profile.id,
     minecraft: has(minecraftDir, 'versions', mc, `${mc}.json`) && has(minecraftDir, 'versions', mc, `${mc}.jar`)
       && Boolean(assetIndex) && /^[\w.-]+$/.test(assetIndex) && has(minecraftDir, 'assets', 'indexes', `${assetIndex}.json`),
-    loader: has(minecraftDir, 'versions', vid, `${vid}.json`) && has(minecraftDir, 'libraries', ...loaderLibrary.split('/')),
+    loader: (await isJsonFile(path.join(minecraftDir, 'versions', vid, `${vid}.json`))) && has(minecraftDir, 'libraries', ...loaderLibrary.split('/')),
     pack: profile.pack ? await packStatus(gameDir, profile, shaders, state) : null,
     mod: has(gameDir, 'mods', profile.modFile),
     profile: launcherProfile,

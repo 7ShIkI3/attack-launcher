@@ -17,12 +17,23 @@ const SHA512 = crypto.createHash('sha512').update(BODY).digest('hex');
 let server;
 let base;
 let hits = 0;
+let flaky = 0;
 const options = { allowedHosts: new Set(['127.0.0.1']), retries: 0 };
 
 test.before(async () => {
   server = http.createServer((req, res) => {
     hits++;
     if (req.url === '/file') return res.end(BODY);
+    if (req.url === '/flaky') {
+      // une fois sur deux, la connexion casse au milieu du corps
+      flaky++;
+      if (flaky % 2 === 1) {
+        res.writeHead(200, { 'Content-Length': BODY.length });
+        res.write(BODY.subarray(0, 100));
+        return setTimeout(() => res.socket.destroy(), 10);
+      }
+      return res.end(BODY);
+    }
     if (req.url === '/redirect') {
       res.writeHead(302, { Location: 'https://evil.example/file' });
       return res.end();
@@ -113,4 +124,39 @@ test('pool : limite de parallélisme respectée et première erreur remontée', 
   await assert.rejects(net.pool([1, 2], 2, async (n) => {
     if (n === 2) throw new Error('boum');
   }), /boum/);
+});
+
+test('pool : limite absente ou invalide = une tâche à la fois, sans rien sauter', async () => {
+  for (const limit of [undefined, 0, NaN, 'x']) {
+    const results = await net.pool([1, 2, 3], limit, async (n) => n + 1);
+    assert.deepEqual(results, [2, 3, 4]);
+  }
+});
+
+test('connexion coupée pendant le transfert : nouvelle tentative ; hash faux : jamais retenté', async () => {
+  const dir = tempDir();
+  const dest = path.join(dir, 'flaky.jar');
+  flaky = 0;
+  await assert.rejects(net.downloadFile(`${base}/flaky`, dest, { sha1: SHA1 }, options));
+  assert.equal(fs.existsSync(`${dest}.part`), false);
+  flaky = 0;
+  const result = await net.downloadFile(`${base}/flaky`, dest, { sha1: SHA1, size: BODY.length }, { ...options, retries: 1 });
+  assert.equal(result.skipped, false);
+  assert.deepEqual(fs.readFileSync(dest), BODY);
+  flaky = 0;
+  assert.deepEqual(await net.fetchBuffer(`${base}/flaky`, { ...options, retries: 1 }), BODY);
+  const before = hits;
+  await assert.rejects(net.downloadFile(`${base}/file`, path.join(dir, 'bad.jar'), { sha1: 'f'.repeat(40) }, { ...options, retries: 2 }), /SHA1 incorrect/);
+  assert.equal(hits - before, 1);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('écriture atomique : contenu remplacé, aucun fichier temporaire laissé', async () => {
+  const dir = tempDir();
+  const file = path.join(dir, 'v.json');
+  fs.writeFileSync(file, 'ancien');
+  await net.writeFileAtomic(file, Buffer.from('{"id":"neuf"}'));
+  assert.equal(fs.readFileSync(file, 'utf8'), '{"id":"neuf"}');
+  assert.deepEqual(fs.readdirSync(dir), ['v.json']);
+  fs.rmSync(dir, { recursive: true, force: true });
 });
