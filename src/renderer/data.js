@@ -79,6 +79,11 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.5.7', date: '2026-10-23',
+      fr: 'Plus fiable : une coupure réseau ou l’antivirus ne font plus échouer l’installation, le jeu se lance hors ligne si Java est déjà là, et un double clic sur JOUER ne lance plus deux parties. Corrigé : comptes qui réapparaissaient après suppression, parties non reconnues dans un dossier avec accents, erreurs de réglages affichées au mauvais endroit.',
+      en: 'More reliable: a network drop or the antivirus no longer breaks the installation, the game starts offline when Java is already there, and a double click on PLAY no longer starts two games. Fixed: accounts coming back after removal, games not recognised in a folder with accents, settings errors shown in the wrong place.',
+    },
+    {
       version: 'ATTACK Client 3.2', date: '2026-10-22',
       fr: 'En 1.21.1 et 26.3 : nouveau réglage Taille des ailes (onglet Ailes des Cosmétiques, de 50 à 150 %), vu par tous les joueurs ATTACK, en 1.8.9 comme en Fabric. Corrigé : le bout des ailes Ange et Phénix n’est plus coupé.',
       en: 'On 1.21.1 and 26.3: new Wing size setting (Wings tab of Cosmetics, 50 to 150%), seen by every ATTACK player, on 1.8.9 and Fabric alike. Fixed: the tips of the Angel and Phoenix wings are no longer cut off.',
