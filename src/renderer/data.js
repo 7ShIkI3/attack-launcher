@@ -79,6 +79,11 @@
 
   const CHANGELOG = [
     {
+      version: 'ATTACK Client 2.5.4', date: '2026-10-25',
+      fr: 'En 1.8.9 : profils de mods comme dans Lunar et Badlion (un jeu de modules, réglages et HUD par mode de jeu, bouton « Profil » en bas du menu et touche pour passer au suivant), notifications à l’écran quand tu changes de profil ou bascules un module, et la recherche du menu trouve aussi les réglages.',
+      en: 'On 1.8.9: mod profiles like in Lunar and Badlion (a set of modules, settings and HUD per game mode, “Profile” button at the bottom of the menu and a key to switch to the next one), on-screen notifications when you switch profile or toggle a module, and the menu search now finds settings too.',
+    },
+    {
       version: 'ATTACK Client 3.4', date: '2026-10-23',
       fr: 'En 1.21.1 et 26.3 : tous les modules de la 1.8.9 sont là (58 au lieu de 41). Nouveaux : Minimap, Waypoints (/wp), Chat (heure, messages répétés regroupés), Nick Hider, Nametags, heure et météo, couleur des coups et de la brillance, contour de bloc, hitboxes, objets posés à plat, animations de la main, particules, flou de mouvement, saturation, flou des inventaires et verre clair.',
       en: 'On 1.21.1 and 26.3: every 1.8.9 module is here (58 instead of 41). New: Minimap, Waypoints (/wp), Chat (timestamps, grouped repeats), Nick Hider, Nametags, time and weather, hit and glint colour, block outline, hitboxes, items lying flat, hand animations, particles, motion blur, saturation, inventory blur and clear glass.',
