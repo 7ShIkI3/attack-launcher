@@ -78,18 +78,43 @@ test('réglages : bornes, chemins absolus, langue (réglages à plat du profil c
   assert.equal(settings.sanitize({ hack: 1 }, base).hack, undefined);
 });
 
-test('launcher officiel : version Xbox/Store, puis ancien .exe, sinon Store par défaut', () => {
-  const env = { SystemDrive: 'C:', SystemRoot: 'C:\\Windows', ProgramFiles: 'C:\\Program Files', 'ProgramFiles(x86)': 'C:\\Program Files (x86)' };
+test('launcher officiel : version Xbox/Store, puis ancien .exe, sinon rien', () => {
+  const env = {
+    SystemDrive: 'C:', SystemRoot: 'C:\\Windows', LOCALAPPDATA: 'C:\\Users\\a\\AppData\\Local',
+    ProgramFiles: 'C:\\Program Files', 'ProgramFiles(x86)': 'C:\\Program Files (x86)',
+  };
   const xbox = launch.launchPlan((p) => p.includes('XboxGames'), env);
   assert.equal(xbox.kind, 'store');
   assert.deepEqual(xbox.args, [`shell:AppsFolder\\${launch.STORE_APP_ID}`]);
   assert.ok(xbox.detected);
+  // dossier XboxGames sur un autre disque que le disque système
+  const xboxD = launch.launchPlan((p) => p.startsWith('D:\\XboxGames'), env);
+  assert.equal(xboxD.kind, 'store');
+  assert.equal(xboxD.detected, path.join('D:\\', 'XboxGames', 'Minecraft Launcher', 'Content', 'Minecraft.exe'));
+  // application Store installée ailleurs : son dossier de données suffit
+  const store = launch.launchPlan((p) => p.endsWith(launch.STORE_PACKAGE), env);
+  assert.equal(store.kind, 'store');
+  assert.ok(store.detected);
   const classic = launch.launchPlan((p) => p.endsWith('MinecraftLauncher.exe') && p.includes('(x86)'), env);
   assert.equal(classic.kind, 'exe');
   assert.equal(classic.command, path.join('C:\\Program Files (x86)', 'Minecraft Launcher', 'MinecraftLauncher.exe'));
+  // rien d'installé : aucun plan d'ouverture (l'Explorateur ouvrirait Documents)
   const none = launch.launchPlan(() => false, env);
-  assert.equal(none.kind, 'store');
+  assert.equal(none.kind, 'none');
   assert.equal(none.detected, false);
+  assert.equal(none.command, null);
+});
+
+test('launcher officiel introuvable : rien n’est lancé', () => {
+  const plan = { kind: 'none', command: null, args: [], detected: false };
+  assert.equal(launch.openLauncher(plan), plan); // aucun spawn : command est null
+});
+
+test('lecteurs : le disque système en premier, sans doublon', () => {
+  const letters = launch.driveLetters({ SystemDrive: 'd:' });
+  assert.equal(letters[0], 'D');
+  assert.equal(letters.length, 24); // C à Z
+  assert.equal(new Set(letters).size, 24);
 });
 
 test('progression globale croissante de 0 à 100 %', () => {

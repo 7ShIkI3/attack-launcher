@@ -401,10 +401,20 @@ function registerIpc() {
       await profiles.updateProfiles(minecraftDir, (data) => profiles.markLastUsed(profiles.mergeProfile(data, {
         ...profiles.identityOf(profile), gameDir: eff.gameDir, ramMb: eff.ramMb, javaPath: eff.javaPath, jvmArgs: eff.jvmArgs, icon: profileIcon(),
       }), new Date(), profile.launcherProfileId));
-      const plan = launch.openLauncher();
+      const plan = launch.launchPlan();
+      if (!plan.detected) {
+        // aucun launcher officiel sur ce PC : rien ne démarre (le profil, lui, est prêt pour quand il sera installé)
+        updater?.activityEnded();
+        return {
+          ok: false,
+          code: 'LAUNCHER_NOT_FOUND',
+          message: 'Launcher Minecraft officiel introuvable sur ce PC : installe-le (minecraft.net ou Microsoft Store), puis reclique sur JOUER.',
+        };
+      }
+      launch.openLauncher(plan);
       // le launcher officiel prend la main : la vérification reportée réessaiera dans 10 min, quand la partie qu'il
       // lance sera détectable par busy() (processus javaw)
-      return { ok: true, mode: 'official', detected: Boolean(plan.detected) };
+      return { ok: true, mode: 'official', detected: true };
     } catch (error) {
       // lancement raté (Java, compte, spawn) : rien ne tourne, la mise à jour reportée peut repartir
       if (started) updater?.activityEnded();
