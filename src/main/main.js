@@ -408,7 +408,7 @@ function registerIpc() {
         return {
           ok: false,
           code: 'LAUNCHER_NOT_FOUND',
-          message: 'Launcher Minecraft officiel introuvable sur ce PC : installe-le (minecraft.net ou Microsoft Store), puis reclique sur JOUER.',
+          message: 'Pas de compte connecté et launcher Minecraft officiel introuvable : connecte ton compte Microsoft dans la page Compte, ou installe le launcher officiel.',
         };
       }
       launch.openLauncher(plan);
