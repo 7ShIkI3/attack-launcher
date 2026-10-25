@@ -215,7 +215,7 @@
     $('play-button').disabled = false;
     if (direct) hideProgress(result.ok ? 1200 : 0);
     if (result.ok && result.mode === 'direct') setMessage(t('home.launchedDirect', { name: result.name }), 'ok');
-    else if (result.ok) setMessage(t(result.detected ? 'home.launched' : 'home.launchedUnknown', { name: profile.name }), 'ok');
+    else if (result.ok) setMessage(t('home.launched', { name: profile.name }), 'ok');
     else if (result.code === 'NOT_INSTALLED') await refreshStatus();
     else setMessage(errorText(result), 'error');
   });
