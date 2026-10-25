@@ -79,6 +79,11 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.5.15', date: '2026-10-25',
+      fr: 'Corrigé : sans le launcher Minecraft officiel sur le PC, JOUER ouvrait le dossier Documents. Le launcher officiel est aussi trouvé sur un autre disque ; s’il manque, un message explique comment l’installer.',
+      en: 'Fixed: without the official Minecraft launcher on the PC, PLAY opened the Documents folder. The official launcher is also found on another drive; if it is missing, a message explains how to install it.',
+    },
+    {
       version: 'ATTACK Client 3.4.1', date: '2026-10-25',
       fr: 'En 1.21.1 et 26.3 : profils de mods comme en 1.8.9 (un jeu de modules, réglages et HUD par mode de jeu, bouton « Profil » en bas du menu et touche pour passer au suivant), notifications à l’écran quand tu changes de profil ou bascules un module, et la recherche du menu trouve aussi les réglages.',
       en: 'On 1.21.1 and 26.3: mod profiles as on 1.8.9 (a set of modules, settings and HUD per game mode, “Profile” button at the bottom of the menu and a key to switch to the next one), on-screen notifications when you switch profile or toggle a module, and the menu search now finds settings too.',
