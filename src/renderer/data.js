@@ -79,6 +79,11 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.5.16', date: '2026-10-25',
+      fr: 'Sans compte connecté et sans launcher Minecraft officiel, le message de JOUER propose d’abord le plus simple : connecter ton compte Microsoft dans la page Compte, pour que le jeu se lance directement.',
+      en: 'With no account signed in and no official Minecraft launcher, the PLAY message now suggests the easiest fix first: sign in with your Microsoft account on the Account page, so the game starts directly.',
+    },
+    {
       version: 'Launcher 0.5.15', date: '2026-10-25',
       fr: 'Corrigé : sans le launcher Minecraft officiel sur le PC, JOUER ouvrait le dossier Documents. Le launcher officiel est aussi trouvé sur un autre disque ; s’il manque, un message explique comment l’installer.',
       en: 'Fixed: without the official Minecraft launcher on the PC, PLAY opened the Documents folder. The official launcher is also found on another drive; if it is missing, a message explains how to install it.',
