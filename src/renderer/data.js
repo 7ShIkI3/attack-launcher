@@ -79,6 +79,11 @@
 
   const CHANGELOG = [
     {
+      version: 'ATTACK Client 3.4.1', date: '2026-10-25',
+      fr: 'En 1.21.1 et 26.3 : profils de mods comme en 1.8.9 (un jeu de modules, réglages et HUD par mode de jeu, bouton « Profil » en bas du menu et touche pour passer au suivant), notifications à l’écran quand tu changes de profil ou bascules un module, et la recherche du menu trouve aussi les réglages.',
+      en: 'On 1.21.1 and 26.3: mod profiles as on 1.8.9 (a set of modules, settings and HUD per game mode, “Profile” button at the bottom of the menu and a key to switch to the next one), on-screen notifications when you switch profile or toggle a module, and the menu search now finds settings too.',
+    },
+    {
       version: 'ATTACK Client 2.5.4', date: '2026-10-25',
       fr: 'En 1.8.9 : profils de mods comme dans Lunar et Badlion (un jeu de modules, réglages et HUD par mode de jeu, bouton « Profil » en bas du menu et touche pour passer au suivant), notifications à l’écran quand tu changes de profil ou bascules un module, et la recherche du menu trouve aussi les réglages.',
       en: 'On 1.8.9: mod profiles like in Lunar and Badlion (a set of modules, settings and HUD per game mode, “Profile” button at the bottom of the menu and a key to switch to the next one), on-screen notifications when you switch profile or toggle a module, and the menu search now finds settings too.',
