@@ -250,12 +250,13 @@ async function installPack(gameDir, profile, settings, report, net, pack = modpa
   const previous = await readState(gameDir);
   const result = await modpack.installPack(gameDir, pack, {
     shaders: Boolean(settings.shaders),
+    pvp: settings.pvpMods !== false,
     previousManaged: previous?.pack?.managed || [],
     protectedNames: [profile.modFile],
     net,
     report,
   });
-  const info = { id: pack.profileId, shaders: Boolean(settings.shaders), managed: result.managed, mods: result.mods };
+  const info = { id: pack.profileId, shaders: Boolean(settings.shaders), pvpMods: settings.pvpMods !== false, managed: result.managed, mods: result.mods };
   // enregistré tout de suite : si la suite échoue, la liste des jars gérés reste exacte
   await writeState(gameDir, { ...(previous || {}), pack: info });
   if (result.removeFailed.length > 0) {
@@ -335,7 +336,7 @@ function gameDirConflict(state, profile) {
 /**
  * Installation complète. options : { minecraftDir, settings, profile, icon, onProgress, concurrency, allowedHosts, env, appVersion }.
  * `profile` : entrée du catalogue ou son identifiant (Forge 1.8.9 par défaut). `settings` : réglages effectifs du profil
- * (gameDir, javaPath, ramMb, devMode, devJarDir, shaders). Renvoie un résumé.
+ * (gameDir, javaPath, ramMb, devMode, devJarDir, shaders, pvpMods). Renvoie un résumé.
  */
 async function install(options) {
   const { minecraftDir, settings, icon, onProgress, env = mojang.currentEnv() } = options;
@@ -386,14 +387,14 @@ async function install(options) {
 }
 
 /** Le pack du profil est-il complet dans le dossier de jeu ? (fichiers présents, taille exacte ; pas de jar en trop) */
-async function packStatus(gameDir, profile, shaders, state) {
+async function packStatus(gameDir, profile, shaders, pvpMods, state) {
   let pack;
   try {
     pack = modpack.loadPack(profile);
   } catch {
     return false;
   }
-  const selected = modpack.selectedMods(pack, { shaders });
+  const selected = modpack.selectedMods(pack, { shaders, pvp: pvpMods });
   const wanted = new Set(selected.map((m) => m.filename));
   for (const m of selected) {
     try {
@@ -402,12 +403,12 @@ async function packStatus(gameDir, profile, shaders, state) {
       return false;
     }
   }
-  // un mod optionnel désactivé depuis (Iris) mais encore installé : le pack est à mettre à jour
+  // un mod optionnel ou PvP désactivé depuis (Iris, Crystal Optimizer…) mais encore installé : le pack est à mettre à jour
   return !(state?.pack?.managed || []).some((name) => !wanted.has(name) && fs.existsSync(path.join(gameDir, 'mods', name)));
 }
 
 /** État rapide (présence des fichiers, sans hash) pour l'écran d'accueil. `profile` : catalogue, Forge 1.8.9 par défaut. */
-async function status({ minecraftDir, gameDir, profile: profileOption, shaders = false }) {
+async function status({ minecraftDir, gameDir, profile: profileOption, shaders = false, pvpMods = true }) {
   const profile = resolveProfile(profileOption);
   const has = (...parts) => fs.existsSync(path.join(...parts));
   const mc = profile.mc;
@@ -434,7 +435,7 @@ async function status({ minecraftDir, gameDir, profile: profileOption, shaders =
     minecraft: has(minecraftDir, 'versions', mc, `${mc}.json`) && has(minecraftDir, 'versions', mc, `${mc}.jar`)
       && Boolean(assetIndex) && /^[\w.-]+$/.test(assetIndex) && has(minecraftDir, 'assets', 'indexes', `${assetIndex}.json`),
     loader: (await isJsonFile(path.join(minecraftDir, 'versions', vid, `${vid}.json`))) && has(minecraftDir, 'libraries', ...loaderLibrary.split('/')),
-    pack: profile.pack ? await packStatus(gameDir, profile, shaders, state) : null,
+    pack: profile.pack ? await packStatus(gameDir, profile, shaders, pvpMods, state) : null,
     mod: has(gameDir, 'mods', profile.modFile),
     profile: launcherProfile,
     profileError,

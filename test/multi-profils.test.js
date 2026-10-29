@@ -18,7 +18,7 @@ const GAME_121 = path.join(ENV.APPDATA, '.attack', 'profiles', 'fabric-1.21.1');
 
 // ---------- réglages ----------
 
-test('réglages par défaut : un dossier de jeu par profil, shaders coupés sur Fabric seulement', () => {
+test('réglages par défaut : un dossier de jeu par profil, shaders coupés et mods PvP activés sur Fabric seulement', () => {
   const base = settings.defaults(ENV);
   assert.equal(base.profileId, 'forge-1.8.9');
   assert.deepEqual(Object.keys(base.profiles), ['forge-1.8.9', 'fabric-1.21.1', 'fabric-26.3']);
@@ -28,6 +28,10 @@ test('réglages par défaut : un dossier de jeu par profil, shaders coupés sur 
   assert.equal('shaders' in base.profiles['forge-1.8.9'], false);
   assert.equal(base.profiles['fabric-1.21.1'].shaders, false);
   assert.equal(settings.forProfile(base).shaders, false);
+  assert.equal('pvpMods' in base.profiles['forge-1.8.9'], false);
+  assert.equal(base.profiles['fabric-1.21.1'].pvpMods, true);
+  assert.equal(base.profiles['fabric-26.3'].pvpMods, true);
+  assert.equal(settings.forProfile(base, 'fabric-1.21.1').pvpMods, true);
   // profil inconnu : retour au profil par défaut, jamais d'exception
   assert.equal(settings.forProfile(base, 'inconnu').profileId, 'forge-1.8.9');
 });
@@ -92,6 +96,23 @@ test('profil choisi : validé contre le catalogue, les réglages à plat suivent
   s = settings.sanitize({ profileId: 'fabric-1.21.1', gameDir: 'D:\\mc121' }, s);
   assert.equal(settings.forProfile(s, 'fabric-1.21.1').gameDir, 'D:\\mc121');
   assert.equal(settings.forProfile(s, 'forge-1.8.9').gameDir, path.join(ENV.APPDATA, '.attack'));
+});
+
+test('mods PvP : booléen par profil, profils Fabric seulement, activés par défaut (même avec un ancien fichier)', () => {
+  let s = settings.sanitize({ profileId: 'fabric-1.21.1', pvpMods: false }, settings.defaults(ENV));
+  assert.equal(settings.forProfile(s).pvpMods, false);
+  assert.equal(settings.forProfile(s, 'fabric-26.3').pvpMods, true, 'le réglage est propre à chaque profil');
+  s = settings.sanitize({ pvpMods: 'non' }, s);
+  assert.equal(settings.forProfile(s).pvpMods, false, 'valeur non booléenne ignorée');
+  s = settings.sanitize({ profiles: { 'fabric-26.3': { pvpMods: false, shaders: true } } }, s);
+  assert.equal(settings.forProfile(s, 'fabric-26.3').pvpMods, false);
+  assert.equal(settings.forProfile(s, 'fabric-26.3').shaders, true, 'les autres réglages du profil ne bougent pas');
+  const forge = settings.sanitize({ profileId: 'forge-1.8.9', pvpMods: false }, s);
+  assert.equal('pvpMods' in forge.profiles['forge-1.8.9'], false);
+  // fichier enregistré avant l'option : le profil Fabric reçoit la valeur par défaut
+  const old = settings.sanitize({ profiles: { 'fabric-1.21.1': { shaders: true } } }, settings.defaults(ENV));
+  assert.equal(old.profiles['fabric-1.21.1'].pvpMods, true);
+  assert.equal(settings.forProfile(old, 'fabric-1.21.1').pvpMods, true);
 });
 
 test('shaders : booléen, profils Fabric seulement ; dossier par défaut rétabli par une chaîne vide', () => {
@@ -361,7 +382,7 @@ test('progression : 0 à 100 % pour chaque chargeur, étape inconnue sans erreur
 });
 
 /** Installation factice d'un profil Fabric : fichiers présents, tailles du pack respectées (fichiers creux). */
-function fakeInstall(profile, { shaders = false } = {}) {
+function fakeInstall(profile, { shaders = false, pvp = true } = {}) {
   const root = tempDir();
   const minecraftDir = path.join(root, '.minecraft');
   const gameDir = path.join(root, 'game');
@@ -379,7 +400,7 @@ function fakeInstall(profile, { shaders = false } = {}) {
   put(path.join(gameDir, 'mods', profile.modFile), 'mod');
   const pack = modpack.loadPack(profile);
   const managed = [];
-  for (const m of modpack.selectedMods(pack, { shaders })) {
+  for (const m of modpack.selectedMods(pack, { shaders, pvp })) {
     const file = path.join(gameDir, 'mods', m.filename);
     put(file, '');
     fs.truncateSync(file, m.size);
@@ -418,6 +439,23 @@ test('état d’un profil Fabric : installé, puis pack à refaire si un jar man
   fs.rmSync(sodium);
   assert.equal((await status()).pack, false);
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('état : mods PvP coupés ou encore présents = pack à refaire seulement si le réglage et les jars ne concordent pas', async () => {
+  const profile = catalog.get('fabric-1.21.1');
+  const status = (dir, options) => installer.status({ minecraftDir: dir.minecraftDir, gameDir: dir.gameDir, profile, ...options });
+  const withPvp = fakeInstall(profile);
+  assert.equal((await status(withPvp)).installed, true, 'mods PvP activés par défaut, jars présents');
+  assert.equal((await status(withPvp, { pvpMods: true })).installed, true);
+  const cut = await status(withPvp, { pvpMods: false });
+  assert.equal(cut.pack, false, 'mods PvP encore installés alors que l’option est coupée');
+  assert.equal(cut.installed, false);
+
+  const withoutPvp = fakeInstall(profile, { pvp: false });
+  assert.equal((await status(withoutPvp, { pvpMods: false })).installed, true);
+  assert.equal((await status(withoutPvp, { pvpMods: true })).pack, false, 'option activée mais jars PvP absents : à installer');
+  fs.rmSync(withPvp.root, { recursive: true, force: true });
+  fs.rmSync(withoutPvp.root, { recursive: true, force: true });
 });
 
 test('état : Iris encore présent après avoir coupé les shaders = pack à mettre à jour ; mod ATTACK ou profil absent', async () => {

@@ -389,6 +389,7 @@ const FILES = {
   'sodium-1.jar': Buffer.from('sodium '.repeat(40)),
   'sodium-2.jar': Buffer.from('sodium deux '.repeat(40)),
   'iris-1.jar': Buffer.from('iris '.repeat(40)),
+  'crystal-1.jar': Buffer.from('crystal '.repeat(40)),
 };
 let server;
 let base;
@@ -413,6 +414,13 @@ function localPack(sodium = 'sodium-1.jar') {
     slug, name: slug, version: '1', filename, url: `${base}/${filename}`, sha512: hash('sha512', FILES[filename]), size: FILES[filename].length, ...extra,
   });
   return { profileId: 'fabric-1.21.1', mc: '1.21.1', loader: 'fabric', mods: [mod('sodium', sodium), mod('iris', 'iris-1.jar', { optional: true })] };
+}
+
+/** localPack() + un mod du groupe PvP. */
+function pvpPack() {
+  const pack = localPack();
+  pack.mods.push({ ...pack.mods[0], slug: 'crystal', filename: 'crystal-1.jar', url: `${base}/crystal-1.jar`, sha512: hash('sha512', FILES['crystal-1.jar']), size: FILES['crystal-1.jar'].length, group: 'pvp' });
+  return pack;
 }
 
 const readState = (dir) => JSON.parse(fs.readFileSync(path.join(dir, 'attack-launcher.json'), 'utf8'));
@@ -441,6 +449,31 @@ test('pack : l’état garde les jars gérés (écriture atomique), le reste de 
   const next = await installer.installPack(dir, profile, { shaders: false }, noReport, net, localPack('sodium-2.jar'));
   assert.deepEqual(next.removed, ['sodium-1.jar']);
   assert.deepEqual(mods(dir), ['mon-mod.jar', 'sodium-2.jar']);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('pack : les mods PvP suivent le réglage pvpMods (activé par défaut), jars retirés et état à jour', async () => {
+  const profile = catalog.get('fabric-1.21.1');
+  const dir = tempDir();
+  fs.mkdirSync(path.join(dir, 'mods'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'mods', 'mon-mod.jar'), 'joueur');
+
+  const on = await installer.installPack(dir, profile, { shaders: false, pvpMods: true }, noReport, net, pvpPack());
+  assert.deepEqual(readState(dir).pack.managed, ['sodium-1.jar', 'crystal-1.jar']);
+  assert.equal(readState(dir).pack.pvpMods, true);
+  assert.deepEqual(on.removed, []);
+
+  const off = await installer.installPack(dir, profile, { shaders: false, pvpMods: false }, noReport, net, pvpPack());
+  assert.deepEqual(off.removed, ['crystal-1.jar']);
+  assert.deepEqual(readState(dir).pack.managed, ['sodium-1.jar']);
+  assert.equal(readState(dir).pack.pvpMods, false);
+  assert.deepEqual(mods(dir), ['mon-mod.jar', 'sodium-1.jar']);
+
+  // réglage absent (anciens réglages) : mods PvP installés
+  const again = await installer.installPack(dir, profile, { shaders: false }, noReport, net, pvpPack());
+  assert.deepEqual(again.removed, []);
+  assert.equal(readState(dir).pack.pvpMods, true);
+  assert.deepEqual(mods(dir), ['crystal-1.jar', 'mon-mod.jar', 'sodium-1.jar']);
   fs.rmSync(dir, { recursive: true, force: true });
 });
 

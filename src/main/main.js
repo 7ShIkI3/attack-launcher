@@ -49,11 +49,11 @@ const transport = auth.createTransport();
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
 
-/** Profil choisi (catalogue) et ses réglages effectifs à plat : dossier de jeu, Java, jars de développement, shaders. */
+/** Profil choisi (catalogue) et ses réglages effectifs à plat : dossier de jeu, Java, jars de développement, shaders, mods PvP. */
 const currentProfile = () => catalog.get(settings.profileId);
 const effective = () => settingsStore.forProfile(settings);
 
-/** Description des profils pour la page : catalogue + contenu du pack de mods figé (nom, version, optionnel). */
+/** Description des profils pour la page : catalogue + contenu du pack de mods figé (nom, version, optionnel, groupe). */
 function profilesView() {
   return catalog.list().map((profile) => {
     let pack = [];
@@ -214,7 +214,7 @@ function registerIpc() {
   handle('install:status', () => {
     const profile = currentProfile();
     const eff = effective();
-    return installer.status({ minecraftDir, gameDir: eff.gameDir, profile, shaders: eff.shaders });
+    return installer.status({ minecraftDir, gameDir: eff.gameDir, profile, shaders: eff.shaders, pvpMods: eff.pvpMods });
   });
 
   handle('install:run', async (event) => {
@@ -389,7 +389,7 @@ function registerIpc() {
       if (game.gameBlocksInstall(eff.gameDir, [...games.values()])) {
         return { ok: false, code: 'ALREADY_PLAYING', message: 'Une partie de ce profil est déjà ouverte : ferme-la avant d’en lancer une autre.' };
       }
-      const status = await installer.status({ minecraftDir, gameDir: eff.gameDir, profile, shaders: eff.shaders });
+      const status = await installer.status({ minecraftDir, gameDir: eff.gameDir, profile, shaders: eff.shaders, pvpMods: eff.pvpMods });
       if (!status.installed) return { ok: false, code: 'NOT_INSTALLED', message: 'Installation incomplète' };
       const account = accounts.active();
       // une partie va démarrer : le téléchargement de mise à jour s'arrête et reprendra à la fin

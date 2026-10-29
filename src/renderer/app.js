@@ -86,9 +86,11 @@
     if (failure) setMessage(t('error.generic', { message: failure }), 'error');
   }
 
-  /** Mods du pack qui seront installés : tous, plus Iris seulement avec l'option Shaders. */
+  /** Mods du pack qui seront installés : tous, plus Iris seulement avec l'option Shaders, moins les mods PvP si l'option est coupée. */
   function packSize(profile) {
-    return profile.pack.filter((m) => !m.optional || (settings && settings.shaders)).length;
+    const shaders = Boolean(settings && settings.shaders);
+    const pvp = !settings || settings.pvpMods !== false;
+    return profile.pack.filter((m) => (!m.optional || shaders) && (m.group !== 'pvp' || pvp)).length;
   }
 
   function renderStatus() {
@@ -102,7 +104,9 @@
       [t(`status.loader.${profile.loaderType}`, { version: profile.loaderVersion }), status?.loader],
     ];
     if (profile.hasPack) {
-      rows.push([t('status.pack'), status?.pack, t(settings.shaders ? 'status.packShaders' : 'status.packCount', { n: packSize(profile) })]);
+      const pvp = settings.pvpMods !== false;
+      const detail = settings.shaders ? (pvp ? 'status.packShadersPvp' : 'status.packShaders') : (pvp ? 'status.packPvp' : 'status.packCount');
+      rows.push([t('status.pack'), status?.pack, t(detail, { n: packSize(profile) })]);
     }
     rows.push([t('status.mod'), status?.mod, modDetail], [t('status.profile'), status?.profile]);
     for (const [label, ok, detail] of rows) {
@@ -269,7 +273,7 @@
         icon: known.icon,
         cat: known.cat,
         text: known[lang] || known.fr,
-        tags: [t('mods.version', { version: mod.version }), ...(mod.optional ? [t('mods.optional')] : [])],
+        tags: [t('mods.version', { version: mod.version }), ...(mod.optional ? [t('mods.optional')] : []), ...(mod.group === 'pvp' ? [t('mods.pvp')] : [])],
       });
     }
     return items;
@@ -338,7 +342,7 @@
       saved.classList.remove('hidden');
       savedTimer = setTimeout(() => saved.classList.add('hidden'), failure ? 6000 : 1600);
     }
-    if (['profileId', 'gameDir', 'devMode', 'devJarDir', 'shaders'].some((key) => key in patch)) refreshStatus();
+    if (['profileId', 'gameDir', 'devMode', 'devJarDir', 'shaders', 'pvpMods'].some((key) => key in patch)) refreshStatus();
     if ('devMode' in patch || 'msClientId' in patch) refreshAccounts();
     return failure;
   }
@@ -358,6 +362,8 @@
       $('dev-help').textContent = t('settings.devHelp', { glob: profile.jarGlob });
       $('shaders-card').classList.toggle('hidden', !isFabric(profile));
       $('shaders').checked = Boolean(settings.shaders);
+      $('pvp-card').classList.toggle('hidden', !isFabric(profile));
+      $('pvp-mods').checked = settings.pvpMods !== false;
     }
     const ram = $('ram');
     const max = info ? Math.max(4096, Math.min(16384, Math.floor(info.totalRamMb / 1024) * 1024)) : 8192;
@@ -427,6 +433,7 @@
   });
   $('dev-mode').addEventListener('change', (e) => save({ devMode: e.target.checked }));
   $('shaders').addEventListener('change', (e) => save({ shaders: e.target.checked }));
+  $('pvp-mods').addEventListener('change', (e) => save({ pvpMods: e.target.checked }));
   $('dev-dir-change').addEventListener('click', async () => {
     const dir = await api.pickFolder(settings.devJarDir);
     if (dir) save({ devJarDir: dir });

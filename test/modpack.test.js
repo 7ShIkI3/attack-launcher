@@ -16,6 +16,7 @@ const FILES = {
   'sodium-1.jar': Buffer.from('sodium '.repeat(40)),
   'lithium-1.jar': Buffer.from('lithium '.repeat(40)),
   'iris-1.jar': Buffer.from('iris '.repeat(40)),
+  'crystal-1.jar': Buffer.from('crystal '.repeat(40)),
 };
 let server;
 let base;
@@ -50,6 +51,16 @@ function localPack() {
   };
 }
 
+/** localPack() + un mod du groupe PvP (localPack() reste sans groupe : ses tests attendent deux jars). */
+function pvpPack() {
+  const pack = localPack();
+  pack.mods.push({
+    slug: 'crystal', name: 'crystal', version: '1', filename: 'crystal-1.jar', url: `${base}/crystal-1.jar`,
+    sha512: sha512(FILES['crystal-1.jar']), size: FILES['crystal-1.jar'].length, group: 'pvp',
+  });
+  return pack;
+}
+
 const list = (dir) => fs.readdirSync(path.join(dir, 'mods')).sort();
 
 test('packs figés du dépôt : valides, cdn.modrinth.com, SHA-512, un par profil Fabric', () => {
@@ -81,6 +92,35 @@ test('versions figées demandées (1.21.1 et 26.3)', () => {
     ['fabric-api', 'sodium', 'lithium', 'ferrite-core', 'immediatelyfast', 'modmenu', 'iris'].map((s) => version('fabric-26.3', s)),
     ['0.164.0', '0.9.2', '0.26.2', '9.0.0', '1.17.1', '21.0.0', '1.11.7'],
   );
+});
+
+test('packs figés : mods de performance communs, ModernFix en 1.21.1 seulement, groupe PvP désactivable', () => {
+  const version = (id, slug) => modpack.loadPack(catalog.get(id)).mods.find((m) => m.slug === slug)?.version;
+  const common = ['entityculling', 'moreculling', 'cloth-config', 'badoptimizations', 'dynamic-fps', 'krypton', 'fast-ip-ping', 'serverpingerfixer', 'reflex-antilag'];
+  assert.deepEqual(
+    common.map((s) => version('fabric-1.21.1', s)),
+    ['1.11.3', '1.0.10', '15.0.140', '2.4.1', '3.11.4', '0.2.8', '1.0.12', '1.0.6', '1.1.3'],
+  );
+  assert.deepEqual(
+    common.map((s) => version('fabric-26.3', s)),
+    ['1.11.3', '1.9.0', '26.3.159', '2.4.1', '3.11.10', '0.3.2', '1.0.12', '1.1.1', '1.1.3'],
+  );
+  assert.equal(version('fabric-1.21.1', 'modernfix'), '5.25.1');
+  assert.equal(version('fabric-26.3', 'modernfix'), undefined, 'pas de ModernFix pour 26.3');
+  for (const id of ['fabric-1.21.1', 'fabric-26.3']) {
+    const pack = modpack.loadPack(catalog.get(id));
+    assert.deepEqual(pack.mods.filter((m) => m.group === 'pvp').map((m) => [m.slug, m.version]),
+      [['marlow-crystal-optimizer', '2.0.0'], ['anchor-optimizer', '1.3.0'], ['walksylib', '2.0.4']], id);
+    assert.ok(pack.mods.every((m) => m.group === undefined || m.group === 'pvp'));
+    for (const m of pack.mods) assert.ok(m.name.length <= 64);
+  }
+});
+
+test('packs figés : nombre de mods installés selon les réglages shaders et PvP', () => {
+  const count = (id, options) => modpack.selectedMods(modpack.loadPack(catalog.get(id)), options).length;
+  // 1.21.1 : 20 mods dont Iris (optionnel) et 3 mods PvP ; 26.3 : 19 (pas de ModernFix)
+  assert.deepEqual([{}, { shaders: true }, { pvp: false }, { shaders: true, pvp: false }].map((o) => count('fabric-1.21.1', o)), [19, 20, 16, 17]);
+  assert.deepEqual([{}, { shaders: true }, { pvp: false }, { shaders: true, pvp: false }].map((o) => count('fabric-26.3', o)), [18, 19, 15, 16]);
 });
 
 function checked(change) {
@@ -120,12 +160,31 @@ test('validation : URL, hash, nom de fichier, doublons', () => {
   assert.equal('extra' in clean.mods[0], false);
 });
 
+test('validation : groupe « pvp » conservé, toute autre valeur refusée', () => {
+  assert.equal(checked((p) => { p.mods[0].group = 'pvp'; })().mods[0].group, 'pvp');
+  assert.equal('group' in checked(() => {})().mods[0], false, 'sans groupe : le champ reste absent');
+  for (const bad of ['combat', 'PVP', '', null, 1, true]) {
+    assert.throws(checked((p) => { p.mods[0].group = bad; }), /groupe invalide/, String(bad));
+  }
+});
+
 test('mods retenus : Iris seulement quand les shaders sont activés', () => {
   const pack = localPack();
   assert.deepEqual(modpack.selectedMods(pack).map((m) => m.slug), ['sodium', 'lithium']);
   assert.deepEqual(modpack.selectedMods(pack, { shaders: true }).map((m) => m.slug), ['sodium', 'lithium', 'iris']);
   assert.deepEqual(modpack.view(pack).map((m) => [m.slug, m.optional]), [['sodium', false], ['lithium', false], ['iris', true]]);
   assert.deepEqual(modpack.view(null), []);
+});
+
+test('mods retenus : les quatre combinaisons shaders / mods PvP (PvP activé par défaut)', () => {
+  const pack = pvpPack();
+  const slugs = (options) => modpack.selectedMods(pack, options).map((m) => m.slug);
+  assert.deepEqual(slugs(), ['sodium', 'lithium', 'crystal'], 'sans option : PvP oui, shaders non');
+  assert.deepEqual(slugs({ shaders: false, pvp: true }), ['sodium', 'lithium', 'crystal']);
+  assert.deepEqual(slugs({ shaders: true, pvp: true }), ['sodium', 'lithium', 'iris', 'crystal']);
+  assert.deepEqual(slugs({ shaders: false, pvp: false }), ['sodium', 'lithium']);
+  assert.deepEqual(slugs({ shaders: true, pvp: false }), ['sodium', 'lithium', 'iris']);
+  assert.deepEqual(modpack.view(pack).map((m) => [m.slug, m.group]), [['sodium', null], ['lithium', null], ['iris', null], ['crystal', 'pvp']]);
 });
 
 test('installation : jars du pack vérifiés, liste gérée, second passage sans téléchargement', async () => {
@@ -160,6 +219,27 @@ test('shaders : Iris installé quand on active l’option, retiré quand on la c
   const off = await modpack.installPack(dir, localPack(), { net, shaders: false, previousManaged: on.managed, protectedNames: ['attack-fabric.jar'] });
   assert.deepEqual(off.removed, ['iris-1.jar']);
   assert.deepEqual(list(dir), ['attack-fabric.jar', 'lithium-1.jar', 'mon-mod-perso.jar', 'sodium-1.jar']);
+  assert.equal(fs.readFileSync(path.join(dir, 'mods', 'mon-mod-perso.jar'), 'utf8'), 'à moi');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('mods PvP : retirés quand on les coupe, remis quand on les réactive ; jars du joueur jamais touchés', async () => {
+  const dir = tempDir();
+  fs.mkdirSync(path.join(dir, 'mods'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'mods', 'mon-mod-perso.jar'), 'à moi');
+
+  const on = await modpack.installPack(dir, pvpPack(), { net });
+  assert.deepEqual(list(dir), ['crystal-1.jar', 'lithium-1.jar', 'mon-mod-perso.jar', 'sodium-1.jar']);
+  assert.deepEqual(on.managed, ['sodium-1.jar', 'lithium-1.jar', 'crystal-1.jar']);
+
+  const off = await modpack.installPack(dir, pvpPack(), { net, pvp: false, previousManaged: on.managed });
+  assert.deepEqual(off.removed, ['crystal-1.jar']);
+  assert.deepEqual(off.managed, ['sodium-1.jar', 'lithium-1.jar']);
+  assert.deepEqual(list(dir), ['lithium-1.jar', 'mon-mod-perso.jar', 'sodium-1.jar']);
+
+  const back = await modpack.installPack(dir, pvpPack(), { net, pvp: true, previousManaged: off.managed });
+  assert.deepEqual(back.removed, []);
+  assert.deepEqual(list(dir), ['crystal-1.jar', 'lithium-1.jar', 'mon-mod-perso.jar', 'sodium-1.jar']);
   assert.equal(fs.readFileSync(path.join(dir, 'mods', 'mon-mod-perso.jar'), 'utf8'), 'à moi');
   fs.rmSync(dir, { recursive: true, force: true });
 });

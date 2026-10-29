@@ -15,6 +15,7 @@ const PACK_ID = /^[a-z0-9][a-z0-9.-]{0,63}$/;
 const SLUG = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const FILENAME = /^[\w.+-]+\.jar$/;
 const MAX_JAR = 200 * 1024 * 1024;
+const GROUPS = ['pvp']; // groupes de mods désactivables (réglage « Mods PvP (latence) »)
 
 /**
  * Valide un pack et renvoie sa version nettoyée (seuls les champs connus). `profile` : entrée du catalogue.
@@ -52,12 +53,14 @@ function validatePack(pack, profile) {
     if (decodeURIComponent(parsed.pathname.split('/').pop()) !== filename) {
       throw new Error(`Pack de mods : l'adresse de ${slug} ne désigne pas ${filename}`);
     }
+    if (raw.group !== undefined && !GROUPS.includes(raw.group)) throw new Error(`Pack de mods : groupe invalide pour ${slug}`);
     if (slugs.has(slug) || names.has(filename.toLowerCase())) throw new Error(`Pack de mods : doublon (${slug})`);
     slugs.add(slug);
     names.add(filename.toLowerCase());
     const mod = { slug, name, version, filename, url, sha512, size };
     if (sha1) mod.sha1 = sha1;
     if (raw.optional === true) mod.optional = true;
+    if (raw.group !== undefined) mod.group = raw.group;
     return mod;
   });
   return { profileId: pack.profileId, mc: pack.mc, loader: pack.loader, mods };
@@ -71,14 +74,18 @@ function loadPack(profile, dir = PACKS_DIR) {
   return validatePack(JSON.parse(fs.readFileSync(file, 'utf8')), profile);
 }
 
-/** Mods à installer : tous ceux du pack, sauf les optionnels (Iris) quand les shaders sont désactivés. */
-function selectedMods(pack, { shaders = false } = {}) {
-  return pack.mods.filter((mod) => !mod.optional || shaders);
+/**
+ * Mods à installer : tous ceux du pack, sauf les optionnels (Iris) quand les shaders sont désactivés et ceux du groupe
+ * PvP (Crystal Optimizer, Anchor Optimizer, WalksyLib) quand les mods PvP sont désactivés (activés par défaut).
+ */
+function selectedMods(pack, { shaders = false, pvp = true } = {}) {
+  return pack.mods.filter((mod) => (!mod.optional || shaders) && (mod.group !== 'pvp' || pvp));
 }
 
 /**
  * Installe le pack dans <gameDir>/mods. options :
  *   shaders        installe aussi les mods optionnels
+ *   pvp            installe les mods du groupe PvP (vrai par défaut)
  *   previousManaged  noms de fichiers installés par un pack précédent (fichier d'état) : supprimés s'ils sortent du pack
  *   protectedNames noms jamais supprimés (le jar ATTACK)
  *   net, report    options réseau et rapport de progression ('pack', fait, total, message)
@@ -88,8 +95,8 @@ function selectedMods(pack, { shaders = false } = {}) {
  * `managed` et est listé dans `removeFailed`.
  */
 async function installPack(gameDir, pack, options = {}) {
-  const { shaders = false, previousManaged = [], protectedNames = [], net = {}, report } = options;
-  const mods = selectedMods(pack, { shaders });
+  const { shaders = false, pvp = true, previousManaged = [], protectedNames = [], net = {}, report } = options;
+  const mods = selectedMods(pack, { shaders, pvp });
   const modsDir = path.join(gameDir, 'mods');
   await fsp.mkdir(modsDir, { recursive: true });
   let done = 0;
@@ -140,9 +147,9 @@ async function installPack(gameDir, pack, options = {}) {
   };
 }
 
-/** Vue pour l'interface : nom, version, optionnel (pas d'URL ni de hash). */
+/** Vue pour l'interface : nom, version, optionnel, groupe (pas d'URL ni de hash). */
 function view(pack) {
-  return pack ? pack.mods.map((mod) => ({ slug: mod.slug, name: mod.name, version: mod.version, optional: Boolean(mod.optional) })) : [];
+  return pack ? pack.mods.map((mod) => ({ slug: mod.slug, name: mod.name, version: mod.version, optional: Boolean(mod.optional), group: mod.group || null })) : [];
 }
 
 module.exports = { PACKS_DIR, validatePack, loadPack, selectedMods, installPack, view };

@@ -259,6 +259,19 @@
     immediatelyfast: { icon: 'IF', cat: 'perf', fr: 'Accélère l’affichage de l’interface, du texte et des objets.', en: 'Speeds up drawing of the interface, text and items.' },
     modmenu: { icon: 'MM', cat: 'utility', fr: 'Liste les mods installés et ouvre leurs réglages depuis le menu du jeu.', en: 'Lists installed mods and opens their settings from the game menu.' },
     iris: { icon: 'IR', cat: 'visual', fr: 'Packs de shaders, avec la version faite pour le Sodium du pack. Option « Shaders » des Réglages.', en: 'Shader packs, using the version made for the pack’s Sodium. “Shaders” option in Settings.' },
+    entityculling: { icon: 'EC', cat: 'perf', fr: 'Ne dessine pas les entités et blocs-entités cachés derrière un mur ou un relief.', en: 'Skips drawing entities and block entities hidden behind walls or terrain.' },
+    moreculling: { icon: 'MC', cat: 'perf', fr: 'Évite de dessiner d’autres éléments invisibles (faces cachées, objets hors de vue).', en: 'Avoids drawing more things you cannot see (hidden faces, off-screen objects).' },
+    'cloth-config': { icon: 'CC', cat: 'utility', fr: 'Bibliothèque des écrans de réglages, requise par More Culling et Reflex AntiLag.', en: 'Settings-screen library, required by More Culling and Reflex AntiLag.' },
+    badoptimizations: { icon: 'BO', cat: 'perf', fr: 'Optimisations diverses qui ne touchent pas au rendu.', en: 'Assorted optimizations that leave rendering alone.' },
+    'dynamic-fps': { icon: 'DF', cat: 'perf', fr: 'Réduit les ressources utilisées quand le jeu est en arrière-plan ou inactif.', en: 'Cuts resource use while the game is in the background or idle.' },
+    modernfix: { icon: 'MF', cat: 'perf', fr: 'Démarrage plus rapide, moins de mémoire utilisée et de nombreux bugs corrigés.', en: 'Faster startup, less memory used and many bugs fixed.' },
+    krypton: { icon: 'KR', cat: 'perf', fr: 'Optimise la pile réseau du jeu, utile en multijoueur.', en: 'Optimizes the game’s networking stack, useful in multiplayer.' },
+    'fast-ip-ping': { icon: 'FI', cat: 'utility', fr: 'Supprime une lenteur de la liste des serveurs quand on utilise une adresse IP.', en: 'Removes a slowdown in the server list when using an IP address.' },
+    serverpingerfixer: { icon: 'SP', cat: 'utility', fr: 'Améliore la façon dont la liste des serveurs vérifie leur état.', en: 'Improves how the server list checks server status.' },
+    'reflex-antilag': { icon: 'RA', cat: 'perf', fr: 'Supprime la latence de la file de rendu (méthode NVIDIA Reflex), sur toutes les cartes graphiques.', en: 'Removes render-queue latency (NVIDIA Reflex method), on any graphics card.' },
+    'marlow-crystal-optimizer': { icon: 'CO', cat: 'combat', fr: 'Les cristaux d’End disparaissent sans attendre la réponse du serveur. Option « Mods PvP » des Réglages.', en: 'End crystals disappear without waiting for the server’s reply. “PvP mods” option in Settings.' },
+    'anchor-optimizer': { icon: 'AO', cat: 'combat', fr: 'Les ancres de réapparition réagissent côté client, sans attendre le serveur. Option « Mods PvP » des Réglages.', en: 'Respawn anchors react client-side, without waiting for the server. “PvP mods” option in Settings.' },
+    walksylib: { icon: 'WL', cat: 'utility', fr: 'Bibliothèque requise par Anchor Optimizer. Option « Mods PvP » des Réglages.', en: 'Library required by Anchor Optimizer. “PvP mods” option in Settings.' },
   };
 
   window.AttackData = { CATEGORIES, MODS, CHANGELOG, PACK_INFO };
