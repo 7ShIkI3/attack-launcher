@@ -1,0 +1,123 @@
+# Site d'ATTACK Launcher sur GitHub Pages : https://7shiki3.github.io/attack-launcher/
+# - pull request : tests + génération sur la release d'essai (--offline), sans déploiement ;
+# - push sur main, lancement manuel : tests, génération, puis déploiement ;
+# - release publiée : un job relais relance ce workflow sur main (le tag n'a pas le droit de déployer sur l'environnement
+#   github-pages) pour que la page lise la nouvelle release.
+# Toutes les actions sont épinglées par SHA complet (version en commentaire). Node : celui du runner, le script exige >= 20.
+name: Site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'scripts/build-site.js'
+      - 'scripts/serve-site.js'
+      - 'scripts/site-images.js'
+      - 'scripts/make-icons.js'
+      - 'src/main/packs/**'
+      - 'src/main/catalog.js'
+      - 'src/renderer/i18n.js'
+      - 'src/renderer/logo.js'
+      - 'src/renderer/data.js'
+      - 'src/renderer/fonts/**'
+      - 'docs/images/**'
+      - 'package.json'
+      - 'README.md'
+      - 'test/site.test.js'
+      - 'test/fixtures/site-release*.json'
+      - '.github/workflows/pages.yml'
+  pull_request:
+    paths:
+      - 'site/**'
+      - 'scripts/build-site.js'
+      - 'scripts/serve-site.js'
+      - 'scripts/site-images.js'
+      - 'scripts/make-icons.js'
+      - 'src/main/packs/**'
+      - 'src/main/catalog.js'
+      - 'src/renderer/i18n.js'
+      - 'src/renderer/logo.js'
+      - 'src/renderer/data.js'
+      - 'src/renderer/fonts/**'
+      - 'docs/images/**'
+      - 'package.json'
+      - 'README.md'
+      - 'test/site.test.js'
+      - 'test/fixtures/site-release*.json'
+      - '.github/workflows/pages.yml'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('site-pr-{0}', github.event.number) || 'site' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  relay:
+    name: Relancer sur main
+    if: github.event_name == 'release'
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+    steps:
+      - name: Lancer le workflow sur main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run pages.yml --ref main
+
+  build:
+    name: Tests et génération
+    if: github.event_name != 'release'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Tests du site
+        run: node --test test/site.test.js
+
+      # Pull request : génération sur la release d'essai (test/fixtures), qui valide modèles, textes et images sans dépendre
+      # de la release publiée (une PR ne doit pas rester rouge parce que la release du launcher n'est pas encore sortie).
+      - name: Générer le site (release d'essai)
+        if: github.event_name == 'pull_request'
+        run: node scripts/build-site.js --out _site --offline
+
+      # --strict : pas de page « sans release ». Si la dernière release est introuvable, incomplète (fichiers pas encore joints),
+      # d'une autre version que son tag ou plus ancienne que package.json, le script la relit 6 fois (20 s d'écart) puis échoue :
+      # le déploiement est sauté et la page déjà en ligne reste en place. Publier la release (fichiers joints) avant le site.
+      - name: Générer le site
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/build-site.js --out _site --strict
+
+      - name: Préparer l'artefact Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+  deploy:
+    name: Déployer
+    needs: build
+    if: github.event_name != 'pull_request' && github.event_name != 'release' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Déployer sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

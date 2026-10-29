@@ -9,7 +9,7 @@ anglais (Réglages → Langue).
 
 ![Accueil du launcher, profil 1.8.9](../images/home.png)
 
-![Accueil du launcher, profil 1.21.1 (Fabric)](../images/home-fabric.png)
+![Accueil du launcher, profil 26.3 (Fabric)](../images/home-fabric.png)
 
 - **Choix du profil** : trois cartes au-dessus de JOUER, **1.8.9** (Forge, « PvP classique »), **1.21.1** (« PvP moderne ») et
   **26.3** (Fabric, « Dernière version »). Chaque profil est indépendant : son dossier de jeu, son état d'installation, son
@@ -40,7 +40,7 @@ anglais (Réglages → Langue).
 
 ![Page Mods, profil 1.8.9](../images/mods.png)
 
-![Page Mods, profil 1.21.1 (Fabric)](../images/mods-fabric.png)
+![Page Mods, profil 26.3 (Fabric)](../images/mods-fabric.png)
 
 Elle suit le profil choisi sur l'accueil :
 

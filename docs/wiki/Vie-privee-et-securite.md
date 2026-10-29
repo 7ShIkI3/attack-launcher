@@ -5,7 +5,7 @@
 Cette page décrit **le launcher** : ce qu'il envoie, à qui, ce qu'il garde sur ton PC, et comment il se protège.
 Elle ne couvre ni le mod ATTACK Client ni Minecraft lui-même, qui ont leurs propres connexions une fois le jeu lancé
 (Mojang, serveurs de jeu, API ATTACK des cosmétiques : voir le dépôt `attack-client`). Chaque affirmation a été
-vérifiée dans le code ; les références sont de la forme `fichier:ligne` (état du dépôt à la version 0.5.x ; les numéros de ligne peuvent avoir bougé depuis, les noms de fonctions restent).
+vérifiée dans le code ; les références sont de la forme `fichier:ligne` (les références `fichier:ligne` datent de la version 0.5.x : les numéros de ligne ont pu bouger depuis, les noms de fonctions restent ; le contenu décrit la version 0.6.0 : pack de mods des trois profils, groupes réglables, OptiFine en 1.8.9).
 
 ## En bref
 
@@ -51,7 +51,7 @@ Toute requête réseau révèle ton **adresse IP** au serveur qui la reçoit. Le
 | --- | --- | --- | --- |
 | Démarrage, puis toutes les 6 h (version installée **ou** portable) | `github.com` (page de la dernière release, `latest.yml`) | Requêtes HTTPS sans jeton ni identifiant | `updates.js:9`, `updates.js:123-124` |
 | Démarrage, si un compte Microsoft est actif | Microsoft, Xbox Live, XSTS, `api.minecraftservices.com` | Refresh token (renouvellement), puis jetons de la chaîne de connexion | `main.js:517-526` |
-| INSTALLER, Vérifier / réparer | Mojang (manifestes, jar, bibliothèques, ressources), Maven Forge (1.8.9), `meta.fabricmc.net` et `maven.fabricmc.net` (Fabric), `cdn.modrinth.com` (pack de mods Fabric), `api.github.com` et les fichiers de la release | Requêtes GET de fichiers publics | `installer.js` |
+| INSTALLER, Vérifier / réparer | Mojang (manifestes, jar, bibliothèques, ressources), Maven Forge (1.8.9), `meta.fabricmc.net` et `maven.fabricmc.net` (Fabric), `cdn.modrinth.com` (pack de mods des trois profils), `api.github.com` et les fichiers de la release | Requêtes GET de fichiers publics | `installer.js` |
 | Ajouter un compte | `login.microsoftonline.com`, `user.auth.xboxlive.com`, `xsts.auth.xboxlive.com`, `api.minecraftservices.com`, `textures.minecraft.net` | ID client Azure, code d'appareil, jetons de la chaîne ; le jeton Minecraft sert à lire le profil | `auth.js:93-231` |
 | JOUER avec un compte | `piston-meta.mojang.com` (manifeste du runtime Java ; fichiers la première fois) ; si le jeton Minecraft manque ou expire, Microsoft, Xbox, Minecraft | Requêtes GET ; jetons de renouvellement | `runtime.js:60-70`, `accounts.js:119-130` |
 | Skin : Appliquer, Par défaut, Actualiser | `api.minecraftservices.com`, puis `textures.minecraft.net` | Jeton Minecraft (en-tête `Authorization`) ; **le PNG choisi, seulement au clic sur Appliquer** | `skins.js:57-80`, `main.js:254-260` |
@@ -73,12 +73,12 @@ Détails utiles :
 | Emplacement | Contenu | Chiffré ? | Réf. |
 | --- | --- | --- | --- |
 | `%APPDATA%\ATTACK Launcher\accounts.json` | Pour chaque compte : identifiant (UUID), pseudo, type, image du skin (`data:` URL), modèle de bras, date d'ajout ; **refresh token** | Le refresh token : **oui** (DPAPI). Le reste : non (pas de secret) | `accounts.js:67-75` |
-| `%APPDATA%\ATTACK Launcher\settings.json` | Mémoire, dossier de jeu, Java, arguments Java, langue, mode développeur, dossier des jars de test, ID client Azure (pas un secret) | Non | `settings.js:53-74` |
+| `%APPDATA%\ATTACK Launcher\settings.json` | Mémoire, dossier de jeu, Java, arguments Java, langue, mode développeur, dossier des jars de test, ID client Azure (pas un secret) ; par profil : groupes du pack (Mods PvP, Packs OptiFine, Replay Mod, Shaders) et OptiFine (réglage et chemin du fichier choisi, `optifineJar`) | Non | `settings.js:53-74` |
 | `%APPDATA%\ATTACK Launcher\logs\updater.log` | Journal des mises à jour (dates, versions, erreurs) ; passe en `.old` au-delà de 1 Mo | Non | `main.js:74-90` |
 | `%LOCALAPPDATA%\ATTACK Launcher\runtime` | Java officiel de Mojang du profil (Java 8, 21 ou 25) | Non | `main.js:33-35` |
 | `%LOCALAPPDATA%\attack-launcher-updater` | Mise à jour téléchargée en attente d'installation (cache d'`electron-updater`) | Non | `app-update.yml` généré par electron-builder |
 | `%APPDATA%\.minecraft\...` | Versions, bibliothèques, ressources, `launcher_profiles.json` (+ `.bak`) | Non | [Installation](Installation-et-mises-a-jour.md) |
-| `%APPDATA%\.attack\...` | Mod, état d'installation `attack-launcher.json`, `logs\launcher\game-*.log` | Non | `installer.js:201-207`, `game.js:162-165` |
+| `%APPDATA%\.attack\...` | Mod, mods du pack (et copie d'OptiFine en 1.8.9), état d'installation `attack-launcher.json`, `logs\launcher\game-*.log` | Non | `installer.js:201-207`, `game.js:162-165` |
 
 - Aucun de ces fichiers n'est envoyé nulle part par le launcher.
 - Le **jeton Minecraft n'est jamais écrit sur disque** : il vit dans une `Map` en mémoire (`accounts.js:27`).
@@ -133,6 +133,8 @@ Détails utiles :
 3. Supprime à la main, si tu veux tout effacer : `%APPDATA%\ATTACK Launcher`, `%LOCALAPPDATA%\ATTACK Launcher` (runtime Java) et
    `%LOCALAPPDATA%\attack-launcher-updater` (cache de mise à jour).
 4. Facultatif : `%APPDATA%\.attack` (mod, mondes, captures, journaux du jeu) et, dans `%APPDATA%\.minecraft`, le profil
-   « ATTACK Client » de `launcher_profiles.json` et les versions Forge installées.
+   « ATTACK Client » (ou « ATTACK 1.21.1 », « ATTACK 26.3 ») de `launcher_profiles.json` (et sa copie `launcher_profiles.json.bak`)
+   et les versions Forge ou Fabric installées. Minecraft lui-même (ses versions, `libraries` et `assets` dans `.minecraft`) est
+   partagé avec le launcher officiel : ne le supprime que si tu n'en as plus besoin.
 
 Voir aussi : [Comptes et skin](Comptes-et-skin.md), [Architecture](Architecture.md).

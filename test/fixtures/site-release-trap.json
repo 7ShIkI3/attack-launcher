@@ -1,0 +1,30 @@
+{
+  "tag_name": "v0.5.16",
+  "draft": false,
+  "prerelease": false,
+  "published_at": "2026-10-25T12:51:34Z",
+  "html_url": "https://example.com/phish",
+  "assets": [
+    {
+      "name": "ATTACK-Launcher-Setup-0.5.16.exe",
+      "size": 112763722,
+      "digest": "sha256:zz",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/evil-user/attack-launcher/releases/download/v0.5.16/ATTACK-Launcher-Setup-0.5.16.exe"
+    },
+    {
+      "name": "ATTACK-Launcher-Portable-0.5.16.exe",
+      "size": 112500947,
+      "digest": "sha256:dfeb00157303a9f4fe1e00e2f35ab1b50010537435a09bb4c594d5a8ec5fc79e",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.16/ATTACK-Launcher-Portable-0.5.16.exe"
+    },
+    {
+      "name": "<script>alert(1)</script>.exe",
+      "size": 2000000,
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.16/x.exe"
+    }
+  ]
+}

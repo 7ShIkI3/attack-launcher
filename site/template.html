@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{t.meta.title}}</title>
+<meta name="description" content="{{t.meta.description}}">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; script-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#09090c">
+<link rel="canonical" href="{{url.canonical}}">
+<link rel="alternate" hreflang="fr" href="{{url.fr}}">
+<link rel="alternate" hreflang="en" href="{{url.en}}">
+<link rel="alternate" hreflang="x-default" href="{{url.fr}}">
+<link rel="icon" href="{{root}}favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{{root}}apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ATTACK Launcher">
+<meta property="og:title" content="{{t.meta.title}}">
+<meta property="og:description" content="{{t.meta.description}}">
+<meta property="og:url" content="{{url.canonical}}">
+<meta property="og:image" content="{{t.meta.ogImage}}">
+<meta property="og:image:width" content="1120">
+<meta property="og:image:height" content="700">
+<meta property="og:image:alt" content="{{t.alt.launcher-home}}">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="{{root}}fonts/montserrat-bold.woff" as="font" type="font/woff" crossorigin>
+<link rel="stylesheet" href="{{root}}styles.css">
+</head>
+<body>
+<a class="skip" href="#contenu">{{t.nav.skip}}</a>
+<header class="site-header">
+<div class="wrap bar">
+<a class="brand" href="./">{{html.logo}}<span class="brand-name">ATTACK <span>LAUNCHER</span></span></a>
+<nav class="anchors" aria-label="{{t.nav.anchors}}">
+<a href="#features">{{t.nav.features}}</a>
+<a href="#profiles">{{t.nav.profiles}}</a>
+<a href="#client">{{t.nav.client}}</a>
+<a href="#performance">{{t.nav.performance}}</a>
+<a href="#security">{{t.nav.security}}</a>
+<a href="#faq">{{t.nav.faq}}</a>
+</nav>
+<div class="tools">
+<nav class="langs" aria-label="{{t.nav.lang}}">
+<a href="{{root}}." hreflang="fr" lang="fr" {{t.langs.fr}}>FR</a>
+<a href="{{root}}en/" hreflang="en" lang="en" {{t.langs.en}}>EN</a>
+</nav>
+<a class="gh" href="https://github.com/7ShIkI3/attack-launcher" rel="noopener noreferrer">GitHub</a>
+</div>
+</div>
+</header>
+
+<main id="contenu" tabindex="-1">
+
+<section class="hero">
+<div class="wrap hero-grid">
+<div class="hero-copy">
+<div class="hero-brand">{{html.logoHero}}<p class="eyebrow">{{t.hero.eyebrow}}</p></div>
+<h1>{{t.hero.title}}</h1>
+<p class="lead">{{t.hero.lead}}</p>
+{{#rel}}
+<div class="cta">
+<a class="btn btn-primary" href="{{rel.setupUrl}}" rel="noopener noreferrer"><span class="btn-title">{{t.hero.download}}</span><span class="btn-sub">{{t.hero.version}} {{rel.version}} · {{rel.setupSize}}</span></a>
+<p class="cta-links"><a href="{{rel.portableUrl}}" rel="noopener noreferrer">{{t.hero.portable}}</a> <a href="{{rel.releasesUrl}}" rel="noopener noreferrer">{{t.hero.all}}</a> <a href="{{rel.releaseUrl}}" rel="noopener noreferrer">{{t.hero.notes}}</a></p>
+</div>
+<p class="meta">{{t.hero.published}} {{rel.date}}</p>
+<details class="verify">
+<summary>{{t.verify.summary}}</summary>
+<div class="verify-body">
+{{#sha}}<p>{{t.verify.shaLabel}}</p>
+<p><code class="hash">{{rel.sha256}}</code></p>{{/sha}}
+{{^sha}}<p>{{t.verify.noSha}}</p>{{/sha}}
+<p>{{t.verify.cmd}}</p>
+<p><code class="cmd">Get-FileHash .\ATTACK-Launcher-Setup-{{rel.version}}.exe -Algorithm SHA256</code></p>
+<p>{{t.verify.same}}</p>
+</div>
+</details>
+{{/rel}}
+{{^rel}}
+<div class="cta">
+<a class="btn btn-primary" href="{{rel.releasesUrl}}" rel="noopener noreferrer"><span class="btn-title">{{t.hero.fallback}}</span></a>
+</div>
+{{/rel}}
+<p class="note">{{t.hero.note}}</p>
+<ul class="chips">
+<li>{{t.trust.t1}}</li>
+<li>{{t.trust.t2}}</li>
+<li>{{t.trust.t3}}</li>
+<li>{{t.trust.t4}}</li>
+</ul>
+</div>
+<div class="hero-shot">
+<div class="shot-frame">{{img.launcher-home:eager}}</div>
+</div>
+</div>
+</section>
+
+<section class="section" id="shots" aria-labelledby="shots-title">
+<div class="wrap">
+<div class="section-head">
+<h2 id="shots-title">{{t.shots.title}}</h2>
+<p>{{t.shots.lead}}</p>
+</div>
+<div class="gallery" role="group" aria-label="{{t.shots.region}}" tabindex="0">
+<figure class="shot">{{img.launcher-home-fabric|sizes=(min-width: 1000px) 360px, (min-width: 640px) 50vw, 82vw}}<figcaption>{{t.cap.homeFabric}}</figcaption></figure>
+<figure class="shot">{{img.launcher-mods|sizes=(min-width: 1000px) 360px, (min-width: 640px) 50vw, 82vw}}<figcaption>{{t.cap.mods}}</figcaption></figure>
+<figure class="shot">{{img.launcher-mods-fabric|sizes=(min-width: 1000px) 360px, (min-width: 640px) 50vw, 82vw}}<figcaption>{{t.cap.modsFabric}}</figcaption></figure>
+<figure class="shot">{{img.launcher-settings|sizes=(min-width: 1000px) 360px, (min-width: 640px) 50vw, 82vw}}<figcaption>{{t.cap.settings}}</figcaption></figure>
+<figure class="shot">{{img.launcher-account|sizes=(min-width: 1000px) 360px, (min-width: 640px) 50vw, 82vw}}<figcaption>{{t.cap.account}}</figcaption></figure>
+<figure class="shot">{{img.launcher-changelog|sizes=(min-width: 1000px) 360px, (min-width: 640px) 50vw, 82vw}}<figcaption>{{t.cap.changelog}}</figcaption></figure>
+</div>
+</div>
+</section>
+
+<section class="section" id="features" aria-labelledby="features-title">
+<div class="wrap">
+<div class="section-head">
+<h2 id="features-title">{{t.features.title}}</h2>
+<p>{{t.features.lead}}</p>
+</div>
+<div class="grid grid-4">
+<article class="card"><h3>{{t.features.c1.t}}</h3><p>{{t.features.c1.p}}</p></article>
+<article class="card"><h3>{{t.features.c2.t}}</h3><p>{{t.features.c2.p}}</p></article>
+<article class="card"><h3>{{t.features.c3.t}}</h3><p>{{t.features.c3.p}}</p></article>
+<article class="card"><h3>{{t.features.c4.t}}</h3><p>{{t.features.c4.p}}</p></article>
+<article class="card"><h3>{{t.features.c5.t}}</h3><p>{{t.features.c5.p}}</p></article>
+<article class="card"><h3>{{t.features.c6.t}}</h3><p>{{t.features.c6.p}}</p></article>
+<article class="card"><h3>{{t.features.c7.t}}</h3><p>{{t.features.c7.p}}</p></article>
+<article class="card"><h3>{{t.features.c8.t}}</h3><p>{{t.features.c8.p}}</p></article>
+</div>
+</div>
+</section>
+
+<section class="section" id="profiles" aria-labelledby="profiles-title">
+<div class="wrap">
+<div class="section-head">
+<h2 id="profiles-title">{{t.profiles.title}}</h2>
+<p>{{t.profiles.lead}}</p>
+</div>
+<div class="grid grid-3">
+<article class="card profile">
+<div class="profile-head"><h3>{{cat.forge189.mc}}</h3><span class="badge">FORGE</span></div>
+<p class="tagline">{{t.profiles.forge189.tag}}</p>
+<dl class="specs">
+<div><dt>{{t.profiles.mc}}</dt><dd>{{cat.forge189.mc}}</dd></div>
+<div><dt>{{t.profiles.loader}}</dt><dd>{{cat.forge189.loader}}</dd></div>
+<div><dt>{{t.profiles.java}}</dt><dd>{{cat.forge189.java}}</dd></div>
+<div><dt>{{t.profiles.folder}}</dt><dd><code>%APPDATA%\.attack</code></dd></div>
+</dl>
+<p>{{t.profiles.forge189.p}}</p>
+</article>
+<article class="card profile">
+<div class="profile-head"><h3>{{cat.fabric1211.mc}}</h3><span class="badge">FABRIC</span></div>
+<p class="tagline">{{t.profiles.fabric1211.tag}}</p>
+<dl class="specs">
+<div><dt>{{t.profiles.mc}}</dt><dd>{{cat.fabric1211.mc}}</dd></div>
+<div><dt>{{t.profiles.loader}}</dt><dd>{{cat.fabric1211.loader}}</dd></div>
+<div><dt>{{t.profiles.java}}</dt><dd>{{cat.fabric1211.java}}</dd></div>
+<div><dt>{{t.profiles.folder}}</dt><dd><code>%APPDATA%\.attack\<wbr>profiles\<wbr>fabric-1.21.1</code></dd></div>
+</dl>
+<p>{{t.profiles.fabric1211.p}}</p>
+</article>
+<article class="card profile">
+<div class="profile-head"><h3>{{cat.fabric263.mc}}</h3><span class="badge">FABRIC</span></div>
+<p class="tagline">{{t.profiles.fabric263.tag}}</p>
+<dl class="specs">
+<div><dt>{{t.profiles.mc}}</dt><dd>{{cat.fabric263.mc}}</dd></div>
+<div><dt>{{t.profiles.loader}}</dt><dd>{{cat.fabric263.loader}}</dd></div>
+<div><dt>{{t.profiles.java}}</dt><dd>{{cat.fabric263.java}}</dd></div>
+<div><dt>{{t.profiles.folder}}</dt><dd><code>%APPDATA%\.attack\<wbr>profiles\<wbr>fabric-26.3</code></dd></div>
+</dl>
+<p>{{t.profiles.fabric263.p}}</p>
+</article>
+</div>
+</div>
+</section>
+
+<section class="section" id="client" aria-labelledby="client-title">
+<div class="wrap">
+<div class="section-head">
+<h2 id="client-title">{{t.client.title}}</h2>
+<p>{{t.client.lead}}</p>
+</div>
+<div class="grid grid-3">
+<article class="card"><h3>{{t.client.k1.t}}</h3><p>{{t.client.k1.p}}</p></article>
+<article class="card"><h3>{{t.client.k2.t}}</h3><p>{{t.client.k2.p}}</p></article>
+<article class="card"><h3>{{t.client.k3.t}}</h3><p>{{t.client.k3.p}}</p></article>
+<article class="card"><h3>{{t.client.k4.t}}</h3><p>{{t.client.k4.p}}</p></article>
+<article class="card"><h3>{{t.client.k5.t}}</h3><p>{{t.client.k5.p}}</p></article>
+<article class="card"><h3>{{t.client.k6.t}}</h3><p>{{t.client.k6.p}}</p></article>
+</div>
+<div class="callout callout-warn"><p>{{t.client.snap}}</p><p>{{t.client.risk}}</p></div>
+<div class="client-shots" role="group" aria-label="{{t.client.shotsRegion}}">
+<figure class="shot">{{img.client-menu}}<figcaption>{{t.cap.clientMenu}}</figcaption></figure>
+<figure class="shot">{{img.client-search}}<figcaption>{{t.cap.clientSearch}}</figcaption></figure>
+<figure class="shot">{{img.client-favorites}}<figcaption>{{t.cap.clientFavorites}}</figcaption></figure>
+<figure class="shot">{{img.client-hud-editor}}<figcaption>{{t.cap.clientHud}}</figcaption></figure>
+</div>
+<p class="note">{{t.client.shotsNote}}</p>
+</div>
+</section>
+
+<section class="section" id="performance" aria-labelledby="performance-title">
+<div class="wrap">
+<div class="section-head">
+<h2 id="performance-title">{{t.perf.title}}</h2>
+<p>{{t.perf.lead}}</p>
+</div>
+<div class="perf-grid">
+<div class="perf-list">
+<article class="card"><h3>{{t.perf.p1.t}}</h3><p>{{t.perf.p1.p}}</p></article>
+<article class="card"><h3>{{t.perf.p2.t}}</h3><p>{{t.perf.p2.p}}</p></article>
+<article class="card"><h3>{{t.perf.p3.t}}</h3><p>{{t.perf.p3.p}}</p></article>
+</div>
+<aside class="card stat">
+<p class="stat-label">{{t.perf.stat.label}}</p>
+<p class="stat-figure"><span class="stat-from">{{t.perf.stat.from}}</span> <span class="stat-arrow">→</span> <span class="stat-to">{{t.perf.stat.to}}</span></p>
+<p class="stat-unit">{{t.perf.stat.unit}}</p>
+<p>{{t.perf.stat.p}}</p>
+</aside>
+</div>
+</div>
+</section>
+
+<section class="section" id="security" aria-labelledby="security-title">
+<div class="wrap">
+<div class="section-head">
+<h2 id="security-title">{{t.security.title}}</h2>
+<p>{{t.security.lead}}</p>
+</div>
+<div class="security-grid">
+<div>
+<ul class="checks">
+<li>{{t.security.s1}}</li>
+<li>{{t.security.s2}}</li>
+<li>{{t.security.s3}}</li>
+<li>{{t.security.s4}}</li>
+<li>{{t.security.s5}}</li>
+<li>{{t.security.s6}}</li>
+</ul>
+<p class="note">{{t.security.more}}<a href="https://github.com/7ShIkI3/attack-launcher/blob/main/docs/wiki/Vie-privee-et-securite.md" hreflang="fr" rel="noopener noreferrer">{{t.footer.privacy}}</a></p>
+</div>
+<div class="stack">
+<aside class="card box box-warn"><h3>{{t.security.unsigned.t}}</h3><p>{{t.security.unsigned.p}}</p><p><a href="#smartscreen">{{t.security.unsigned.link}}</a></p></aside>
+<aside class="card box"><h3>{{t.security.split.t}}</h3><p>{{t.security.split.p1}}</p><p>{{t.security.split.p2}}</p></aside>
+<aside class="card box box-good"><h3>{{t.security.site.t}}</h3><p>{{t.security.site.p}}</p></aside>
+</div>
+</div>
+</div>
+</section>
+
+<section class="section" id="faq" aria-labelledby="faq-title">
+<div class="wrap narrow">
+<div class="section-head">
+<h2 id="faq-title">{{t.faq.title}}</h2>
+</div>
+<details class="faq-item" id="smartscreen" open><summary>{{t.faq.q1}}</summary><div class="faq-body">{{t.faq.a1}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q2}}</summary><div class="faq-body">{{t.faq.a2}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q3}}</summary><div class="faq-body">{{t.faq.a3}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q4}}</summary><div class="faq-body">{{t.faq.a4}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q5}}</summary><div class="faq-body">{{t.faq.a5}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q6}}</summary><div class="faq-body">{{t.faq.a6}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q7}}</summary><div class="faq-body">{{t.faq.a7}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q8}}</summary><div class="faq-body">{{t.faq.a8}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q9}}</summary><div class="faq-body">{{t.faq.a9}}</div></details>
+</div>
+</section>
+
+<section class="section" id="news" aria-labelledby="news-title">
+<div class="wrap narrow">
+<div class="section-head">
+<h2 id="news-title">{{t.news.title}}</h2>
+<p>{{t.news.lead}}</p>
+</div>
+{{html.news}}
+<p class="note"><a href="{{rel.releasesUrl}}" rel="noopener noreferrer">{{t.news.all}}</a></p>
+</div>
+</section>
+
+<section class="section" id="credits" aria-labelledby="credits-title">
+<div class="wrap narrow">
+<div class="section-head">
+<h2 id="credits-title">{{t.credits.title}}</h2>
+<p>{{t.credits.credit}}</p>
+<p>{{t.credits.note}}</p>
+</div>
+<details class="credits-details">
+<summary>{{t.credits.summary}}</summary>
+{{html.credits}}
+</details>
+</div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+<div class="wrap">
+<div class="footer-brand">{{html.logo}}<span class="brand-name">ATTACK <span>LAUNCHER</span></span></div>
+<nav class="footer-links" aria-label="{{t.footer.nav}}">
+<a href="https://github.com/7ShIkI3/attack-launcher" rel="noopener noreferrer">GitHub</a>
+<a href="{{rel.releasesUrl}}" rel="noopener noreferrer">{{t.footer.releases}}</a>
+<a href="https://github.com/7ShIkI3/attack-launcher/blob/main/docs/wiki/Home.md" hreflang="fr" rel="noopener noreferrer">{{t.footer.wiki}}</a>
+<a href="https://github.com/7ShIkI3/attack-launcher/blob/main/docs/wiki/Vie-privee-et-securite.md" hreflang="fr" rel="noopener noreferrer">{{t.footer.privacy}}</a>
+</nav>
+<p>{{t.footer.copy}}</p>
+<p>{{t.footer.indep}}</p>
+<p class="legal">{{t.footer.official}}</p>
+<p>{{t.footer.nocookie}}</p>
+</div>
+</footer>
+</body>
+</html>

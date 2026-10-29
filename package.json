@@ -16,6 +16,9 @@
     "launch-test": "node scripts/launch-test.js",
     "screenshot": "node scripts/screenshot.js",
     "update-test": "node scripts/update-test.js",
+    "site": "node scripts/build-site.js",
+    "site:serve": "node scripts/serve-site.js",
+    "site:images": "electron scripts/site-images.js",
     "dist": "electron-builder --win nsis portable --publish never",
     "pack": "electron-builder --win --dir --publish never"
   },

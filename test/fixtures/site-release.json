@@ -1,0 +1,44 @@
+{
+  "tag_name": "v0.5.16",
+  "draft": false,
+  "prerelease": false,
+  "published_at": "2026-10-25T12:51:34Z",
+  "html_url": "https://github.com/7ShIkI3/attack-launcher/releases/tag/v0.5.16",
+  "assets": [
+    {
+      "name": "ATTACK-Launcher-Portable-0.5.16.exe",
+      "size": 112500947,
+      "digest": "sha256:dfeb00157303a9f4fe1e00e2f35ab1b50010537435a09bb4c594d5a8ec5fc79e",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.16/ATTACK-Launcher-Portable-0.5.16.exe"
+    },
+    {
+      "name": "ATTACK-Launcher-Setup-0.5.16.exe",
+      "size": 112763722,
+      "digest": "sha256:2299e608466c913ebb39654b549c87c03bcef21e57ddb7f4320b6ea1da58521d",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.16/ATTACK-Launcher-Setup-0.5.16.exe"
+    },
+    {
+      "name": "ATTACK-Launcher-Setup-0.5.16.exe.blockmap",
+      "size": 119522,
+      "digest": "sha256:2b37198b948b8ba1a806974d242604a1653d72d22d5f8fb452958ae17a94931a",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.16/ATTACK-Launcher-Setup-0.5.16.exe.blockmap"
+    },
+    {
+      "name": "latest.yml",
+      "size": 362,
+      "digest": "sha256:a910a34f14b2cbf0c775155ba865f802db2eaaa1abbe8a550eb7cc709dd0e136",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.16/latest.yml"
+    },
+    {
+      "name": "SHA256SUMS",
+      "size": 487,
+      "digest": "sha256:748513e5af54c99a80efa91187a03dd6db16c6a51523b5760c851c994fcd2d80",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.16/SHA256SUMS"
+    }
+  ]
+}
