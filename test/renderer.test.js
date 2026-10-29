@@ -128,3 +128,16 @@ test('textes : la phrase de crédit et la carte OptiFine disent que rien n’est
   assert.match(i18n.t('optifine.textMissing'), /forbids the launcher from downloading it/);
   i18n.setLang('fr');
 });
+
+test('pont IPC : chaque canal du preload a son gestionnaire dans main.js, et chaque appel de la page existe dans le preload', () => {
+  const main = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
+  const preload = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'preload.js'), 'utf8');
+  const handled = new Set([...main.matchAll(/handle\('([\w:]+)'/g)].map((m) => m[1]));
+  const invoked = [...preload.matchAll(/invoke\('([\w:]+)'\)/g)].map((m) => m[1]);
+  assert.deepEqual(invoked.filter((channel) => !handled.has(channel)), [], 'canal sans gestionnaire');
+  for (const channel of ['optifine:pick', 'shell:openOptifine']) assert.ok(invoked.includes(channel), channel);
+  // méthodes de window.attack appelées par la page : toutes exposées par le preload
+  const exposed = new Set([...preload.matchAll(/^\s{2}(\w+):/gm)].map((m) => m[1]));
+  const calls = new Set([...read('app.js').matchAll(/\bapi\.(\w+)/g)].map((m) => m[1]));
+  assert.deepEqual([...calls].filter((name) => !exposed.has(name)), [], 'appel de la page sans méthode exposée');
+});
