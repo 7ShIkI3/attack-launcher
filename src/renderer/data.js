@@ -79,6 +79,16 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.5.17', date: '2026-10-29',
+      fr: 'Plus de FPS en 1.21.1 et 26.3 : Entity Culling, More Culling, BadOptimizations, ModernFix (1.21.1), Krypton et Reflex AntiLag rejoignent le pack. Nouveau réglage « Mods PvP (latence) », activé par défaut : Crystal Optimizer et Anchor Optimizer, à couper si un serveur les interdit. Un nouveau profil démarre sans VSync ni limite de FPS ; sur un profil existant, seules ces deux valeurs de Minecraft par défaut sont changées, une fois.',
+      en: 'More FPS on 1.21.1 and 26.3: Entity Culling, More Culling, BadOptimizations, ModernFix (1.21.1), Krypton and Reflex AntiLag join the pack. New “PvP mods (latency)” setting, on by default: Crystal Optimizer and Anchor Optimizer, turn it off if a server bans them. A new profile starts without VSync or an FPS cap; on an existing profile, only those two Minecraft defaults are changed, once.',
+    },
+    {
+      version: 'ATTACK Client 3.4.2', date: '2026-10-29',
+      fr: 'En 26.3, les HUD ne coûtent presque plus de FPS : les cadres arrondis (Keystrokes surtout) prenaient presque la moitié du temps de chaque image. Mesuré sur une RTX 3060 : 664 → 1 097 FPS en moyenne.',
+      en: 'On 26.3, HUDs barely cost any FPS now: rounded boxes (mostly Keystrokes) took almost half of every frame. Measured on an RTX 3060: 664 → 1,097 FPS on average.',
+    },
+    {
       version: 'Launcher 0.5.16', date: '2026-10-25',
       fr: 'Sans compte connecté et sans launcher Minecraft officiel, le message de JOUER propose d’abord le plus simple : connecter ton compte Microsoft dans la page Compte, pour que le jeu se lance directement.',
       en: 'With no account signed in and no official Minecraft launcher, the PLAY message now suggests the easiest fix first: sign in with your Microsoft account on the Account page, so the game starts directly.',
