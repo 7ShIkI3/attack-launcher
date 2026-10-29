@@ -1,7 +1,7 @@
 'use strict';
 // Installation complète d'un profil : Minecraft (JSON, jar, bibliothèques, assets), son chargeur de mods (Forge 1.8.9 ou
-// Fabric Loader, sans jamais exécuter d'installateur), le pack de mods Fabric figé, le jar ATTACK dans le dossier de jeu
-// séparé du profil, puis le profil du launcher officiel.
+// Fabric Loader, sans jamais exécuter d'installateur), le pack de mods Fabric figé et les réglages vidéo de départ, le jar
+// ATTACK dans le dossier de jeu séparé du profil, puis le profil du launcher officiel.
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
@@ -11,6 +11,7 @@ const http = require('./http');
 const mojang = require('./mojang');
 const forge = require('./forge');
 const fabric = require('./fabric');
+const gameoptions = require('./gameoptions');
 const modpack = require('./modpack');
 const mod = require('./mod');
 const profiles = require('./profiles');
@@ -266,6 +267,41 @@ async function installPack(gameDir, profile, settings, report, net, pack = modpa
   return { ...result, info };
 }
 
+/** Ajoute une ligne à <gameDir>/logs/launcher/install.log (le dossier des journaux de la page Réglages) ; sans effet si c'est impossible. */
+async function journal(gameDir, message) {
+  try {
+    const dir = path.join(gameDir, 'logs', 'launcher');
+    await fsp.mkdir(dir, { recursive: true });
+    await fsp.appendFile(path.join(dir, 'install.log'), `${new Date().toISOString()} ${message}\n`);
+  } catch {
+    // journal indisponible : l'installation continue
+  }
+}
+
+/**
+ * Réglages vidéo de départ (options.txt, voir gameoptions.js) : appliqués une seule fois par dossier de jeu, ce que le drapeau
+ * `gameOptions` du fichier d'état enregistre. Un échec (fichier illisible ou verrouillé) est journalisé sans faire échouer
+ * l'installation ; le drapeau n'est alors pas posé et la prochaine installation réessaie.
+ * Renvoie { action: 'created' | 'updated' | 'unchanged' | 'skipped' | 'error', changed, error? }.
+ */
+async function installGameOptions(gameDir) {
+  try {
+    const state = await readState(gameDir);
+    if (state?.gameOptions >= gameoptions.VERSION) return { action: 'skipped', changed: [] };
+    const result = await gameoptions.apply(gameDir);
+    if (result.action === 'error') {
+      await journal(gameDir, `options.txt : réglages vidéo de départ non appliqués (${result.error})`);
+      return result;
+    }
+    await writeState(gameDir, { ...(state || {}), gameOptions: gameoptions.VERSION });
+    if (result.changed.length > 0) await journal(gameDir, `options.txt : réglages vidéo de départ appliqués (${result.action} : ${result.changed.join(', ')})`);
+    return result;
+  } catch (error) {
+    await journal(gameDir, `options.txt : réglages vidéo de départ non appliqués (${error.message})`);
+    return { action: 'error', changed: [], error: error.message };
+  }
+}
+
 /**
  * Jar ATTACK -> <gameDir>/mods/<profile.modFile>, depuis la release GitHub (jar du profil, choisi par sa règle exacte)
  * ou le build local (mode développeur). `appVersion` : version du launcher ; une préversion (0.5.0-beta.1) prend la
@@ -355,9 +391,11 @@ async function install(options) {
   const assets = await installAssets(minecraftDir, versionJson, report, net);
   let loaderLibraries;
   let packResult = null;
+  let gameOptions;
   if (catalog.isFabric(profile)) {
     loaderLibraries = (await installFabric(minecraftDir, profile, report, net)).libraries;
     packResult = await installPack(gameDir, profile, settings, report, net);
+    gameOptions = await installGameOptions(gameDir);
   } else {
     loaderLibraries = (await installForge(minecraftDir, report, net, profile)).libraries;
   }
@@ -383,6 +421,7 @@ async function install(options) {
     loaderLibraries,
     forgeLibraries: profile.loader.type === 'forge' ? loaderLibraries : undefined,
     pack: packResult ? { ...packResult.info, downloaded: packResult.downloaded, skipped: packResult.skipped, removed: packResult.removed } : undefined,
+    gameOptions,
   };
 }
 
@@ -451,5 +490,5 @@ async function status({ minecraftDir, gameDir, profile: profileOption, shaders =
 
 module.exports = {
   STEPS, STEPS_FORGE, STEPS_FABRIC, stepsFor, InstallError, install, status, progressReporter,
-  installMinecraft, installForge, installFabric, installPack, installMod, readState, gameDirConflict,
+  installMinecraft, installForge, installFabric, installPack, installGameOptions, installMod, readState, gameDirConflict,
 };
