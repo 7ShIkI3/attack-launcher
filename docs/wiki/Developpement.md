@@ -25,7 +25,7 @@ npm start
 | `npm test` | Tests unitaires (`node --test test/*.test.js`), sans réseau : catalogue des profils, manifestes, install_profile, profil Fabric, packs de mods, chemins Maven, profils, téléchargements, connexion Microsoft simulée, comptes, skins, ligne de commande Java (anciens et nouveaux formats), runtime, mises à jour |
 | `npm run install-test -- [dossier] [--profile <id>] [--release] [--shaders] [--cycle]` | Installation **réelle** complète d'un profil (`forge-1.8.9` par défaut, `fabric-1.21.1`, `fabric-26.3`) dans un dossier temporaire, puis contre-vérification indépendante de tous les hash. Sans `--release`, le jar du mod vient du build local (mode développeur). `--shaders` installe aussi Iris ; `--cycle` coupe puis remet les shaders et vérifie qu'un jar ajouté à la main n'est jamais touché. Refuse de toucher au vrai `.minecraft` |
 | `npm run launch-test -- <dossier> [--profile <id>]` | Lancement direct **réel** avec un compte hors ligne factice, jusqu'à l'écran titre. Forge : « Forge Mod Loader has successfully loaded N mods ». Fabric : liste « Loading N mods » + « Sound engine started », avec le mod `attack` dans la liste. Installe le Java du profil (8, 21 ou 25). `--keep` laisse le jeu ouvert |
-| `node scripts/resolve-pack.js [profil] [--check]` | Fige les packs de mods Fabric depuis l'API Modrinth dans `src/main/packs/` (outil de développement : le launcher n'appelle jamais cette API) |
+| `node scripts/resolve-pack.js [profil] [--check]` | Fige les packs de mods (Fabric et Forge 1.8.9, licence et auteur compris) depuis l'API Modrinth dans `src/main/packs/` (outil de développement : le launcher n'appelle jamais cette API) |
 | `npm run screenshot -- <dossier>` | Ouvre l'app dans des dossiers isolés et capture chaque page (`home`, `mods`, `settings`, `account`, `changelog`) ; `ATTACK_PROFILE=fabric-1.21.1` choisit le profil affiché |
 | `npm run icons` | Régénère les icônes PNG à partir des polygones du logo (`scripts/make-icons.js`) |
 | `npm run update-test -- <dossier>` | Mise à jour **réelle** 0.2.0 vers 0.2.1 sans GitHub (voir plus bas) |
@@ -61,10 +61,15 @@ Les 167 tests tournent en quelques secondes et n'ont besoin ni du réseau ni d'E
 | `http.test.js` | Hôtes https autorisés seulement, téléchargement vérifié (SHA-1, SHA-256, SHA-512), hash faux rejeté (`.part` supprimé), redirection hors liste refusée, parallélisme |
 | `catalog.test.js` | Les 3 profils, règles exactes des jars ATTACK, dossiers de jeu et de jars par profil, alias de `constants.js`, hôtes autorisés |
 | `fabric.test.js` | Adresse du profil Fabric, validation stricte (vrais profils 1.21.1 et 26.3, profils piégés refusés), plan de téléchargement avec ou sans hash, JSON de version écrit |
-| `modpack.test.js` | Packs figés valides (versions demandées), validation (URL, hash, noms), installation, Iris selon l'option, jars gérés supprimés, jars du joueur intacts, échec sans suppression |
+| `optifine.test.js` | OptiFine du joueur : détection (libraries, mods, fichier choisi), validation du manifeste, copie suivie dans l'état, retrait de la seule copie du launcher, copie d'origine disparue (le jar de `mods` reste), OptiFine du joueur jamais touché |
+| `renderer.test.js` | Interface : clés de traduction FR/EN complètes, identifiants du HTML, CSP stricte (ni script ni style en ligne, pas d'innerHTML), historique et fiches des mods du pack |
+| `renderer-dom.test.js` | Accueil : `app.js` tourne sur un faux DOM avec l'état d'installation réel de `installer.status()` ; phrase « prêt », lignes du détail (OptiFine « à retirer », « déjà copié dans mods », « Mise à jour à appliquer »), compteur, rail, cartes Mods et Réglages, en français et en anglais |
+| `gameoptions.test.js` | `options.txt` de départ par étapes (vidéo en Fabric, langue du launcher écrite à la création seulement), choix du joueur et fins de ligne intacts |
+| `modpack.test.js` | Packs figés valides (versions demandées, licence et auteur), groupes `pvp` / `optifine` / `replay`, validation (URL, hash, noms), installation, Iris selon l'option, jars gérés supprimés, jars du joueur intacts, échec sans suppression |
 | `game-modern.test.js` | Fusion Fabric + Minecraft, arguments modernes (1.21.1 et 26.3), un seul `-cp`, variables sans découpage, natives de 26.x, détection d'une partie |
 | `installer.test.js` | Étapes de l'installateur avec un faux réseau (`fetch` remplacé) : Fabric Loader (hash figés, SHA-512, profil piégé refusé avant tout téléchargement), jar ATTACK d'une release (profil, SHA-256, erreurs), pack et fichier d'état (échec au milieu, jar verrouillé) |
 | `multi-profils.test.js` | Réglages par profil et migration de l'ancien fichier, profils du launcher officiel, jar ATTACK par release, progression par chargeur, état d'un profil Fabric |
+| `zip.test.js` | Lecteur ZIP : plafond de décompression (taille annoncée contrôlée avant, zlib limité à cette taille), zip forgé dont la taille ment, limites de l'installateur Forge |
 | `forge.test.js` | Lecteur ZIP, extraction de `install_profile.json` et du jar universal, installateur piégé refusé, bibliothèques, JSON de version |
 | `mojang.test.js` | Manifeste, règles par plateforme, bibliothèques et natives, assets, chemins incohérents refusés |
 | `maven.test.js` | Chemins et URL Maven, coordonnées malveillantes, `safeJoin` |
@@ -108,9 +113,11 @@ sans `--keep`, l'app de test est désinstallée ensuite. Détails dans l'en-têt
 | `ATTACK_SCREENSHOT_PLAY=1` | Clique sur JOUER avec le compte actif |
 | `ATTACK_SCREENSHOT_SIZE=940x600` | Taille de fenêtre (bornée par la taille minimale) |
 | `ATTACK_PROFILE=fabric-1.21.1` | Profil affiché (`forge-1.8.9` par défaut, `fabric-1.21.1`, `fabric-26.3`) |
+| `ATTACK_SETTINGS='{"replayMod":true}'` | Réglages à plat ajoutés au profil affiché |
 
-Les images de `docs/images/` sont de vraies captures du launcher, prises le 2026-10-19 avec un compte factice
-(« Raphou ») et un skin de test. Garde les PNG sous environ 1 Mo.
+Les images de `docs/images/` sont de vraies captures du launcher (0.6.0), prises le 2026-10-29 sur des installations de test
+(`npm run install-test`) avec un compte factice (« Raphael ») et un skin de test. `ATTACK_SETTINGS='{"replayMod":true}'` ajoute des
+réglages à plat au profil affiché (pour photographier l'état « à appliquer »). Garde les PNG sous environ 1 Mo.
 
 ## Autres variables d'environnement
 

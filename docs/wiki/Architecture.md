@@ -46,11 +46,13 @@ réseau ou du chiffrement reçoivent leur dépendance en paramètre (un « trans
 | `catalog.js` | **Catalogue des 3 profils** (Forge 1.8.9, Fabric 1.21.1, Fabric 26.3) : version de Minecraft, chargeur, dossier de jeu, profil officiel, règle exacte du jar ATTACK, pack. Module pur |
 | `constants.js` | Adresses officielles, **liste des hôtes autorisés** (`ALLOWED_HOSTS`, Fabric et CDN Modrinth compris), URL de connexion ; alias des anciennes constantes du profil 1.8.9 |
 | `http.js` | Téléchargements : hôtes autorisés, redirections vérifiées une à une, fichier `.part`, contrôle du hash |
-| `installer.js` | Installation complète d'un profil (Minecraft, bibliothèques, assets, Forge **ou** Fabric + pack de mods, mod, profil) et état d'installation |
+| `installer.js` | Installation complète d'un profil (Minecraft, bibliothèques, assets, Forge **ou** Fabric, pack de mods, OptiFine du joueur, réglages de départ d'`options.txt`, configuration de WalksyLib, mod, profil) et état d'installation (`packGroups`, `optifine`) |
 | `mojang.js` | Lecture des manifestes Mojang (version, bibliothèques, natives, index d'assets) |
 | `forge.js`, `zip.js` | Lecture de l'installateur Forge **comme une archive ZIP** (jamais exécuté) |
 | `fabric.js` | Profil de version de Fabric Loader : adresse de `meta.fabricmc.net`, validation stricte, plan de téléchargement, JSON de version écrit |
-| `modpack.js` | Packs de mods figés (`src/main/packs/*.json`) : validation, installation dans `mods/`, jars gérés supprimés quand ils sortent du pack |
+| `modpack.js` | Packs de mods figés (`src/main/packs/*.json`, un par profil) : validation (groupes `pvp`, `optifine`, `replay`, licence, auteur), installation dans `mods/`, jars gérés supprimés quand ils sortent du pack |
+| `optifine.js` | **OptiFine du joueur** (profil 1.8.9) : détection de sa copie, validation (manifeste `TweakClass`), copie suivie dans l'état, retrait de la seule copie du launcher. Jamais de téléchargement |
+| `gameoptions.js` | Réglages de départ d'`options.txt` par étapes : vidéo (Fabric), langue du launcher (tous les profils, à la création du fichier seulement) |
 | `maven.js` | Coordonnées Maven vers chemins et URL ; `safeJoin` qui interdit de sortir d'un dossier |
 | `mod.js` | Choix du jar ATTACK du profil dans la dernière release GitHub (règle de nom exacte, SHA-256) ou, en mode développeur, du jar local |
 | `runtime.js` | Installation du Java officiel de Mojang (`jre-legacy`, `java-runtime-delta`, `java-runtime-epsilon`), fichier par fichier, SHA-1 vérifié |

@@ -1,0 +1,47 @@
+{
+  "profileId": "forge-1.8.9",
+  "mc": "1.8.9",
+  "loader": "forge",
+  "mods": [
+    {
+      "slug": "phosphorlegacyforge",
+      "name": "Phosphor Legacy",
+      "version": "5",
+      "versionNumber": "5",
+      "filename": "phosphor-universal.jar",
+      "url": "https://cdn.modrinth.com/data/oCBQFmrZ/versions/EoRB0IqD/phosphor-universal.jar",
+      "sha512": "7390b4a6eefc6060bc86386261f77f4b7a7eebb579ca676baf9867ba4812ba3e0e82cc395ef05a6825d311f9be847a1539eb7102bcf93eabd510f25a56af9690",
+      "sha1": "20ef147914d9e9e0085501c6bda1816bae341b77",
+      "size": 1050928,
+      "license": "GPL-3.0-or-later",
+      "author": "HowardZHY"
+    },
+    {
+      "slug": "client-side-sounds",
+      "name": "Client Side Sounds",
+      "version": "1.1",
+      "versionNumber": "1.1",
+      "filename": "ClientSideSounds-1.1.jar",
+      "url": "https://cdn.modrinth.com/data/eiaQ2Hbc/versions/a5gOpPKH/ClientSideSounds-1.1.jar",
+      "sha512": "d447d2aa3c4d75fe919a2436dba08ad03e9045fc28cd11986df88391695d5a0f3608540fa2414f8658815521f5ac089b7373ddac0055c4d7bd0cfceb0086f524",
+      "sha1": "268f56dc26d797831f81e106b0b603d3018c1ce7",
+      "size": 14464,
+      "license": "MIT",
+      "author": "LetsGoAway"
+    },
+    {
+      "slug": "replaymod",
+      "name": "Replay Mod",
+      "version": "2.6.24",
+      "versionNumber": "1.8.9-2.6.24",
+      "filename": "replaymod-1.8.9-2.6.24.jar",
+      "url": "https://cdn.modrinth.com/data/Nv2fQJo5/versions/BBUuSZWF/replaymod-1.8.9-2.6.24.jar",
+      "sha512": "0b9c752846349027e3e45571c6acea98baced8042ef2afaf18ce72a091e7e55bc4b2a3d441da290e2651b14ed9573ba013d29b1a2d7549047c28f1cf14c58051",
+      "sha1": "bf35901ba52f998bfab8346ae036a6baa8752c20",
+      "size": 16960989,
+      "group": "replay",
+      "license": "GPL-3.0-or-later",
+      "author": "Johni0702"
+    }
+  ]
+}

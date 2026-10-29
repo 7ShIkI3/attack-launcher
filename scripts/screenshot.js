@@ -5,7 +5,9 @@
 // ATTACK_SCREENSHOT_INSTALL=1 clique d'abord sur INSTALLER (installation réelle dans les dossiers donnés),
 // ATTACK_DEV=1 active le mode développeur (jar local), ATTACK_LANG=en passe l'interface en anglais,
 // ATTACK_OFFLINE=<pseudo> ajoute un compte hors ligne actif et ATTACK_SCREENSHOT_PLAY=1 clique sur JOUER,
-// ATTACK_PROFILE=<id> choisit le profil affiché (forge-1.8.9 par défaut, fabric-1.21.1, fabric-26.3).
+// ATTACK_PROFILE=<id> choisit le profil affiché (forge-1.8.9 par défaut, fabric-1.21.1, fabric-26.3),
+// ATTACK_SETTINGS='{"replayMod":true}' ajoute ces réglages à plat au profil affiché (essai d'un état « à appliquer »),
+// ATTACK_SCREENSHOT_SIZE=940x600 prend les captures à la taille minimale de la fenêtre.
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -25,6 +27,7 @@ fs.writeFileSync(path.join(userData, 'settings.json'), JSON.stringify({
   lang: process.env.ATTACK_LANG || 'fr',
   profileId: process.env.ATTACK_PROFILE || 'forge-1.8.9',
   devMode: Boolean(process.env.ATTACK_DEV),
+  ...JSON.parse(process.env.ATTACK_SETTINGS || '{}'),
 }));
 // ATTACK_OFFLINE=<pseudo> : compte hors ligne factice actif (mode développeur), pour tester JOUER sans Microsoft
 if (process.env.ATTACK_OFFLINE) {

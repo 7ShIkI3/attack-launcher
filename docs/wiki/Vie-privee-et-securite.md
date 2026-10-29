@@ -15,6 +15,14 @@ vérifiée dans le code ; les références sont de la forme `fichier:ligne` (ét
   de Modrinth (`cdn.modrinth.com`) et GitHub** : la liste est fixe et codée en dur.
 - Il **ne contacte pas l'API ATTACK** ni **l'API de Modrinth** (aucune des deux n'est dans la liste des hôtes autorisés) :
   les mods du pack sont des adresses et des hash écrits dans le dépôt.
+- Il **ne télécharge jamais OptiFine** (sa licence l'interdit) : il copie seulement la copie que tu as récupérée toi-même, après
+  l'avoir validée ; le lien optifine.net s'ouvre dans ton navigateur, le launcher n'y fait aucune requête.
+- **WalksyLib** (mod PvP du pack Fabric) interroge `api.modrinth.com` au démarrage du jeu pour chercher des mises à jour, avec
+  l'empreinte de chaque mod : le launcher écrit une fois sa configuration de départ pour couper cette vérification
+  (`config/WalksyLib/walksylib.json`, clé « Notify For New Updates » à `false`), seulement si ce fichier n'existe pas. Tu peux la
+  rallumer dans l'écran de réglages de WalksyLib. WalksyLib recopie ce fichier dans son fichier partagé
+  `%APPDATA%\WalksyLib\walksylib.json` s'il n'y a pas encore de réglage d'apparence : un réglage déjà là n'est jamais changé.
+  Mod Menu et Crystal Optimizer ont chacun leur propre vérification de mises à jour, laissée telle quelle.
 - Il ne voit **jamais ton mot de passe** Microsoft.
 - Le jeton Minecraft reste **en mémoire** ; le jeton de renouvellement est **chiffré par Windows**.
 - Tout fichier téléchargé est **vérifié par un hash** ; la page d'interface **n'a pas le droit de faire de requête réseau**.
@@ -84,7 +92,7 @@ Détails utiles :
 | --- | --- | --- |
 | Téléchargement depuis un site non officiel | Liste fixe d'hôtes `https` ; chaque redirection est vérifiée **avant** d'être suivie ; au plus 5 redirections | `constants.js:27-44`, `http.js:22-45` |
 | Fichier corrompu ou remplacé | Hash obligatoire (SHA-1, SHA-256 ou SHA-512) calculé pendant le téléchargement ; `.part` supprimé si le hash ou la taille ne correspondent pas ; téléchargement sans hash refusé | `http.js:98-130`, `mod.js:28` |
-| Installateur Forge piégé | Lu comme une archive ZIP, **jamais exécuté** ; id de version et nom du jar contrôlés ; dépôts Maven limités à Forge et Mojang | `forge.js:9-37`, `zip.js` |
+| Installateur Forge ou jar OptiFine piégé (bombe de décompression) | Lu comme une archive ZIP, **jamais exécuté** ; id de version et nom du jar contrôlés ; dépôts Maven limités à Forge et Mojang ; la taille annoncée par l'archive est contrôlée avant de décompresser et la décompression s'arrête à cette taille (`MANIFEST.MF` d'un jar OptiFine : 1 Mo au plus, `install_profile.json` : 8 Mo, jar universal : 64 Mo) | `forge.js:13-41`, `zip.js`, `optifine.js:57-69` |
 | Profil Fabric piégé | JSON de `meta.fabricmc.net` validé strictement (id, version de Minecraft, classe Knot, dépôts `maven.fabricmc.net` / Mojang seulement, hash bien formés, une seule option Java acceptée (valeur exacte de `-DFabricMcEmu=`), aucun argument du jeu), puis réécrit à partir des seuls champs connus ; SHA-1 de `fabric-loader` et `intermediary` figés dans le catalogue | `fabric.js`, `catalog.js` |
 | Mod du pack falsifié ou mal nommé | Adresse figée sur `cdn.modrinth.com` uniquement, SHA-512 et taille vérifiés avant de garder le fichier, nom de fichier sans chemin, jars du joueur jamais supprimés | `modpack.js` |
 | Chemins malveillants (`..`, absolus) dans des manifestes | `safeJoin` refuse de sortir du dossier ; coordonnées Maven validées ; chemins du runtime Java contrôlés ; extraction des natives par `safeJoin` | `maven.js:5-25`, `maven.js:40-47`, `runtime.js:36-50`, `game.js:75-91` |

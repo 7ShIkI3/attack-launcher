@@ -45,7 +45,9 @@ const FORGE_1_8_9 = {
     unique: false,
     devDir: ['Documents', 'pvp-essentials', 'build', 'libs'],
   },
-  pack: null,
+  pack: 'forge-1.8.9',
+  // OptiFine : jamais téléchargé (sa licence l'interdit), seulement la copie que le joueur possède déjà (src/main/optifine.js)
+  optifine: true,
 };
 
 function fabricProfile(mc, javaMajor) {
@@ -116,6 +118,11 @@ function isFabric(profile) {
   return profile.loader.type === 'fabric';
 }
 
+/** Vrai pour le profil qui peut utiliser la copie d'OptiFine du joueur (Forge 1.8.9). */
+function hasOptifine(profile) {
+  return Boolean(profile.optifine);
+}
+
 /**
  * Règle du jar ATTACK du profil : { matches(nom), version(nom) }.
  * `matches` est exacte (jamais « le premier jar qui ressemble »), `version` lit la version dans le nom du jar.
@@ -145,6 +152,7 @@ function view(profile) {
     modFile: profile.modFile,
     jarGlob: profile.attackJar.glob,
     hasPack: Boolean(profile.pack),
+    hasOptifine: hasOptifine(profile),
   };
 }
 
@@ -159,6 +167,7 @@ module.exports = {
   byVersionId,
   versionIds,
   isFabric,
+  hasOptifine,
   jarRule,
   view,
 };

@@ -9,6 +9,28 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- Icônes : un seul sprite, utilisé par <use href="#i-..."> (aucun style ni script en ligne : CSP stricte) -->
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></symbol>
+      <symbol id="i-mods" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><path d="M5 7h9M18 7h1M5 17h1M10 17h9"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></symbol>
+      <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 20c1.2-3.5 4-5 7-5s5.8 1.5 7 5"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.6v14.8a1 1 0 0 0 1.5.86l12-7.4a1 1 0 0 0 0-1.72L8.5 3.74A1 1 0 0 0 7 4.6z"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+      <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+      <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M9.5 13h6M9.5 16.5h6"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5L15.5 10"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+      <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+    </defs>
+  </svg>
+
   <header class="titlebar">
     <div class="brand">
       <span class="brand-logo" id="titlebar-logo"></span>
@@ -41,198 +63,251 @@
   <div class="shell">
     <nav class="sidebar">
       <button class="nav-item active" data-page="home">
-        <svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>
+        <svg class="ic"><use href="#i-home"/></svg>
         <span data-i18n="nav.home">Accueil</span>
       </button>
       <button class="nav-item" data-page="mods">
-        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>
+        <svg class="ic"><use href="#i-mods"/></svg>
         <span data-i18n="nav.mods">Mods</span>
       </button>
       <button class="nav-item" data-page="settings">
-        <svg viewBox="0 0 24 24"><path d="M5 7h9M18 7h1M5 17h1M10 17h9"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+        <svg class="ic"><use href="#i-settings"/></svg>
         <span data-i18n="nav.settings">Réglages</span>
       </button>
       <div class="nav-spacer"></div>
-      <button class="nav-item nav-account" data-page="account">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 20c1.2-3.5 4-5 7-5s5.8 1.5 7 5"/></svg>
+      <!-- Compte : la tête du joueur et son état de connexion (point vert : Microsoft, orange : hors ligne, rouge : aucun compte) -->
+      <button class="nav-item nav-account" data-page="account" id="nav-account" data-account="none">
+        <span class="nav-avatar-wrap"><span class="nav-avatar" id="nav-avatar"></span><i class="presence"></i></span>
+        <svg class="ic nav-user"><use href="#i-user"/></svg>
+        <i class="nav-dot"></i>
         <span data-i18n="nav.account">Compte</span>
       </button>
     </nav>
 
     <main class="content">
-      <!-- Accueil -->
+      <!-- ===================== Accueil ===================== -->
       <section class="page active" id="page-home">
         <div class="home-grid">
           <div class="hero">
-            <div class="hero-logo" id="hero-logo"></div>
-            <h1 class="hero-title">ATTACK <span>CLIENT</span></h1>
-            <p class="hero-sub" id="hero-sub">Minecraft 1.8.9 · Forge</p>
-            <!-- Choix du profil : une version de Minecraft + son chargeur de mods, chacun avec son dossier de jeu -->
-            <div class="segmented profile-select" id="profile-select" role="group" data-i18n-title="home.profile" aria-label="Profil"></div>
-            <button class="play" id="play-button" disabled>
-              <span class="play-label" id="play-label">…</span>
-              <span class="play-hint" id="play-hint"></span>
-            </button>
-            <div class="progress hidden" id="progress">
-              <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
-              <div class="progress-text"><span id="progress-step"></span><span id="progress-percent"></span></div>
+            <div class="hero-brand">
+              <div class="hero-logo" id="hero-logo"></div>
+              <h1 class="hero-title">ATTACK <span>CLIENT</span></h1>
+              <p class="hero-sub" id="hero-sub">Minecraft 1.8.9 · Forge</p>
             </div>
-            <p class="message hidden" id="message"></p>
-            <ul class="status-list" id="status-list"></ul>
-            <div class="hero-links">
-              <button class="link" id="repair-button" data-i18n="home.repair">Vérifier / réparer l'installation</button>
-              <span class="dot">·</span>
-              <button class="link" id="open-dir-button" data-i18n="home.openDir">Ouvrir le dossier de jeu</button>
-              <span class="dot">·</span>
-              <button class="link" id="logs-button" data-i18n="home.logs">Journaux du jeu</button>
+            <div class="launch-col">
+              <!-- Choix du profil : une version de Minecraft + son chargeur de mods, chacun avec son dossier de jeu -->
+              <div class="profiles" id="profile-select" role="radiogroup" data-i18n-title="home.profile" aria-label="Profil"></div>
+              <button class="play" id="play-button" type="button" disabled>
+                <span class="play-fill" id="play-fill"></span>
+                <span class="play-inner"><svg class="ic fill p-ico"><use href="#i-play"/></svg><span class="play-label" id="play-label">…</span></span>
+              </button>
+              <p class="play-caption" id="play-caption"></p>
+              <p class="message hidden" id="message"></p>
+              <div class="ready" id="ready">
+                <button class="ready-btn" id="ready-btn" type="button" aria-expanded="false" aria-controls="ready-pop">
+                  <span class="r-ico"><svg class="ic" id="ready-icon"><use href="#i-check"/></svg></span>
+                  <span class="r-main" id="ready-main"></span>
+                  <span class="r-sum" id="ready-sum"></span>
+                  <span class="r-more"><span data-i18n="home.details">Détails</span> <svg class="ic"><use href="#i-chev-d"/></svg></span>
+                </button>
+                <div class="ready-pop" id="ready-pop" hidden></div>
+              </div>
+              <div class="tools">
+                <button class="tool" type="button" id="repair-button"><svg class="ic"><use href="#i-shield"/></svg><span data-i18n="home.repairShort">Vérifier / réparer</span></button>
+                <button class="tool" type="button" id="open-dir-button"><svg class="ic"><use href="#i-folder"/></svg><span data-i18n="home.openDirShort">Dossier de jeu</span></button>
+                <button class="tool" type="button" id="logs-button"><svg class="ic"><use href="#i-file"/></svg><span data-i18n="home.logsShort">Journaux</span></button>
+              </div>
             </div>
           </div>
-          <aside class="card changelog">
-            <div class="changelog-head">
-              <h2 data-i18n="home.changelog">Nouveautés</h2>
-              <button class="link" id="changelog-all" data-i18n="home.changelogAll">Tout voir</button>
-            </div>
-            <ol class="changelog-list compact" id="changelog"></ol>
-            <button class="link small" id="repo-button" data-i18n="home.repo">Voir le projet sur GitHub</button>
+
+          <aside class="rail">
+            <section class="card news">
+              <div class="news-head">
+                <h2 data-i18n="home.changelog">Nouveautés</h2>
+                <button class="link accent" id="changelog-all" type="button"><span data-i18n="home.changelogAll">Tout voir</span> <svg class="ic tiny"><use href="#i-chev-r"/></svg></button>
+              </div>
+              <ol class="news-list" id="changelog"></ol>
+              <div class="news-foot"><button class="link" id="repo-button" type="button" data-i18n="home.repo">Voir le projet sur GitHub</button></div>
+            </section>
+            <section class="card pcard">
+              <div class="pc-head">
+                <h3 data-i18n="home.currentProfile">Profil actuel</h3>
+                <button class="link accent" id="profile-settings" type="button"><span data-i18n="home.adjust">Régler</span> <svg class="ic tiny"><use href="#i-chev-r"/></svg></button>
+              </div>
+              <p class="pc-sub" id="pc-sub"></p>
+              <dl class="pc-grid" id="pc-grid"></dl>
+            </section>
           </aside>
         </div>
       </section>
 
-      <!-- Mods -->
+      <!-- ===================== Mods ===================== -->
       <section class="page" id="page-mods">
         <div class="page-head">
           <div>
             <h1 id="mods-title" data-i18n="mods.title">Mods inclus</h1>
-            <p class="muted" id="mods-subtitle" data-i18n="mods.subtitle">Tout est déjà dans ATTACK Client : active et règle chaque mod en jeu, depuis le menu ATTACK.</p>
+            <p id="mods-subtitle"></p>
           </div>
-          <span class="count" id="mods-count"></span>
+          <label class="search"><svg class="ic"><use href="#i-search"/></svg><input type="text" id="mods-q" autocomplete="off" spellcheck="false" data-i18n-placeholder="mods.search" placeholder="Rechercher un mod…"></label>
         </div>
+        <div class="pending hidden" id="mods-pending"></div>
         <div class="chips" id="mods-filters"></div>
         <div class="mods-grid" id="mods-grid"></div>
       </section>
 
-      <!-- Réglages -->
+      <!-- ===================== Réglages ===================== -->
       <section class="page" id="page-settings">
         <div class="page-head">
           <div>
             <h1 data-i18n="settings.title">Réglages</h1>
-            <p class="muted" data-i18n="settings.subtitle">Enregistrés automatiquement, appliqués au profil au prochain clic sur JOUER.</p>
+            <p data-i18n="settings.subtitle">Enregistrés automatiquement, appliqués au prochain clic sur JOUER.</p>
           </div>
-          <span class="badge on" id="settings-profile"></span>
-          <span class="saved hidden" id="saved" data-i18n="settings.saved">Enregistré</span>
+          <div class="head-right"><span class="saved" id="saved"><svg class="ic"><use href="#i-check"/></svg><span id="saved-text" data-i18n="settings.saved">Enregistré</span></span></div>
+        </div>
+        <div class="tabs" role="tablist">
+          <button class="tab active" role="tab" data-tab="profile" aria-selected="true"><span data-i18n="settings.tabProfile">Ce profil</span> <small id="settings-profile"></small></button>
+          <button class="tab" role="tab" data-tab="launcher" aria-selected="false" data-i18n="settings.tabLauncher">Launcher</button>
+          <button class="tab" role="tab" data-tab="advanced" aria-selected="false" data-i18n="settings.tabAdvanced">Avancé</button>
         </div>
 
-        <div class="card setting">
-          <div class="setting-text">
-            <h3 data-i18n="settings.ram">Mémoire allouée</h3>
-            <p class="muted" id="ram-help">2 à 3 Go suffisent pour la 1.8.9. Plus n'augmente pas les FPS.</p>
-          </div>
-          <div class="setting-control ram">
-            <input type="range" id="ram" min="1024" max="8192" step="256">
-            <output id="ram-value">2 Go</output>
-          </div>
-          <p class="warn hidden" id="ram-warn" data-i18n="settings.ramWarn">Plus de la moitié de la mémoire de ce PC : Windows risque de ralentir.</p>
-        </div>
-
-        <div class="card setting">
-          <div class="setting-text">
-            <h3 data-i18n="settings.gameDir">Dossier de jeu</h3>
-            <p class="muted" data-i18n="settings.gameDirHelp">Mods, réglages, captures et mondes d'ATTACK Client, séparés de ton .minecraft.</p>
-          </div>
-          <div class="setting-control path">
-            <input type="text" id="game-dir" readonly>
-            <button class="btn" id="game-dir-change" data-i18n="common.change">Changer</button>
-            <button class="btn ghost" id="game-dir-reset" data-i18n="common.reset">Par défaut</button>
-          </div>
-        </div>
-
-        <div class="card setting">
-          <div class="setting-text">
-            <h3>Java</h3>
-            <p class="muted" id="java-help">Le launcher officiel fournit Java 8 pour la 1.8.9 : garde ce choix sauf besoin précis.</p>
-          </div>
-          <div class="setting-control">
-            <div class="segmented" id="java-mode">
-              <button data-value="bundled" data-i18n="settings.javaBundled">Fourni par Minecraft</button>
-              <button data-value="custom" data-i18n="settings.javaCustom">Personnalisé</button>
+        <!-- Ce profil : mémoire, dossier, Java, pack de mods, OptiFine -->
+        <div class="tabpanel active" id="tab-profile">
+          <div class="set-grid">
+            <div class="col">
+              <section class="card setting">
+                <div class="s-head">
+                  <div>
+                    <h3 data-i18n="settings.ram">Mémoire allouée</h3>
+                    <p class="help" id="ram-help">2 à 3 Go suffisent pour la 1.8.9. Plus n'augmente pas les FPS.</p>
+                  </div>
+                  <output class="ram-val" id="ram-value">2 Go</output>
+                </div>
+                <div class="range" id="ram-range">
+                  <div class="zone" id="ram-zone"><span data-i18n="settings.recommended">Recommandé</span></div>
+                  <input type="range" id="ram" min="1024" max="8192" step="256" data-i18n-title="settings.ram" aria-label="Mémoire allouée">
+                  <div class="ticks" id="ram-ticks"></div>
+                </div>
+                <div class="presets" id="ram-presets"><span class="note" id="ram-pc"></span></div>
+                <p class="warn hidden" id="ram-warn" data-i18n="settings.ramWarn">Plus de la moitié de la mémoire de ce PC : Windows risque de ralentir.</p>
+              </section>
+              <section class="card setting grow">
+                <h3 data-i18n="settings.gameDir">Dossier de jeu</h3>
+                <p class="help" data-i18n="settings.gameDirHelp">Mods, réglages, captures et mondes d'ATTACK Client, séparés de ton .minecraft.</p>
+                <div class="path-field"><input type="text" id="game-dir" readonly></div>
+                <div class="s-row end">
+                  <button class="btn small ghost" id="game-dir-open"><svg class="ic"><use href="#i-folder"/></svg><span data-i18n="common.open">Ouvrir</span></button>
+                  <button class="btn small" id="game-dir-change" data-i18n="common.change">Changer</button>
+                  <button class="btn small ghost" id="game-dir-reset" data-i18n="common.reset">Par défaut</button>
+                </div>
+              </section>
             </div>
-          </div>
-          <div class="setting-control path hidden" id="java-custom">
-            <input type="text" id="java-path" readonly data-i18n-placeholder="settings.javaPlaceholder" placeholder="Chemin de javaw.exe">
-            <button class="btn" id="java-browse" data-i18n="common.browse">Parcourir</button>
-          </div>
-        </div>
-
-        <div class="card setting">
-          <div class="setting-text">
-            <h3 data-i18n="settings.jvmArgs">Arguments Java</h3>
-            <p class="muted" id="jvm-args-help">Ajoutés après les réglages par défaut, pour ce profil seulement. Laisse vide si tu ne sais pas.</p>
-          </div>
-          <div class="setting-control path">
-            <input type="text" id="jvm-args" spellcheck="false" maxlength="1000" data-i18n-placeholder="settings.jvmArgsPlaceholder" placeholder="Ex. : -XX:+UseStringDeduplication">
-            <button class="btn" id="jvm-args-save" data-i18n="common.save">Enregistrer</button>
-            <button class="btn ghost" id="jvm-args-reset" data-i18n="common.reset">Par défaut</button>
-          </div>
-          <p class="warn hidden" id="jvm-args-warn"></p>
-        </div>
-
-        <!-- Profils Fabric seulement : Iris (shaders) est un mod optionnel du pack -->
-        <div class="card setting hidden" id="shaders-card">
-          <div class="setting-text">
-            <h3 data-i18n="settings.shaders">Shaders (Iris)</h3>
-            <p class="muted" data-i18n="settings.shadersHelp">Ajoute Iris au pack de mods, avec la version qui va avec Sodium. Appliqué à la prochaine installation (bouton INSTALLER).</p>
-          </div>
-          <div class="setting-control">
-            <label class="switch"><input type="checkbox" id="shaders"><span></span></label>
-          </div>
-        </div>
-
-        <div class="card setting">
-          <div class="setting-text">
-            <h3 data-i18n="settings.lang">Langue</h3>
-          </div>
-          <div class="setting-control">
-            <div class="segmented" id="lang">
-              <button data-value="fr">Français</button>
-              <button data-value="en">English</button>
+            <div class="col">
+              <section class="card setting">
+                <h3>Java</h3>
+                <p class="help" id="java-help">Le launcher officiel fournit Java 8 pour la 1.8.9 : garde ce choix sauf besoin précis.</p>
+                <div class="s-row">
+                  <div class="segmented" id="java-mode">
+                    <button data-value="bundled" data-i18n="settings.javaBundled">Fourni par Minecraft</button>
+                    <button data-value="custom" data-i18n="settings.javaCustom">Personnalisé</button>
+                  </div>
+                </div>
+                <div class="path-field hidden" id="java-custom">
+                  <input type="text" id="java-path" readonly data-i18n-placeholder="settings.javaPlaceholder" placeholder="Chemin de javaw.exe">
+                  <button class="btn" id="java-browse" data-i18n="common.browse">Parcourir</button>
+                </div>
+              </section>
+              <!-- Profil 1.8.9 : l'OptiFine du joueur (jamais téléchargé par le launcher) -->
+              <section class="card setting hidden" id="optifine-card">
+                <div class="pack-head"><h3>OptiFine</h3><span class="badge" id="optifine-badge"></span></div>
+                <p class="help" id="optifine-text"></p>
+                <p class="warn hidden" id="optifine-warn"></p>
+                <div class="pack-row">
+                  <div><h4 data-i18n="optifine.use">Utiliser OptiFine</h4><p id="optifine-use-help"></p></div>
+                  <label class="switch"><input type="checkbox" id="optifine-enabled"><span></span></label>
+                </div>
+                <div class="s-row">
+                  <button class="btn small" id="optifine-pick"><svg class="ic"><use href="#i-file"/></svg><span data-i18n="optifine.pick">Choisir le fichier…</span></button>
+                  <button class="btn small ghost hidden" id="optifine-clear" data-i18n="optifine.clear">Recherche automatique</button>
+                  <button class="btn small ghost" id="optifine-download"><svg class="ic"><use href="#i-external"/></svg><span data-i18n="optifine.download">optifine.net</span></button>
+                </div>
+              </section>
+              <section class="card setting grow" id="pack-card">
+                <div class="pack-head"><h3 data-i18n="settings.pack">Pack de mods</h3><span data-i18n="settings.packNote">appliqué à la prochaine installation</span></div>
+                <div class="pending hidden" id="pack-pending"></div>
+                <div id="pack-rows"></div>
+              </section>
             </div>
           </div>
         </div>
 
-        <div class="card setting">
-          <div class="setting-text">
-            <h3 data-i18n="settings.dev">Mode développeur</h3>
-            <p class="muted" id="dev-help">Installe le dernier jar compilé localement (attack-client-*.jar) au lieu de la release GitHub.</p>
+        <!-- Launcher : langue, à propos et crédits -->
+        <div class="tabpanel" id="tab-launcher">
+          <div class="grid-2">
+            <section class="card setting">
+              <div class="s-head">
+                <div><h3 data-i18n="settings.lang">Langue</h3><p class="help" data-i18n="settings.langHelp">S'applique tout de suite à l'interface du launcher.</p></div>
+                <div class="segmented" id="lang">
+                  <button data-value="fr">Français</button>
+                  <button data-value="en">English</button>
+                </div>
+              </div>
+            </section>
+            <section class="card setting">
+              <h3 data-i18n="settings.aboutTitle">À propos</h3>
+              <p class="help" id="about"></p>
+              <div class="s-row">
+                <button class="btn small" id="credits-open"><svg class="ic"><use href="#i-file"/></svg><span data-i18n="credits.open">Mods et licences</span></button>
+                <button class="btn small ghost" id="about-repo"><svg class="ic"><use href="#i-external"/></svg><span data-i18n="home.repoShort">GitHub</span></button>
+              </div>
+            </section>
           </div>
-          <div class="setting-control">
-            <label class="switch"><input type="checkbox" id="dev-mode"><span></span></label>
-          </div>
-          <div class="setting-control path hidden" id="dev-dir-row">
-            <input type="text" id="dev-dir" readonly>
-            <button class="btn" id="dev-dir-change" data-i18n="common.change">Changer</button>
+          <p class="footnote" data-i18n="settings.launcherNote">Ces réglages valent pour tous les profils. La mémoire, Java, le dossier de jeu et les mods se règlent dans l'onglet « Ce profil ».</p>
+        </div>
+
+        <!-- Avancé : arguments Java, mode développeur, ID client Azure -->
+        <div class="tabpanel" id="tab-advanced">
+          <div class="grid-2">
+            <section class="card setting span-2">
+              <div class="s-head"><div>
+                <h3><span data-i18n="settings.jvmArgs">Arguments Java</span> <span class="badge" data-i18n="settings.thisProfile">ce profil</span></h3>
+                <p class="help" id="jvm-args-help">Ajoutés après les réglages par défaut, pour ce profil seulement. Laisse vide si tu ne sais pas.</p>
+              </div></div>
+              <div class="path-field">
+                <input type="text" id="jvm-args" spellcheck="false" maxlength="1000" data-i18n-placeholder="settings.jvmArgsPlaceholder" placeholder="Ex. : -XX:+UseStringDeduplication">
+                <button class="btn" id="jvm-args-save" data-i18n="common.save">Enregistrer</button>
+                <button class="btn ghost" id="jvm-args-reset" data-i18n="common.reset">Par défaut</button>
+              </div>
+              <p class="warn hidden" id="jvm-args-warn"></p>
+            </section>
+            <section class="card setting toggle-card">
+              <div><h3 data-i18n="settings.dev">Mode développeur</h3><p class="help" id="dev-help">Installe le dernier jar compilé localement au lieu de la release GitHub.</p></div>
+              <label class="switch"><input type="checkbox" id="dev-mode"><span></span></label>
+              <div class="path-field span-2 hidden" id="dev-dir-row">
+                <input type="text" id="dev-dir" readonly>
+                <button class="btn" id="dev-dir-change" data-i18n="common.change">Changer</button>
+              </div>
+            </section>
+            <section class="card setting">
+              <h3 data-i18n="settings.clientId">ID client Azure</h3>
+              <p class="help" data-i18n="settings.clientIdHelp">Identifiant de ton app Azure pour la connexion Microsoft (ce n'est pas un secret).</p>
+              <div class="path-field">
+                <input type="text" id="client-id" spellcheck="false" placeholder="00000000-0000-0000-0000-000000000000">
+                <button class="btn" id="client-id-save" data-i18n="common.save">Enregistrer</button>
+              </div>
+              <p class="warn hidden" id="client-id-warn" data-i18n="settings.clientIdInvalid">Format attendu : 8-4-4-4-12 caractères hexadécimaux.</p>
+            </section>
           </div>
         </div>
-        <div class="card setting">
-          <div class="setting-text">
-            <h3 data-i18n="settings.clientId">ID client Azure</h3>
-            <p class="muted" data-i18n="settings.clientIdHelp">Identifiant de ton app Azure pour la connexion Microsoft (ce n'est pas un secret). Voir la page Compte.</p>
-          </div>
-          <div class="setting-control path">
-            <input type="text" id="client-id" spellcheck="false" placeholder="00000000-0000-0000-0000-000000000000">
-            <button class="btn" id="client-id-save" data-i18n="common.save">Enregistrer</button>
-          </div>
-          <p class="warn hidden" id="client-id-warn" data-i18n="settings.clientIdInvalid">Format attendu : 8-4-4-4-12 caractères hexadécimaux.</p>
-        </div>
-        <p class="muted footnote" id="about"></p>
       </section>
 
-      <!-- Comptes -->
+      <!-- ===================== Compte ===================== -->
       <section class="page" id="page-account">
         <div class="page-head">
           <div>
-            <h1 data-i18n="account.title">Comptes</h1>
-            <p class="muted" data-i18n="account.subtitle">Avec un compte connecté, JOUER lance directement ATTACK Client, sans le launcher officiel.</p>
+            <h1 data-i18n="account.title">Compte</h1>
+            <p data-i18n="account.subtitle">Avec un compte connecté, JOUER lance directement ATTACK Client, sans le launcher officiel.</p>
           </div>
+          <button class="btn add-top js-login hidden" id="login-button" type="button"><svg class="ic"><use href="#i-plus"/></svg><span data-i18n="login.add">Ajouter un compte Microsoft</span></button>
         </div>
 
         <!-- ID client Azure manquant : marche à suivre -->
@@ -240,24 +315,41 @@
           <h3 data-i18n="azure.title">Connexion Microsoft à configurer</h3>
           <p class="muted" data-i18n="azure.intro">Mojang exige que chaque launcher utilise sa propre application Azure, validée par Mojang. Une seule fois :</p>
           <ol>
-            <li data-i18n="azure.step1">Il faut un annuaire Microsoft Entra. Si le portail n'en propose pas, crée un compte Azure gratuit : une carte bancaire est demandée pour vérifier l'identité, sans aucun prélèvement.</li>
-            <li data-i18n="azure.step2">Sur portal.azure.com : Microsoft Entra ID → Inscriptions d'applications → Nouvelle inscription. Types de comptes : « Comptes dans un annuaire organisationnel et comptes Microsoft personnels ». Pas d'URI de redirection.</li>
-            <li data-i18n="azure.step3">Authentification → Ajouter une plateforme → « Applications mobiles et de bureau », avec l'URI https://login.microsoftonline.com/common/oauth2/nativeclient.</li>
-            <li data-i18n="azure.step4">Toujours dans Authentification, paramètres avancés : « Autoriser les flux de clients publics » = Oui, puis Enregistrer. Aucun secret client n'est nécessaire.</li>
-            <li data-i18n="azure.step5">Copie l'« ID d'application (client) » (page Vue d'ensemble) dans Réglages → ID client Azure.</li>
-            <li data-i18n="azure.step6">Remplis le formulaire Mojang (aka.ms/mce-reviewappid) avec l'ID client et l'ID de l'annuaire (tenant), tous deux sur la page Vue d'ensemble. Après l'accord, compte jusqu'à 24 h.</li>
+            <li data-i18n="azure.step1">Il faut un annuaire Microsoft Entra.</li>
+            <li data-i18n="azure.step2">Sur portal.azure.com : Microsoft Entra ID → Inscriptions d'applications → Nouvelle inscription.</li>
+            <li data-i18n="azure.step3">Authentification → Ajouter une plateforme → « Applications mobiles et de bureau ».</li>
+            <li data-i18n="azure.step4">Toujours dans Authentification, paramètres avancés : « Autoriser les flux de clients publics » = Oui.</li>
+            <li data-i18n="azure.step5">Copie l'« ID d'application (client) » dans Réglages → ID client Azure.</li>
+            <li data-i18n="azure.step6">Remplis le formulaire Mojang (aka.ms/mce-reviewappid).</li>
           </ol>
           <div class="setup-actions">
             <button class="btn" id="azure-portal" data-i18n="azure.portal">Ouvrir le portail Azure</button>
             <button class="btn" id="azure-form" data-i18n="azure.form">Formulaire Mojang</button>
             <button class="btn accent" id="azure-settings" data-i18n="azure.settings">Saisir l'ID client</button>
           </div>
-          <p class="muted small-note" data-i18n="azure.meanwhile">L'accord de Mojang peut être long, voire ne jamais arriver pour un petit projet. En attendant, JOUER ouvre le launcher officiel avec le profil ATTACK Client.</p>
+          <p class="muted small-note" data-i18n="azure.meanwhile">L'accord de Mojang peut être long. En attendant, JOUER ouvre le launcher officiel avec le profil ATTACK choisi.</p>
+        </div>
+
+        <!-- Aucun compte : ce que ça apporte, et un seul bouton -->
+        <div class="card acc-empty hidden" id="account-empty">
+          <div class="ae-art" id="empty-logo"></div>
+          <div>
+            <h2 data-i18n="account.emptyTitle">Joue directement, sans passer par le launcher officiel</h2>
+            <ul class="benefits">
+              <li><span class="r-ico"><svg class="ic"><use href="#i-check"/></svg></span><div><b data-i18n="account.benefit1">JOUER lance ATTACK Client</b><span data-i18n="account.benefit1Text">en un clic, avec le profil choisi sur l'accueil.</span></div></li>
+              <li><span class="r-ico"><svg class="ic"><use href="#i-check"/></svg></span><div><b data-i18n="account.benefit2">Ton skin en 3D</b><span data-i18n="account.benefit2Text">visible ici et modifiable : il change partout, serveurs comprises.</span></div></li>
+              <li><span class="r-ico"><svg class="ic"><use href="#i-check"/></svg></span><div><b data-i18n="account.benefit3">Connexion par code Microsoft</b><span data-i18n="account.benefit3Text">tu valides sur la page Microsoft : aucun mot de passe n'est saisi dans le launcher.</span></div></li>
+            </ul>
+            <div class="ae-actions">
+              <button class="btn accent js-login" id="login-empty" type="button"><svg class="ic"><use href="#i-plus"/></svg><span data-i18n="login.add">Ajouter un compte Microsoft</span></button>
+              <p data-i18n="account.meanwhile">En attendant, JOUER ouvre le launcher officiel avec le profil ATTACK choisi.</p>
+            </div>
+          </div>
         </div>
 
         <div class="accounts-list" id="accounts-list"></div>
 
-        <!-- Skin du compte actif : vue 3D, changement, retour au skin par defaut -->
+        <!-- Skin du compte actif : vue 3D, changement, retour au skin par défaut -->
         <div class="card skin-card hidden" id="skin-card">
           <div class="skin-stage">
             <canvas id="skin-canvas" width="240" height="320"></canvas>
@@ -266,7 +358,7 @@
           </div>
           <div class="skin-side">
             <h3><span data-i18n="skin.title">Skin</span> <span class="badge" id="skin-variant-badge"></span></h3>
-            <p class="muted" id="skin-help" data-i18n="skin.help">Glisse pour tourner le personnage. Le skin est celui de ton compte Minecraft : il change partout (serveurs, autres launchers).</p>
+            <p class="help" id="skin-help" data-i18n="skin.help">Glisse pour tourner le personnage. Le skin est celui de ton compte Minecraft : il change partout (serveurs, autres launchers).</p>
             <div class="skin-anim" id="skin-anim">
               <button class="chip active" data-anim="walk" data-i18n="skin.walk">Marche</button>
               <button class="chip" data-anim="run" data-i18n="skin.run">Course</button>
@@ -278,7 +370,11 @@
               <button class="btn" id="skin-refresh" data-i18n="skin.refresh">Actualiser</button>
               <button class="btn ghost danger" id="skin-reset" data-i18n="skin.reset">Skin par défaut</button>
             </div>
-            <!-- skin choisi, pas encore envoye -->
+            <!-- compte hors ligne : le skin ne se change pas, mais un compte Microsoft le permet -->
+            <div class="setup-actions hidden" id="skin-offline-actions">
+              <button class="btn accent js-login" id="skin-add" type="button"><svg class="ic"><use href="#i-plus"/></svg><span data-i18n="login.add">Ajouter un compte Microsoft</span></button>
+            </div>
+            <!-- skin choisi, pas encore envoyé -->
             <div class="skin-pending hidden" id="skin-pending">
               <p class="muted" data-i18n="skin.model">Modèle des bras :</p>
               <div class="skin-anim" id="skin-model">
@@ -310,16 +406,12 @@
 
         <p class="message hidden" id="account-message"></p>
 
-        <div class="account-actions">
-          <button class="btn accent" id="login-button" data-i18n="login.add">Ajouter un compte Microsoft</button>
-        </div>
-
         <div class="card setting offline hidden" id="offline-card">
           <div class="setting-text">
             <h3 data-i18n="offline.title">Compte hors ligne (mode développeur)</h3>
-            <p class="muted" data-i18n="offline.help">Pseudo seul, pour tester le lancement en solo. Les serveurs en ligne le refuseront.</p>
+            <p class="help" data-i18n="offline.help">Pseudo seul, pour tester le lancement en solo. Les serveurs en ligne le refuseront.</p>
           </div>
-          <div class="setting-control path">
+          <div class="path-field">
             <input type="text" id="offline-name" maxlength="16" data-i18n-placeholder="offline.placeholder" placeholder="Pseudo">
             <button class="btn" id="offline-add" data-i18n="offline.add">Ajouter</button>
           </div>
@@ -328,16 +420,31 @@
     </main>
   </div>
 
-  <!-- Historique complet des versions (« Tout voir » dans Nouveautés) : seule la liste défile -->
-  <dialog class="changelog-dialog" id="changelog-dialog" aria-labelledby="changelog-dialog-title">
-    <div class="dialog-head">
+  <!-- Historique des versions (« Tout voir » dans Nouveautés) : filtres Launcher / ATTACK Client, regroupé par mois -->
+  <dialog class="dialog" id="changelog-dialog" aria-labelledby="changelog-dialog-title">
+    <div class="dlg-head">
       <h2 id="changelog-dialog-title" data-i18n="home.changelogHistory">Historique des versions</h2>
-      <button class="update-close" id="changelog-close" data-i18n-title="window.close" aria-label="Fermer">
+      <button class="wc dlg-x" id="changelog-close" data-i18n-title="window.close" aria-label="Fermer">
         <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg>
       </button>
     </div>
-    <ol class="changelog-list" id="changelog-full"></ol>
+    <div class="dlg-filters" id="changelog-filters"></div>
+    <div class="dlg-list" id="changelog-full"></div>
   </dialog>
+
+  <!-- Crédits : mods du pack avec auteur, version et licence -->
+  <dialog class="dialog" id="credits-dialog" aria-labelledby="credits-dialog-title">
+    <div class="dlg-head">
+      <h2 id="credits-dialog-title" data-i18n="credits.title">Mods et licences</h2>
+      <button class="wc dlg-x" id="credits-close" data-i18n-title="window.close" aria-label="Fermer">
+        <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg>
+      </button>
+    </div>
+    <p class="credits-credit" id="credits-credit"></p>
+    <div class="dlg-list" id="credits-list"></div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"><svg class="ic"><use href="#i-check"/></svg><span id="toast-text"></span></div>
 
   <script src="logo.js"></script>
   <script src="i18n.js"></script>

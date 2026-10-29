@@ -3,7 +3,8 @@
 [← Retour au README](../../README.md)
 
 ATTACK Launcher est le launcher Windows (Electron) d'**ATTACK Client**, le client de PvP pour Minecraft. Il propose
-trois profils : **1.8.9** (Forge), **1.21.1** et **26.3** (Fabric, avec un pack de mods de performance figé). Il installe
+trois profils : **1.8.9** (Forge), **1.21.1** et **26.3** (Fabric), chacun avec un pack de mods figé (performance, packs
+OptiFine, mods PvP, Replay Mod, réglables) et, en 1.8.9, ta propre copie d'**OptiFine** (jamais téléchargée). Il installe
 Minecraft, le chargeur et le mod, gère la connexion Microsoft, lance le jeu directement, affiche ton skin en 3D et se met
 à jour tout seul. Les releases (jar du mod compris) sont publiées sur
 [7ShIkI3/attack-launcher](https://github.com/7ShIkI3/attack-launcher/releases).

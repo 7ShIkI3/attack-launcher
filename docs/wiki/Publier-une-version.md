@@ -79,9 +79,9 @@ de Minecraft, `versions/<mc>/build/libs`). Comme le launcher réinstalle le mod 
 joueur reçoit une nouvelle version du mod en cliquant sur « Vérifier / réparer l'installation ». Tant qu'aucune release du
 mod n'existe, le mode développeur permet de copier un jar local ([Fonctionnalités](Fonctionnalites.md#mode-développeur)).
 
-## Mettre à jour un pack de mods Fabric
+## Mettre à jour un pack de mods
 
-Les packs vivent dans le dépôt (`src/main/packs/fabric-1.21.1.json`, `fabric-26.3.json`) : les adresses et les hash sont
+Les packs vivent dans le dépôt (`src/main/packs/forge-1.8.9.json`, `fabric-1.21.1.json`, `fabric-26.3.json`) : les adresses et les hash sont
 **écrits à l'avance**, pas résolus par le launcher. Pour changer une version :
 
 1. Modifie les numéros de version dans `scripts/resolve-pack.js` (le `versionNumber` est le numéro **exact** de Modrinth).

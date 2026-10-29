@@ -10,6 +10,7 @@ const { pathToFileURL } = require('node:url');
 const C = require('./constants');
 const catalog = require('./catalog');
 const modpack = require('./modpack');
+const optifine = require('./optifine');
 const installer = require('./installer');
 const settingsStore = require('./settings');
 const profiles = require('./profiles');
@@ -49,11 +50,21 @@ const transport = auth.createTransport();
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
 
-/** Profil choisi (catalogue) et ses réglages effectifs à plat : dossier de jeu, Java, jars de développement, shaders. */
+/** Profil choisi (catalogue) et ses réglages effectifs à plat : dossier de jeu, Java, jars de développement, groupes du pack, OptiFine. */
 const currentProfile = () => catalog.get(settings.profileId);
 const effective = () => settingsStore.forProfile(settings);
 
-/** Description des profils pour la page : catalogue + contenu du pack de mods figé (nom, version, optionnel). */
+/** Réglages qui décident du contenu attendu du dossier de jeu : les mêmes pour l'état affiché et pour le lancement. */
+const statusOptions = (eff) => ({
+  shaders: eff.shaders,
+  pvpMods: eff.pvpMods,
+  optifinePacks: eff.optifinePacks,
+  replayMod: eff.replayMod,
+  optifine: eff.optifine,
+  optifineJar: eff.optifineJar,
+});
+
+/** Description des profils pour la page : catalogue + contenu du pack de mods figé (nom, version, optionnel, groupe). */
 function profilesView() {
   return catalog.list().map((profile) => {
     let pack = [];
@@ -182,6 +193,26 @@ function accountsView() {
   };
 }
 
+/** Enregistre un changement de réglages venu de la page (validé par settings.sanitize) ; renvoie les réglages effectifs du profil choisi. */
+async function applySettings(patch) {
+  // pas de changement de profil pendant une installation ou un lancement : ils travaillent sur le profil choisi au départ
+  const safePatch = (installing || launching) && patch && typeof patch === 'object' ? { ...patch, profileId: undefined } : patch;
+  // arguments Java refusés : message clair plutôt qu'un retour silencieux à l'ancienne valeur
+  if (safePatch && typeof safePatch === 'object' && 'jvmArgs' in safePatch) {
+    const parsed = jvmargs.parseJvmArgs(safePatch.jvmArgs);
+    if (!parsed.ok) throw new Error(jvmargs.describe(parsed));
+  }
+  const previous = settings;
+  settings = settingsStore.sanitize(safePatch, settings);
+  try {
+    await settingsStore.save(settingsFile(), settings);
+  } catch (error) {
+    settings = previous; // enregistrement impossible (disque plein, antivirus) : le profil choisi ne doit pas changer en cachette
+    throw error;
+  }
+  return effective();
+}
+
 function registerIpc() {
   handle('app:info', () => ({
     version: app.getVersion(),
@@ -192,30 +223,30 @@ function registerIpc() {
   }));
 
   handle('settings:get', () => effective());
-  handle('settings:set', async (_event, patch) => {
-    // pas de changement de profil pendant une installation ou un lancement : ils travaillent sur le profil choisi au départ
-    const safePatch = (installing || launching) && patch && typeof patch === 'object' ? { ...patch, profileId: undefined } : patch;
-    // arguments Java refusés : message clair plutôt qu'un retour silencieux à l'ancienne valeur
-    if (safePatch && typeof safePatch === 'object' && 'jvmArgs' in safePatch) {
-      const parsed = jvmargs.parseJvmArgs(safePatch.jvmArgs);
-      if (!parsed.ok) throw new Error(jvmargs.describe(parsed));
-    }
-    const previous = settings;
-    settings = settingsStore.sanitize(safePatch, settings);
-    try {
-      await settingsStore.save(settingsFile(), settings);
-    } catch (error) {
-      settings = previous; // enregistrement impossible (disque plein, antivirus) : le profil choisi ne doit pas changer en cachette
-      throw error;
-    }
-    return effective();
-  });
+  handle('settings:set', (_event, patch) => applySettings(patch));
 
   handle('install:status', () => {
     const profile = currentProfile();
     const eff = effective();
-    return installer.status({ minecraftDir, gameDir: eff.gameDir, profile, shaders: eff.shaders });
+    return installer.status({ minecraftDir, gameDir: eff.gameDir, profile, ...statusOptions(eff) });
   });
+
+  // --- OptiFine (profil 1.8.9) : la copie du joueur, jamais téléchargée ---
+  handle('optifine:pick', async () => {
+    if (!catalog.hasOptifine(currentProfile())) return { ok: false, code: 'NO_OPTIFINE', message: 'OptiFine : profil 1.8.9 seulement.' };
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Choisir OptiFine pour Minecraft 1.8.9 (.jar)',
+      properties: ['openFile'],
+      defaultPath: app.getPath('downloads'),
+      filters: [{ name: 'OptiFine 1.8.9', extensions: ['jar'] }],
+    });
+    if (result.canceled || !result.filePaths[0]) return { ok: false, code: 'CANCELLED' };
+    const checked = await optifine.validate(result.filePaths[0]);
+    if (!checked.ok) return { ok: false, code: `OPTIFINE_${checked.reason}`, message: checked.message };
+    await applySettings({ optifineJar: checked.file, optifine: true });
+    return { ok: true, name: checked.name };
+  });
+  handle('shell:openOptifine', () => shell.openExternal(optifine.DOWNLOAD_URL));
 
   handle('install:run', async (event) => {
     if (installing) return { ok: false, code: 'BUSY', message: 'Installation déjà en cours' };
@@ -389,7 +420,7 @@ function registerIpc() {
       if (game.gameBlocksInstall(eff.gameDir, [...games.values()])) {
         return { ok: false, code: 'ALREADY_PLAYING', message: 'Une partie de ce profil est déjà ouverte : ferme-la avant d’en lancer une autre.' };
       }
-      const status = await installer.status({ minecraftDir, gameDir: eff.gameDir, profile, shaders: eff.shaders });
+      const status = await installer.status({ minecraftDir, gameDir: eff.gameDir, profile, ...statusOptions(eff) });
       if (!status.installed) return { ok: false, code: 'NOT_INSTALLED', message: 'Installation incomplète' };
       const account = accounts.active();
       // une partie va démarrer : le téléchargement de mise à jour s'arrête et reprendra à la fin
@@ -559,7 +590,14 @@ function createWindow() {
     win = null;
   });
   win.loadFile(INDEX_HTML);
-  if (process.env.ATTACK_SCREENSHOT_DIR) win.webContents.once('did-finish-load', () => captureScreens());
+  if (process.env.ATTACK_SCREENSHOT_DIR) {
+    // mode capture : les avertissements et erreurs de la page (CSP comprise) sont repris dans la sortie, pour ne rien laisser passer
+    win.webContents.on('console-message', (...args) => {
+      const detail = args[0] && typeof args[0] === 'object' && 'message' in args[0] ? args[0] : { level: args[1], message: args[2] };
+      if (['warning', 'error', 2, 3].includes(detail.level)) console.error(`[page ${detail.level}] ${detail.message}`);
+    });
+    win.webContents.once('did-finish-load', () => captureScreens());
+  }
 }
 
 /** Mode capture (tests) : photographie chaque page puis quitte. */
@@ -602,15 +640,43 @@ async function captureScreens() {
     await wait(300);
     await fsp.writeFile(path.join(dir, 'played.png'), (await win.webContents.capturePage()).toPNG());
   }
+  // capturePage peut rendre l'image précédente quand la fenêtre n'a pas le focus : une première capture jetée force le rendu à jour
+  const shot = async (name) => {
+    win.webContents.invalidate();
+    await wait(250);
+    await win.webContents.capturePage();
+    await wait(150);
+    return fsp.writeFile(path.join(dir, `${name}.png`), (await win.webContents.capturePage()).toPNG());
+  };
   for (const page of ['home', 'mods', 'settings', 'account']) {
     await win.webContents.executeJavaScript(`window.showPage && window.showPage(${JSON.stringify(page)})`);
     await wait(500);
-    const image = await win.webContents.capturePage();
-    await fsp.writeFile(path.join(dir, `${page}.png`), image.toPNG());
+    await shot(page);
+    if (page === 'settings') {
+      // bas de la page (pack de mods, OptiFine) quand elle dépasse la fenêtre
+      await js("document.getElementById('page-settings').scrollTop = 9999");
+      await wait(300);
+      await shot('settings-bas');
+      await js("document.getElementById('page-settings').scrollTop = 0");
+    }
   }
+  // détail de la ligne « prêt » de l'accueil, onglets Launcher et Avancé des réglages, crédits des mods
+  await js("window.showPage('home'); document.getElementById('ready-btn').click()");
+  await wait(400);
+  await shot('home-details');
+  await js("document.getElementById('ready-btn').click()");
+  for (const tab of ['launcher', 'advanced']) {
+    await js(`window.showPage('settings'); window.selectSettingsTab(${JSON.stringify(tab)})`);
+    await wait(400);
+    await shot(`settings-${tab}`);
+  }
+  await js("window.selectSettingsTab('launcher'); document.getElementById('credits-open').click()");
+  await wait(400);
+  await shot('credits');
+  await js("document.getElementById('credits-close').click(); window.selectSettingsTab('profile')");
   if (process.env.ATTACK_SCREENSHOT_JVM) {
     // champ « Arguments Java » : un argument refusé (message sous le champ), puis un argument accepté
-    await js("window.showPage && window.showPage('settings')");
+    await js("window.showPage && window.showPage('settings'); window.selectSettingsTab('advanced')");
     for (const [name, value] of [['jvm-refused', '-javaagent:C:\\evil.jar'], ['jvm-saved', '-XX:+UseStringDeduplication']]) {
       await js(`(() => { const f = document.getElementById('jvm-args'); f.value = ${JSON.stringify(value)};
         document.getElementById('jvm-args-save').click(); f.scrollIntoView({ block: 'center' }); })()`);

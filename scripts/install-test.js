@@ -1,10 +1,13 @@
 'use strict';
 // Installation réelle complète dans un dossier temporaire (jamais dans le vrai %APPDATA%\.minecraft),
 // puis contre-vérification indépendante de tous les hash.
-//   node scripts/install-test.js [dossier] [--profile <id>] [--release] [--shaders] [--cycle]
+//   node scripts/install-test.js [dossier] [--profile <id>] [--release] [--shaders] [--replay] [--optifine <jar>] [--cycle]
 // --profile  forge-1.8.9 (défaut), fabric-1.21.1 ou fabric-26.3
 // --release  jar ATTACK depuis la dernière release GitHub (sans : build local, mode développeur)
 // --shaders  installe aussi Iris (réglage « Shaders » des profils Fabric)
+// --replay   installe aussi Replay Mod (réglage « Replay Mod », coupé par défaut)
+// --optifine profil 1.8.9 : copie ce jar OptiFine (le vôtre) dans <dossier>/.minecraft/libraries/optifine avant l'installation,
+//            comme le ferait l'installateur d'OptiFine : le launcher doit le trouver, le valider et le copier dans mods
 // --cycle    Fabric : après l'installation, coupe puis réactive les shaders et vérifie qu'Iris est retiré / remis,
 //            qu'un jar ajouté à la main n'est jamais touché
 // Sans --release, le jar du mod vient du build local. Si le profil Fabric n'a pas encore de jar compilé, un JAR FACTICE
@@ -56,7 +59,9 @@ async function main() {
   const profile = catalog.get(option('--profile') || catalog.DEFAULT_PROFILE_ID);
   const useRelease = args.includes('--release');
   const shaders = args.includes('--shaders') || args.includes('--cycle');
-  const positional = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--profile');
+  const replay = args.includes('--replay');
+  const optifineSource = option('--optifine');
+  const positional = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--profile' && args[i - 1] !== '--optifine');
   const root = path.resolve(positional[0] || path.join(os.tmpdir(), `attack-install-test-${Date.now()}`));
   const real = path.resolve(process.env.APPDATA || '', '.minecraft');
   if (root.toLowerCase().startsWith(real.toLowerCase())) throw new Error('Refus : ce test ne doit pas toucher au vrai .minecraft');
@@ -83,7 +88,15 @@ async function main() {
     dummy = true;
     console.log('!!! JAR FACTICE : aucun jar attack-fabric compilé trouvé, un mod « attack » vide est utilisé pour tester la chaîne !!!');
   }
-  const settings = { ramMb: 3072, gameDir, javaPath: '', lang: 'fr', devMode: !useRelease, devJarDir, shaders };
+  const settings = { ramMb: 3072, gameDir, javaPath: '', lang: 'fr', devMode: !useRelease, devJarDir, shaders, replayMod: replay };
+  if (optifineSource) {
+    // copie du joueur déposée là où l'installateur d'OptiFine la laisse (libraries/optifine/OptiFine/1.8.9_<variante>/)
+    const variant = /1\.8\.9_([\w.+-]+?)\.jar$/i.exec(path.basename(optifineSource))?.[1] || 'HD_U_M5';
+    const libDir = path.join(minecraftDir, 'libraries', 'optifine', 'OptiFine', `1.8.9_${variant}`);
+    fs.mkdirSync(libDir, { recursive: true });
+    fs.copyFileSync(optifineSource, path.join(libDir, `OptiFine-1.8.9_${variant}.jar`));
+    console.log(`OptiFine du joueur (test) : ${path.join(libDir, `OptiFine-1.8.9_${variant}.jar`)}`);
+  }
   const icon = `data:image/png;base64,${fs.readFileSync(path.join(__dirname, '..', 'assets', 'profile-icon.png')).toString('base64')}`;
   console.log(`Profil : ${profile.id} (Minecraft ${profile.mc}, ${profile.loader.type} ${profile.loader.version})`);
   console.log(`Dossier de test : ${root}`);
@@ -153,7 +166,7 @@ async function main() {
   // pack de mods : SHA-512 et SHA-1 recalculés depuis le pack figé
   if (profile.pack) {
     const pack = modpack.loadPack(profile);
-    const wanted = modpack.selectedMods(pack, { shaders });
+    const wanted = modpack.selectedMods(pack, installer.packOptions(settings));
     for (const m of wanted) {
       const file = path.join(gameDir, 'mods', m.filename);
       await check(file, 'sha512', m.sha512, `${m.slug} ${m.version} (SHA-512)`);
@@ -181,6 +194,37 @@ async function main() {
     }
   }
 
+  // OptiFine du joueur (1.8.9) : copié dans mods, identique à l'original, suivi dans l'état ; sans copie fournie : rien n'est copié
+  if (catalog.hasOptifine(profile)) {
+    const state = JSON.parse(fs.readFileSync(path.join(gameDir, 'attack-launcher.json'), 'utf8'));
+    if (optifineSource) {
+      const copy = state.optifine && path.join(gameDir, 'mods', state.optifine.file);
+      if (!copy || !fs.existsSync(copy)) failures.push('OptiFine : copie absente de mods');
+      else {
+        await check(copy, 'sha256', await hashFile(optifineSource, 'sha256'), 'OptiFine copié dans mods (identique à l’original)');
+        extra.push(`OptiFine du joueur copié (${state.optifine.file}, source ${state.optifine.source})`);
+      }
+      if (summary.optifine?.action !== 'copied') failures.push(`OptiFine : action inattendue (${JSON.stringify(summary.optifine)})`);
+    } else if (state.optifine || fs.readdirSync(path.join(gameDir, 'mods')).some((f) => /optifine/i.test(f))) {
+      failures.push('OptiFine : un jar a été copié alors que le joueur n’en a pas fourni');
+    } else {
+      extra.push('aucun OptiFine fourni : rien copié, rien téléchargé');
+    }
+  }
+  // options.txt : langue du launcher écrite (fr_FR en 1.8.9, fr_fr en Fabric)
+  const optionsText = fs.existsSync(path.join(gameDir, 'options.txt')) ? fs.readFileSync(path.join(gameDir, 'options.txt'), 'latin1') : '';
+  const wantedLang = profile.loader.type === 'forge' ? 'lang:fr_FR' : 'lang:fr_fr';
+  if (!optionsText.split(/\r?\n/).includes(wantedLang)) failures.push(`options.txt : ${wantedLang} absent`);
+  else extra.push(`options.txt (${wantedLang})`);
+
+  // WalksyLib (groupe PvP du pack Fabric) : sa vérification de mises à jour est coupée dans sa configuration de départ
+  if (summary.walksylib) {
+    const walksy = path.join(gameDir, 'config', 'WalksyLib', 'walksylib.json');
+    const value = fs.existsSync(walksy) ? JSON.parse(fs.readFileSync(walksy, 'utf8')).categories?.Appearance?.groups?.Notifications?.options?.['Notify For New Updates'] : undefined;
+    if (value !== false) failures.push(`WalksyLib : « Notify For New Updates » devrait être false (lu : ${value})`);
+    else extra.push(`WalksyLib sans vérification de mises à jour (${summary.walksylib.action})`);
+  }
+
   const modFile = path.join(gameDir, 'mods', profile.modFile);
   const localJar = findDevJar(settings.devJarDir, profile);
   if (!useRelease) await check(modFile, 'sha256', await hashFile(localJar.file, 'sha256'), 'mod (copie du build local)');
@@ -199,7 +243,7 @@ async function main() {
   if (!profilesData.profiles.autre) failures.push('fusion : autre profil perdu');
   if (!fs.existsSync(`${profilesFile}.bak`)) failures.push('sauvegarde .bak absente');
 
-  const status = await installer.status({ minecraftDir, gameDir, profile, shaders: args.includes('--cycle') ? true : shaders });
+  const status = await installer.status({ minecraftDir, gameDir, profile, shaders: args.includes('--cycle') ? true : shaders, replayMod: replay });
   if (!status.installed) failures.push(`status() incomplet : ${JSON.stringify(status)}`);
 
   console.log(`Vérifié : client.jar, ${vanillaLibs.length} fichiers de bibliothèques Mojang, ${objects.length} assets, ` +
