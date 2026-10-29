@@ -12,7 +12,9 @@
       "url": "https://cdn.modrinth.com/data/P7dR8mSH/versions/Mys3P7lK/fabric-api-0.116.17%2B1.21.1.jar",
       "sha512": "98c478217da19181f0e4df3ea6c2da6bdbda271c7544a4aea048513a49b444f1ff5b71dc0df6303017c48e8ff69b7bb6af6179bdf0d0e09ab3c1ee08411857a8",
       "sha1": "810b2b0195371a012906241d8b85a32a1d6de53c",
-      "size": 2452735
+      "size": 2452735,
+      "license": "Apache-2.0",
+      "author": "modmuss50"
     },
     {
       "slug": "sodium",
@@ -23,7 +25,9 @@
       "url": "https://cdn.modrinth.com/data/AANobbMI/versions/SMxNOGZ6/sodium-fabric-0.8.13%2Bmc1.21.1.jar",
       "sha512": "8614a374593698069a80ac74de8cd9c28f3928d16819a0e0d6320b538e823f7e54e8be06d5ea5a9c268beb0e02073209d1f831a02dede851588b972367680853",
       "sha1": "003c114c85ca88ef3362e018deb6aca0c682d6a1",
-      "size": 1574609
+      "size": 1574609,
+      "license": "LicenseRef-Polyform-Shield-1.0.0",
+      "author": "IMS"
     },
     {
       "slug": "lithium",
@@ -34,7 +38,9 @@
       "url": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/N08Z8wog/lithium-fabric-0.15.4%2Bmc1.21.1.jar",
       "sha512": "182064b00e6315e2255b857eaab8eb759e6b042ebd4cc8b855ff0d93f875a5a7188fac49f878d7b29d4ef7e6b6341190ad7f6f6f39f4a6d2c62003468b08e4c6",
       "sha1": "7d82a004403b7780d4443d8e40361a55cfd0ae63",
-      "size": 797454
+      "size": 797454,
+      "license": "LGPL-3.0-only",
+      "author": "jellysquid3"
     },
     {
       "slug": "ferrite-core",
@@ -45,7 +51,9 @@
       "url": "https://cdn.modrinth.com/data/uXXizFIs/versions/sOzRw3CG/ferritecore-7.0.3-fabric.jar",
       "sha512": "3ad31620fac4ff44327dc7dedbe162b2d978f3f246dc16255a6e400ce9592a0d326fe36a626f3c1bf30a11f813093cbb4dcc107af039cff724d0cdf648541fdf",
       "sha1": "a8a6a34fcda177da2828cedef44e0e538cf78aad",
-      "size": 123450
+      "size": 123450,
+      "license": "MIT",
+      "author": "malte0811"
     },
     {
       "slug": "immediatelyfast",
@@ -56,7 +64,9 @@
       "url": "https://cdn.modrinth.com/data/5ZwdcRci/versions/aLnBqxFW/ImmediatelyFast-Fabric-1.6.15%2B1.21.1.jar",
       "sha512": "d4ac2d574d80000cd59b0b362706a6f86778bfc717748dca854f05ee8d09ce158738488e58c6b8ee05d5e54017f05b6c66c3bcaa3fa357d38cbfd75893dda9f4",
       "sha1": "5067bdff1d5cc6d2dd89986f98bd8bd7ae62fb98",
-      "size": 342235
+      "size": 342235,
+      "license": "LGPL-3.0-or-later",
+      "author": "RaphiMC"
     },
     {
       "slug": "modmenu",
@@ -67,7 +77,9 @@
       "url": "https://cdn.modrinth.com/data/mOgUt4GM/versions/6lgOkclV/modmenu-11.0.5.jar",
       "sha512": "92e8e96267ff18d320903090f2ad9b32408a218919f5a0d578e232ad774c89d49a34a8271806652be7d6283f24e98432bc4af7f95855e78b843f9100d68696c7",
       "sha1": "2321d890a25b5985eba576d7cd8fe9a9c136e33d",
-      "size": 975846
+      "size": 975846,
+      "license": "MIT",
+      "author": "gniftygnome"
     },
     {
       "slug": "iris",
@@ -79,7 +91,9 @@
       "sha512": "a7fbb629793c52f0be8b049f787cb598879239b1ad8e1de62e103c8b9efff140e3232b93ef1f14e505d262897d8cf9505b1126396429ad4056bff969c8674e52",
       "sha1": "6776c0340845887477bfa463acc736ce7fcb6de5",
       "size": 2791343,
-      "optional": true
+      "optional": true,
+      "license": "LGPL-3.0-only",
+      "author": "coderbot"
     },
     {
       "slug": "entityculling",
@@ -90,7 +104,9 @@
       "url": "https://cdn.modrinth.com/data/NNAgCjsB/versions/yllJFBpU/entityculling-fabric-1.11.3-mc1.21.1.jar",
       "sha512": "51cc760b886f53a8469f5f87098688c8e00a70e9499f4146908f676dc95c78bbfd6de6ddab124e5ba8c1057335c3727c24243af2807497c6e4b05cb2da811364",
       "sha1": "5a65a3944e32cc57b73b0f208d15d16fe9df4ed1",
-      "size": 1519243
+      "size": 1519243,
+      "license": "LicenseRef-tr7zw-Protective-License",
+      "author": "tr7zw"
     },
     {
       "slug": "moreculling",
@@ -101,7 +117,9 @@
       "url": "https://cdn.modrinth.com/data/51shyZVL/versions/wUYbHzXF/moreculling-fabric-1.21.1-1.0.10.jar",
       "sha512": "7f8f33e09a7b1952c4ae77843a28a5220fe9dd6436fda4b14edeb261a5ceb5468630c54ab3b8ec2c64a5c91f5b02f0246d17db57fa7fe11eb16ec9c745b9ae40",
       "sha1": "d425f77706d8f6499aae64eb804b3802dad111d4",
-      "size": 332266
+      "size": 332266,
+      "license": "GPL-3.0-only",
+      "author": "FX"
     },
     {
       "slug": "cloth-config",
@@ -112,7 +130,9 @@
       "url": "https://cdn.modrinth.com/data/9s6osm5g/versions/HpMb5wGb/cloth-config-15.0.140-fabric.jar",
       "sha512": "1b3f5db4fc1d481704053db9837d530919374bf7518d7cede607360f0348c04fc6347a3a72ccfef355559e1f4aef0b650cd58e5ee79c73b12ff0fc2746797a00",
       "sha1": "5d82342a2df53fd6df712bfdd583a811572918a4",
-      "size": 1157166
+      "size": 1157166,
+      "license": "LGPL-3.0-only",
+      "author": "shedaniel"
     },
     {
       "slug": "badoptimizations",
@@ -123,7 +143,9 @@
       "url": "https://cdn.modrinth.com/data/g96Z4WVZ/versions/S2qthD5S/BadOptimizations-2.4.1-1.21.1.jar",
       "sha512": "2b66428bd98bd5ec0e09f2ec6af801cefb7b9b99cc4f0993daeaffe8d0ccc5ee0c2a73e9f38d4f92540ead0181704d2c9e946837ec05cf710fc3b20fce3b0cac",
       "sha1": "1461d8e46391efd32a3085150e86094c9f6f5c9d",
-      "size": 283566
+      "size": 283566,
+      "license": "MIT",
+      "author": "thosea"
     },
     {
       "slug": "modernfix",
@@ -134,7 +156,9 @@
       "url": "https://cdn.modrinth.com/data/nmDcB62a/versions/NnNX8LBn/modernfix-fabric-5.25.1%2Bmc1.21.1.jar",
       "sha512": "dc67d6e023e1fcdeaf7837917c477cba212c611dfc2463c6ea021319c644087c79b477e0ea8194e113ddd7332fd5c6d82baa47c291eaac7f4a86252507b4e19f",
       "sha1": "4ab39e9c736e7204146792c545ec5b29fc0a3872",
-      "size": 471258
+      "size": 471258,
+      "license": "LGPL-3.0-only",
+      "author": "embeddedt"
     },
     {
       "slug": "krypton",
@@ -145,7 +169,9 @@
       "url": "https://cdn.modrinth.com/data/fQEb0iXm/versions/Acz3ttTp/krypton-0.2.8.jar",
       "sha512": "5f8cf96c79bfd4d893f1d70da582e62026bed36af49a7fa7b1e00fb6efb28d9ad6a1eec147020496b4fe38693d33fe6bfcd1eebbd93475612ee44290c2483784",
       "sha1": "73e792eb5f120787becda4b87b6ff18b26caea50",
-      "size": 161045
+      "size": 161045,
+      "license": "LGPL-3.0-only",
+      "author": "astei"
     },
     {
       "slug": "fast-ip-ping",
@@ -156,7 +182,9 @@
       "url": "https://cdn.modrinth.com/data/9mtu0sUO/versions/CiB6psvm/fast-ip-ping-v1.0.12-mc1.21.1-fabric.jar",
       "sha512": "05eaa8269bf71ae62c05ace92dde1e42105c96dadb0962d24c7399d3e4e001e28fbc5b2a3441384af1c9fd2a9e43c1b110c3c1942d5c7ae8434e6c38ff222e02",
       "sha1": "18311b2947a8de058930ec0ba213f951483f86e8",
-      "size": 10201
+      "size": 10201,
+      "license": "LGPL-3.0-only",
+      "author": "fallen-breath"
     },
     {
       "slug": "serverpingerfixer",
@@ -167,7 +195,9 @@
       "url": "https://cdn.modrinth.com/data/iqK5uv72/versions/YkchMFP2/serverpingerfixer-1.0.6.jar",
       "sha512": "f572a99f55484487702bb16202675e8abd79b3d1629eadf7ca5c4506d2d06fcaf8fc21aa15228a526782999515569210e6e4d4531c515540761a9122e3188c47",
       "sha1": "50bcba6bf20263550b0275487ff487a3894d04d0",
-      "size": 6450
+      "size": 6450,
+      "license": "MIT",
+      "author": "JustAlittleWolf"
     },
     {
       "slug": "reflex-antilag",
@@ -178,7 +208,51 @@
       "url": "https://cdn.modrinth.com/data/WTVzusYD/versions/tu5w6Rry/reflex-fabric-1.1.3%2B1.21.1.jar",
       "sha512": "9697ff50642283749beef7faf2ac7659790015bb2a135c1c812b3e3250f784402fec77219eff1cc208f023c30e579cc8f501ab9ab100fb509cdefa911c8479c0",
       "sha1": "e89feaba5dcb19120cf058eae8faf7cfb1e064cf",
-      "size": 36577
+      "size": 36577,
+      "license": "LicenseRef-All-Rights-Reserved",
+      "author": "Tythee"
+    },
+    {
+      "slug": "continuity",
+      "name": "Continuity",
+      "version": "3.0.0",
+      "versionNumber": "3.0.0+1.21",
+      "filename": "continuity-3.0.0+1.21.jar",
+      "url": "https://cdn.modrinth.com/data/1IjD5062/versions/kSPJ4hQv/continuity-3.0.0%2B1.21.jar",
+      "sha512": "3601ddb50f19142c087d32525bc0afcfb5f49a2e7477b6645a98ec191218739fdf3c6ac95cd298e826eb34fc533af43bb0e78c64e51292866ecabade4d14b13a",
+      "sha1": "c7f09b53512604c2ba6803b1247bc70e4d0f8f8c",
+      "size": 1014044,
+      "group": "optifine",
+      "license": "LGPL-3.0-only",
+      "author": "Pepper_Bell"
+    },
+    {
+      "slug": "entitytexturefeatures",
+      "name": "Entity Texture Features",
+      "version": "7.2.6",
+      "versionNumber": "7.2.6-fabric-1.21",
+      "filename": "entity_texture_features-7.2.6-1.21-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/BVzZfTc1/versions/LNZeTHJf/entity_texture_features-7.2.6-1.21-fabric.jar",
+      "sha512": "5258b3c2bd7894b20f9597af78a7aa83a1f84a54956ed32febc1d04864336372b98ef282a0a3b9d85f60e745d93ee0b3bc2be664fc9a6227c6d2c28e031617b5",
+      "sha1": "1ec5508fe8252234bf175c1dc48f099530d687d3",
+      "size": 800215,
+      "group": "optifine",
+      "license": "LGPL-3.0-only",
+      "author": "Traben"
+    },
+    {
+      "slug": "entity-model-features",
+      "name": "Entity Model Features",
+      "version": "3.3.12",
+      "versionNumber": "3.3.12-fabric-1.21",
+      "filename": "entity_model_features-3.3.12-1.21-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/4I1XuqiY/versions/90RfzkYP/entity_model_features-3.3.12-1.21-fabric.jar",
+      "sha512": "0ab99fec33bb27334adf002b911f2834bd5cecc1e9a02acb6b7eda1b5e989cc704b7c35a0ee716fe86d43e4f20b5307a2dd55766b1018c4e1422c863d411c013",
+      "sha1": "1528d24c0c6577ac23408c661639a0a03a5207f3",
+      "size": 653743,
+      "group": "optifine",
+      "license": "LGPL-3.0-only",
+      "author": "Traben"
     },
     {
       "slug": "marlow-crystal-optimizer",
@@ -190,7 +264,9 @@
       "sha512": "dea01446c74009574c6f9f5f5ed175a65844db81d5af3dc8a28260d0ead8f460b0e153a5da5f085262aa66a055bbbdea60e35bd56e03c00cf0f64c2d5f9f2ab9",
       "sha1": "ad15233834d4deb8a96edf7be3069b141bca8d5d",
       "size": 153798,
-      "group": "pvp"
+      "group": "pvp",
+      "license": "MIT",
+      "author": "DevBram"
     },
     {
       "slug": "anchor-optimizer",
@@ -202,7 +278,9 @@
       "sha512": "3c2c4ae3393c1405d1b294321e0e86955d534f39e0277dbe605d5286fd5de771dee0b9bfd19f516639d3cdc3c317659c29177ef836b5c27570f2c99e39a519af",
       "sha1": "580ee1e78d7621b21987eee7c90dd7782296d439",
       "size": 1296918,
-      "group": "pvp"
+      "group": "pvp",
+      "license": "MIT",
+      "author": "Walksy"
     },
     {
       "slug": "walksylib",
@@ -214,7 +292,51 @@
       "sha512": "4a260c1122cd0dd98a2ece8865c28a9c65493ca18e6a004590efb1316b3db2c81d28cd04a13f15f93203839277407c56ea1da53603da54a0dc5723c8e67a8c2d",
       "sha1": "6a9fc155d6932061113b627626b08dd2f086801a",
       "size": 1797345,
-      "group": "pvp"
+      "group": "pvp",
+      "license": "MIT",
+      "author": "Walksy"
+    },
+    {
+      "slug": "betterhitreg",
+      "name": "BetterHitReg",
+      "version": "1.0.7",
+      "versionNumber": "1.0.7+1.21.1",
+      "filename": "BetterHitreg-1.0.7+1.21.1.jar",
+      "url": "https://cdn.modrinth.com/data/MIKwzoiY/versions/NLgq17Qb/BetterHitreg-1.0.7%2B1.21.1.jar",
+      "sha512": "1a1c9488e11feaca94bb089ed3c202ce3f6bb7bfc84826134f7035ca04db574f4c1413cdd605057ee0df0ea210bf8e0e1ddccfd0690f539fc8c35d452333801a",
+      "sha1": "b2534597e408a2546f575df4c4cde79346e21d03",
+      "size": 102515,
+      "group": "pvp",
+      "license": "Apache-2.0",
+      "author": "Jass"
+    },
+    {
+      "slug": "complete-shield-fixes",
+      "name": "Complete Shield Fixes",
+      "version": "2.1.0",
+      "versionNumber": "2.1.0+1.21-1.21.1",
+      "filename": "ShieldFixes-2.1.0+1.21-1.21.1.jar",
+      "url": "https://cdn.modrinth.com/data/HfLFMeJe/versions/pUJIsCeZ/ShieldFixes-2.1.0%2B1.21-1.21.1.jar",
+      "sha512": "f7a8c40d05a09131a5d0166d0f0f608b9decdfd203b85a18d390d9fff0b5d2cc3261d05a574397aa1d214a580a6bf741f6003c3cb0e702911510adad948ddc48",
+      "sha1": "ecf749f1e40ce4290f016e047a5562ed81c46da7",
+      "size": 19806,
+      "group": "pvp",
+      "license": "MIT",
+      "author": "Walksy"
+    },
+    {
+      "slug": "replaymod",
+      "name": "Replay Mod",
+      "version": "2.6.28",
+      "versionNumber": "1.21-2.6.28",
+      "filename": "replaymod-1.21-2.6.28.jar",
+      "url": "https://cdn.modrinth.com/data/Nv2fQJo5/versions/DKvQ3lQq/replaymod-1.21-2.6.28.jar",
+      "sha512": "04b05bf704286f4ab3e974ca3c71ce218a5e05b89632c9c309a4d90769e1161b0fc335f8eb457327172a335792579ff43f13bcecd2e164a776115d2acd5cdb46",
+      "sha1": "528894b52cf3a35aac362e6eaf8e60f6f1364b98",
+      "size": 15710248,
+      "group": "replay",
+      "license": "GPL-3.0-or-later",
+      "author": "Johni0702"
     }
   ]
 }

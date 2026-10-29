@@ -29,6 +29,10 @@ test('réglages par défaut : un dossier de jeu par profil, shaders coupés et m
   assert.equal(base.profiles['fabric-1.21.1'].shaders, false);
   assert.equal(settings.forProfile(base).shaders, false);
   assert.equal('pvpMods' in base.profiles['forge-1.8.9'], false);
+  assert.equal('optifinePacks' in base.profiles['forge-1.8.9'], false, 'packs OptiFine : Fabric seulement');
+  assert.equal(base.profiles['fabric-1.21.1'].optifinePacks, true);
+  assert.equal(base.profiles['fabric-26.3'].optifinePacks, true);
+  assert.deepEqual(Object.keys(base.profiles).map((id) => base.profiles[id].replayMod), [false, false, false], 'Replay Mod : coupé partout');
   assert.equal(base.profiles['fabric-1.21.1'].pvpMods, true);
   assert.equal(base.profiles['fabric-26.3'].pvpMods, true);
   assert.equal(settings.forProfile(base, 'fabric-1.21.1').pvpMods, true);
@@ -372,6 +376,7 @@ test('progression : 0 à 100 % pour chaque chargeur, étape inconnue sans erreur
   assert.ok(installer.stepsFor(catalog.get('fabric-1.21.1')).some((s) => s.id === 'pack'));
   assert.ok(installer.stepsFor(catalog.get('fabric-1.21.1')).some((s) => s.id === 'fabric'));
   assert.ok(installer.stepsFor(catalog.get('forge-1.8.9')).some((s) => s.id === 'forge'));
+  assert.ok(installer.stepsFor(catalog.get('forge-1.8.9')).some((s) => s.id === 'pack'), 'le pack de mods Forge 1.8.9 a son étape');
 
   const events = [];
   const report = installer.progressReporter((p) => events.push(p), installer.stepsFor(catalog.get('fabric-26.3')));
@@ -382,7 +387,7 @@ test('progression : 0 à 100 % pour chaque chargeur, étape inconnue sans erreur
 });
 
 /** Installation factice d'un profil Fabric : fichiers présents, tailles du pack respectées (fichiers creux). */
-function fakeInstall(profile, { shaders = false, pvp = true } = {}) {
+function fakeInstall(profile, { shaders = false, pvp = true, optifine = true, replay = false } = {}) {
   const root = tempDir();
   const minecraftDir = path.join(root, '.minecraft');
   const gameDir = path.join(root, 'game');
@@ -395,12 +400,16 @@ function fakeInstall(profile, { shaders = false, pvp = true } = {}) {
   put(path.join(minecraftDir, 'versions', profile.mc, `${profile.mc}.jar`));
   put(path.join(minecraftDir, 'assets', 'indexes', '17.json'));
   put(path.join(minecraftDir, 'versions', vid, `${vid}.json`), JSON.stringify({ id: vid }));
-  put(path.join(minecraftDir, 'libraries', 'net', 'fabricmc', 'fabric-loader', profile.loader.version, `fabric-loader-${profile.loader.version}.jar`));
+  if (profile.loader.type === 'forge') {
+    put(path.join(minecraftDir, 'libraries', 'net', 'minecraftforge', 'forge', profile.loader.fullVersion, `forge-${profile.loader.fullVersion}.jar`));
+  } else {
+    put(path.join(minecraftDir, 'libraries', 'net', 'fabricmc', 'fabric-loader', profile.loader.version, `fabric-loader-${profile.loader.version}.jar`));
+  }
   put(path.join(minecraftDir, 'launcher_profiles.json'), JSON.stringify({ profiles: { [profile.launcherProfileId]: { name: profile.name } } }));
   put(path.join(gameDir, 'mods', profile.modFile), 'mod');
   const pack = modpack.loadPack(profile);
   const managed = [];
-  for (const m of modpack.selectedMods(pack, { shaders, pvp })) {
+  for (const m of modpack.selectedMods(pack, { shaders, pvp, optifine, replay })) {
     const file = path.join(gameDir, 'mods', m.filename);
     put(file, '');
     fs.truncateSync(file, m.size);
@@ -411,6 +420,8 @@ function fakeInstall(profile, { shaders = false, pvp = true } = {}) {
   }));
   return { root, minecraftDir, gameDir, pack };
 }
+/** Installation factice du profil Forge 1.8.9 : mêmes fichiers, pack Forge compris. */
+const fakeForgeInstall = fakeInstall;
 
 test('état d’un profil Fabric : installé, puis pack à refaire si un jar manque, change de taille ou si les shaders changent', async () => {
   const profile = catalog.get('fabric-1.21.1');
@@ -477,7 +488,7 @@ test('état : Iris encore présent après avoir coupé les shaders = pack à met
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-test('état d’un profil vide, et le profil Forge reste sans pack (champ forge conservé)', async () => {
+test('état d’un profil vide, et le profil Forge a lui aussi un pack à installer (champ forge conservé)', async () => {
   const dir = tempDir();
   const fabricStatus = await installer.status({ minecraftDir: path.join(dir, 'mc'), gameDir: path.join(dir, 'g'), profile: 'fabric-26.3' });
   assert.deepEqual(
@@ -486,7 +497,7 @@ test('état d’un profil vide, et le profil Forge reste sans pack (champ forge 
   );
   const forgeStatus = await installer.status({ minecraftDir: path.join(dir, 'mc'), gameDir: path.join(dir, 'g') });
   assert.equal(forgeStatus.profileId, 'forge-1.8.9');
-  assert.equal(forgeStatus.pack, null);
+  assert.equal(forgeStatus.pack, false, 'Phosphor Legacy et Client Side Sounds ne sont pas encore installés');
   assert.equal(forgeStatus.forge, false);
   assert.equal(forgeStatus.loader, false);
   fs.rmSync(dir, { recursive: true, force: true });
@@ -515,4 +526,94 @@ test('état : JSON de version du chargeur tronqué (coupure pendant l’écritur
   assert.equal(s.loader, false);
   assert.equal(s.installed, false);
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+// ---------- groupes du pack : packs OptiFine et Replay Mod ----------
+
+test('packs OptiFine : booléen par profil Fabric, activé par défaut (même avec un ancien fichier), sans effet en 1.8.9', () => {
+  let s = settings.sanitize({ profileId: 'fabric-1.21.1', optifinePacks: false }, settings.defaults(ENV));
+  assert.equal(settings.forProfile(s).optifinePacks, false);
+  assert.equal(settings.forProfile(s, 'fabric-26.3').optifinePacks, true, 'le réglage est propre à chaque profil');
+  s = settings.sanitize({ optifinePacks: 'non' }, s);
+  assert.equal(settings.forProfile(s).optifinePacks, false, 'valeur non booléenne ignorée');
+  s = settings.sanitize({ profiles: { 'fabric-26.3': { optifinePacks: false, pvpMods: false } } }, s);
+  assert.deepEqual([settings.forProfile(s, 'fabric-26.3').optifinePacks, settings.forProfile(s, 'fabric-26.3').pvpMods], [false, false]);
+  const forge = settings.sanitize({ profileId: 'forge-1.8.9', optifinePacks: false }, s);
+  assert.equal('optifinePacks' in forge.profiles['forge-1.8.9'], false);
+  assert.equal(settings.forProfile(forge).optifinePacks, true);
+  // fichier enregistré avant l'option : valeur par défaut
+  const old = settings.sanitize({ profiles: { 'fabric-1.21.1': { shaders: true, pvpMods: false } } }, settings.defaults(ENV));
+  assert.equal(old.profiles['fabric-1.21.1'].optifinePacks, true);
+});
+
+test('Replay Mod : booléen par profil, coupé par défaut, valable pour les 3 profils', () => {
+  let s = settings.sanitize({ profileId: 'forge-1.8.9', replayMod: true }, settings.defaults(ENV));
+  assert.equal(settings.forProfile(s).replayMod, true);
+  assert.equal(settings.forProfile(s, 'fabric-26.3').replayMod, false, 'le réglage est propre à chaque profil');
+  s = settings.sanitize({ replayMod: 1 }, s);
+  assert.equal(settings.forProfile(s).replayMod, true, 'valeur non booléenne ignorée');
+  s = settings.sanitize({ profiles: { 'fabric-1.21.1': { replayMod: true } } }, s);
+  assert.equal(settings.forProfile(s, 'fabric-1.21.1').replayMod, true);
+  assert.equal(settings.forProfile(s, 'fabric-1.21.1').optifinePacks, true, 'les autres réglages du profil ne bougent pas');
+  const old = settings.sanitize({ profiles: { 'fabric-26.3': { shaders: true } } }, settings.defaults(ENV));
+  assert.equal(settings.forProfile(old, 'fabric-26.3').replayMod, false);
+});
+
+test('options d’installation du pack : pvp et optifine activés, replay coupé quand rien n’est précisé', () => {
+  assert.deepEqual(installer.packOptions({}), { shaders: false, pvp: true, optifine: true, replay: false });
+  assert.deepEqual(installer.packOptions(), { shaders: false, pvp: true, optifine: true, replay: false });
+  assert.deepEqual(installer.packOptions({ shaders: true, pvpMods: false, optifinePacks: false, replayMod: true }), { shaders: true, pvp: false, optifine: false, replay: true });
+  const forProfile = settings.forProfile(settings.defaults(ENV), 'fabric-26.3');
+  assert.deepEqual(installer.packOptions(forProfile), { shaders: false, pvp: true, optifine: true, replay: false });
+});
+
+test('état : un groupe coupé ou activé après coup = pack à refaire seulement si le réglage et les jars ne concordent pas', async () => {
+  const profile = catalog.get('fabric-26.3');
+  const dir = fakeInstall(profile);
+  const status = (options) => installer.status({ minecraftDir: dir.minecraftDir, gameDir: dir.gameDir, profile, ...options });
+  assert.equal((await status({})).installed, true, 'réglages par défaut : pvp et optifine installés, replay absent');
+  const noOptifine = await status({ optifinePacks: false });
+  assert.deepEqual([noOptifine.pack, noOptifine.installed], [false, false], 'Continuity & co encore installés alors que l’option est coupée');
+  const replay = await status({ replayMod: true });
+  assert.deepEqual([replay.pack, replay.installed], [false, false], 'Replay Mod demandé mais absent');
+  fs.rmSync(dir.root, { recursive: true, force: true });
+
+  const lean = fakeInstall(profile, { optifine: false, replay: true });
+  const leanStatus = (options) => installer.status({ minecraftDir: lean.minecraftDir, gameDir: lean.gameDir, profile, ...options });
+  assert.equal((await leanStatus({ optifinePacks: false, replayMod: true })).installed, true);
+  assert.equal((await leanStatus({ replayMod: true })).pack, false, 'packs OptiFine activés mais absents');
+  assert.equal((await leanStatus({ optifinePacks: false })).pack, false, 'Replay Mod installé alors que l’option est coupée');
+  fs.rmSync(lean.root, { recursive: true, force: true });
+});
+
+// ---------- profil Forge 1.8.9 : pack de mods ----------
+
+test('dossier de jeu : un pack Forge 1.8.9 appartient à Forge, un pack Fabric à son profil', () => {
+  const forge = catalog.get('forge-1.8.9');
+  const f121 = catalog.get('fabric-1.21.1');
+  const conflict = installer.gameDirConflict;
+  // installation Forge interrompue après le pack (pas encore de profileId) : propre à Forge
+  assert.equal(conflict({ pack: { id: 'forge-1.8.9', managed: ['phosphor-universal.jar'] } }, forge), false);
+  assert.equal(conflict({ pack: { id: 'forge-1.8.9', managed: [] } }, f121), true);
+  assert.equal(conflict({ pack: { id: 'fabric-1.21.1', managed: [] } }, forge), true);
+  // un état Forge complet (profileId, champ forge, pack) n'est refusé qu'aux autres profils
+  const full = { profileId: 'forge-1.8.9', forge: forge.loader.versionId, pack: { id: 'forge-1.8.9', managed: [] } };
+  assert.equal(conflict(full, forge), false);
+  assert.equal(conflict(full, f121), true);
+  // ancien état Forge d'avant les packs (champ forge seul) : toujours réutilisable par Forge
+  assert.equal(conflict({ minecraft: '1.8.9', forge: forge.loader.versionId, mod: {} }, forge), false);
+  assert.equal(conflict({ minecraft: '1.8.9', forge: forge.loader.versionId, mod: {} }, f121), true);
+});
+
+test('état du profil 1.8.9 : pack Forge installé = prêt, jar manquant = à refaire, Replay Mod suit son réglage', async () => {
+  const profile = catalog.get('forge-1.8.9');
+  const dir = fakeForgeInstall(profile);
+  const status = (options) => installer.status({ minecraftDir: dir.minecraftDir, gameDir: dir.gameDir, profile, ...options });
+  const ready = await status({});
+  assert.deepEqual([ready.minecraft, ready.loader, ready.forge, ready.pack, ready.mod, ready.profile, ready.installed], [true, true, true, true, true, true, true]);
+  assert.equal((await status({ replayMod: true })).pack, false, 'Replay Mod demandé mais absent');
+  fs.rmSync(path.join(dir.gameDir, 'mods', dir.pack.mods[0].filename));
+  const missing = await status({});
+  assert.deepEqual([missing.pack, missing.installed], [false, false]);
+  fs.rmSync(dir.root, { recursive: true, force: true });
 });

@@ -1,27 +1,40 @@
 'use strict';
-// Outil de développement (jamais lancé par le launcher) : fige les packs de mods Fabric.
+// Outil de développement (jamais lancé par le launcher) : fige les packs de mods (Fabric 1.21.1 / 26.3, Forge 1.8.9).
 //   node scripts/resolve-pack.js [profil ...] [--check]
 // Interroge l'API Modrinth, sélectionne EXACTEMENT les versions listées ci-dessous et écrit
-// src/main/packs/<profil>.json (URL cdn.modrinth.com, SHA-512, SHA-1, taille). À l'exécution, le launcher ne
-// contacte jamais l'API Modrinth : il télécharge seulement ces URL figées, vérifiées par SHA-512.
+// src/main/packs/<profil>.json (URL cdn.modrinth.com, SHA-512, SHA-1, taille, licence et auteur du projet). À l'exécution,
+// le launcher ne contacte jamais l'API Modrinth : il télécharge seulement ces URL figées, vérifiées par SHA-512.
 //   --check : ne réécrit rien, compare les fichiers existants avec ce que Modrinth publie aujourd'hui.
 const fs = require('node:fs');
 const path = require('node:path');
 
 const API = 'https://api.modrinth.com/v2';
-const USER_AGENT = '7ShIkI3/attack-launcher/0.5.2 (github.com/7ShIkI3/attack-launcher)';
+const USER_AGENT = '7ShIkI3/attack-launcher/0.6.0 (github.com/7ShIkI3/attack-launcher)';
 const OUT_DIR = path.join(__dirname, '..', 'src', 'main', 'packs');
 const CDN_HOST = 'cdn.modrinth.com';
 
 /**
  * versionNumber = numéro de version Modrinth exact (version_number) ; version = texte affiché dans le launcher.
  * optional : mod installé seulement si le réglage « Shaders (Iris) » est activé.
- * group: 'pvp' : mod installé seulement si le réglage « Mods PvP (latence) » est activé.
+ * group: 'pvp'      mod installé seulement si le réglage « Mods PvP (latence) » est activé (activé par défaut).
+ * group: 'optifine' mod installé seulement si le réglage « Packs OptiFine » est activé (Fabric, activé par défaut).
+ * group: 'replay'   Replay Mod, seulement si le réglage « Replay Mod » est activé (coupé par défaut).
+ * loader : chargeur interrogé sur Modrinth (fabric par défaut ; forge pour le profil 1.8.9).
  * ModMenu embarque déjà Text Placeholder API (META-INF/jars) : pas besoin de placeholder-api à côté.
  */
 const SPECS = {
+  'forge-1.8.9': {
+    mc: '1.8.9',
+    loader: 'forge',
+    mods: [
+      { slug: 'phosphorlegacyforge', name: 'Phosphor Legacy', versionNumber: '5', version: '5' },
+      { slug: 'client-side-sounds', name: 'Client Side Sounds', versionNumber: '1.1', version: '1.1' },
+      { slug: 'replaymod', name: 'Replay Mod', versionNumber: '1.8.9-2.6.24', version: '2.6.24', group: 'replay' },
+    ],
+  },
   'fabric-1.21.1': {
     mc: '1.21.1',
+    loader: 'fabric',
     mods: [
       { slug: 'fabric-api', name: 'Fabric API', versionNumber: '0.116.17+1.21.1', version: '0.116.17' },
       { slug: 'sodium', name: 'Sodium', versionNumber: 'mc1.21.1-0.8.13-fabric', version: '0.8.13' },
@@ -39,13 +52,20 @@ const SPECS = {
       { slug: 'fast-ip-ping', name: 'Fast IP Ping', versionNumber: 'v1.0.12-mc1.21.1-fabric', version: '1.0.12' },
       { slug: 'serverpingerfixer', name: 'Server Pinger Fixer', versionNumber: '1.0.6', version: '1.0.6' },
       { slug: 'reflex-antilag', name: 'Reflex AntiLag', versionNumber: '1.1.3+fabric-1.21.1', version: '1.1.3' },
+      { slug: 'continuity', name: 'Continuity', versionNumber: '3.0.0+1.21', version: '3.0.0', group: 'optifine' },
+      { slug: 'entitytexturefeatures', name: 'Entity Texture Features', versionNumber: '7.2.6-fabric-1.21', version: '7.2.6', group: 'optifine' },
+      { slug: 'entity-model-features', name: 'Entity Model Features', versionNumber: '3.3.12-fabric-1.21', version: '3.3.12', group: 'optifine' },
       { slug: 'marlow-crystal-optimizer', name: 'Crystal Optimizer', versionNumber: '2.0.0+mc1.20.5-1.21.4', version: '2.0.0', group: 'pvp' },
       { slug: 'anchor-optimizer', name: 'Anchor Optimizer', versionNumber: '1.3.0+1.21-1.21.1', version: '1.3.0', group: 'pvp' },
       { slug: 'walksylib', name: 'WalksyLib', versionNumber: '2.0.4+1.21-1.21.1', version: '2.0.4', group: 'pvp' },
+      { slug: 'betterhitreg', name: 'BetterHitReg', versionNumber: '1.0.7+1.21.1', version: '1.0.7', group: 'pvp' },
+      { slug: 'complete-shield-fixes', name: 'Complete Shield Fixes', versionNumber: '2.1.0+1.21-1.21.1', version: '2.1.0', group: 'pvp' },
+      { slug: 'replaymod', name: 'Replay Mod', versionNumber: '1.21-2.6.28', version: '2.6.28', group: 'replay' },
     ],
   },
   'fabric-26.3': {
     mc: '26.3',
+    loader: 'fabric',
     mods: [
       { slug: 'fabric-api', name: 'Fabric API', versionNumber: '0.164.0+26.3', version: '0.164.0' },
       { slug: 'sodium', name: 'Sodium', versionNumber: 'mc26.3-0.9.2-fabric', version: '0.9.2' },
@@ -62,9 +82,15 @@ const SPECS = {
       { slug: 'fast-ip-ping', name: 'Fast IP Ping', versionNumber: 'v1.0.12-mc26.3', version: '1.0.12' },
       { slug: 'serverpingerfixer', name: 'Server Pinger Fixer', versionNumber: '1.1.1', version: '1.1.1' },
       { slug: 'reflex-antilag', name: 'Reflex AntiLag', versionNumber: '1.1.3+fabric-26.3', version: '1.1.3' },
+      { slug: 'continuity', name: 'Continuity', versionNumber: '3.0.1+26.3', version: '3.0.1', group: 'optifine' },
+      { slug: 'entitytexturefeatures', name: 'Entity Texture Features', versionNumber: '7.2.6-fabric-26.3', version: '7.2.6', group: 'optifine' },
+      { slug: 'entity-model-features', name: 'Entity Model Features', versionNumber: '3.3.12-fabric-26.3', version: '3.3.12', group: 'optifine' },
       { slug: 'marlow-crystal-optimizer', name: 'Crystal Optimizer', versionNumber: '2.0.0+mc26.1-26.3', version: '2.0.0', group: 'pvp' },
       { slug: 'anchor-optimizer', name: 'Anchor Optimizer', versionNumber: '1.3.0+26.3', version: '1.3.0', group: 'pvp' },
       { slug: 'walksylib', name: 'WalksyLib', versionNumber: '2.0.4+26.3', version: '2.0.4', group: 'pvp' },
+      { slug: 'betterhitreg', name: 'BetterHitReg', versionNumber: '1.0.8-BETA+26.3', version: '1.0.8-BETA', group: 'pvp' },
+      { slug: 'complete-shield-fixes', name: 'Complete Shield Fixes', versionNumber: '2.1.0+26.3', version: '2.1.0', group: 'pvp' },
+      { slug: 'replaymod', name: 'Replay Mod', versionNumber: '26.3-2.6.28', version: '2.6.28', group: 'replay' },
     ],
   },
 };
@@ -75,16 +101,30 @@ async function api(pathAndQuery) {
   return response.json();
 }
 
-async function resolveMod(spec, mc) {
-  const query = `?loaders=${encodeURIComponent('["fabric"]')}&game_versions=${encodeURIComponent(JSON.stringify([mc]))}`;
+/** Licence et auteur d'un projet (identique pour toutes ses versions) : lus une fois par projet. */
+const projectInfos = new Map();
+async function projectInfo(slug) {
+  if (!projectInfos.has(slug)) {
+    const project = await api(`/project/${slug}`);
+    const members = await api(`/project/${slug}/members`).catch(() => []);
+    const owner = members.find((m) => m.role === 'Owner') || members[0];
+    const license = project.license && /^[A-Za-z0-9][A-Za-z0-9.+-]{0,63}$/.test(project.license.id || '') ? project.license.id : undefined;
+    const author = owner?.user?.username && owner.user.username.length <= 64 ? owner.user.username : undefined;
+    projectInfos.set(slug, { license, author });
+  }
+  return projectInfos.get(slug);
+}
+
+async function resolveMod(spec, mc, loader) {
+  const query = `?loaders=${encodeURIComponent(JSON.stringify([loader]))}&game_versions=${encodeURIComponent(JSON.stringify([mc]))}`;
   const versions = await api(`/project/${spec.slug}/version${query}`);
   const found = versions.filter((v) => v.version_number === spec.versionNumber);
   if (found.length !== 1) {
     throw new Error(`${spec.slug} ${spec.versionNumber} : ${found.length} version(s) trouvée(s) pour ${mc} (disponibles : ${versions.slice(0, 8).map((v) => v.version_number).join(', ')})`);
   }
   const version = found[0];
-  if (!version.loaders.includes('fabric') || !version.game_versions.includes(mc)) {
-    throw new Error(`${spec.slug} ${spec.versionNumber} : pas compatible Fabric ${mc}`);
+  if (!version.loaders.includes(loader) || !version.game_versions.includes(mc)) {
+    throw new Error(`${spec.slug} ${spec.versionNumber} : pas compatible ${loader} ${mc}`);
   }
   const file = version.files.find((f) => f.primary) || version.files[0];
   const url = new URL(file.url);
@@ -93,6 +133,7 @@ async function resolveMod(spec, mc) {
   if (!/^[0-9a-f]{128}$/.test(file.hashes.sha512 || '') || !/^[0-9a-f]{40}$/.test(file.hashes.sha1 || '')) {
     throw new Error(`${spec.slug} : hash manquant`);
   }
+  const info = await projectInfo(spec.slug);
   const entry = {
     slug: spec.slug,
     name: spec.name,
@@ -106,6 +147,8 @@ async function resolveMod(spec, mc) {
   };
   if (spec.optional) entry.optional = true;
   if (spec.group) entry.group = spec.group;
+  if (info.license) entry.license = info.license;
+  if (info.author) entry.author = info.author;
   return { entry, version };
 }
 
@@ -121,13 +164,13 @@ async function resolveProfile(profileId, spec) {
   const slugs = new Set(spec.mods.map((m) => m.slug));
   const mods = [];
   for (const modSpec of spec.mods) {
-    const { entry, version } = await resolveMod(modSpec, spec.mc);
+    const { entry, version } = await resolveMod(modSpec, spec.mc, spec.loader);
     const missing = await dependencyNotes(version, slugs);
     const note = missing.length > 0 ? `  dépendance requise hors pack : ${missing.join(', ')} (à vérifier : embarquée ?)` : '';
-    console.log(`  ${entry.slug.padEnd(24)} ${entry.version.padEnd(9)} ${version.version_type.padEnd(8)} ${entry.filename} (${entry.size} o)${entry.optional ? ' [optionnel]' : ''}${note}`);
+    console.log(`  ${entry.slug.padEnd(24)} ${entry.version.padEnd(9)} ${version.version_type.padEnd(8)} ${entry.filename} (${entry.size} o) ${entry.license || 'licence ?'}${entry.optional ? ' [optionnel]' : ''}${entry.group ? ` [${entry.group}]` : ''}${note}`);
     mods.push(entry);
   }
-  return { profileId, mc: spec.mc, loader: 'fabric', mods };
+  return { profileId, mc: spec.mc, loader: spec.loader, mods };
 }
 
 async function main() {
@@ -139,7 +182,7 @@ async function main() {
   fs.mkdirSync(OUT_DIR, { recursive: true });
   let differences = 0;
   for (const id of ids) {
-    console.log(`${id} (Minecraft ${SPECS[id].mc})`);
+    console.log(`${id} (Minecraft ${SPECS[id].mc}, ${SPECS[id].loader})`);
     const pack = await resolveProfile(id, SPECS[id]);
     const file = path.join(OUT_DIR, `${id}.json`);
     const text = `${JSON.stringify(pack, null, 2)}\n`;
@@ -155,7 +198,11 @@ async function main() {
   if (differences > 0) process.exit(1);
 }
 
-main().catch((error) => {
-  console.error(`ÉCHEC : ${error.message}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(`ÉCHEC : ${error.message}`);
+    process.exit(1);
+  });
+}
+
+module.exports = { SPECS };

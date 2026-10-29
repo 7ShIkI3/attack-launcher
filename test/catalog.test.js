@@ -19,7 +19,8 @@ test('3 profils : Forge 1.8.9 (inchangé) et Fabric 1.21.1 / 26.3 avec Fabric Lo
   assert.equal(forge.launcherProfileId, 'attack-client');
   assert.equal(forge.name, 'ATTACK Client');
   assert.equal(forge.gameDirName, '.attack');
-  assert.equal(forge.pack, null);
+  assert.equal(forge.pack, 'forge-1.8.9', 'le profil 1.8.9 a lui aussi un pack de mods');
+  assert.equal(forge.optifine, true, 'et l’OptiFine du joueur');
 
   for (const mc of ['1.21.1', '26.3']) {
     const p = catalog.get(`fabric-${mc}`);
@@ -94,7 +95,10 @@ test('vue pour l’interface : ni fonction ni expression régulière', () => {
     assert.ok(!('attackJar' in view));
   }
   assert.equal(catalog.view(catalog.get('fabric-1.21.1')).hasPack, true);
-  assert.equal(catalog.view(catalog.get('forge-1.8.9')).hasPack, false);
+  assert.equal(catalog.view(catalog.get('forge-1.8.9')).hasPack, true);
+  assert.equal(catalog.view(catalog.get('forge-1.8.9')).hasOptifine, true);
+  assert.equal(catalog.view(catalog.get('fabric-1.21.1')).hasOptifine, false, 'OptiFine : profil 1.8.9 seulement');
+  assert.equal(catalog.hasOptifine(catalog.get('fabric-26.3')), false);
 });
 
 test('dossiers de jeu par défaut : .attack pour Forge, .attack/profiles/<profil> pour Fabric', () => {

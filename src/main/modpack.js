@@ -1,5 +1,5 @@
 'use strict';
-// Pack de mods d'un profil Fabric : liste figée (src/main/packs/<profil>.json, générée par scripts/resolve-pack.js).
+// Pack de mods d'un profil (Fabric 1.21.1 / 26.3, Forge 1.8.9) : liste figée (src/main/packs/<profil>.json, générée par scripts/resolve-pack.js).
 // Le launcher ne contacte jamais l'API Modrinth : il télécharge seulement ces URL cdn.modrinth.com, chacune vérifiée
 // par SHA-512 et taille. Les jars du pack sont suivis dans le fichier d'état : ceux qui sortent du pack sont supprimés,
 // ceux que le joueur a ajoutés lui-même ne sont jamais touchés.
@@ -15,7 +15,15 @@ const PACK_ID = /^[a-z0-9][a-z0-9.-]{0,63}$/;
 const SLUG = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const FILENAME = /^[\w.+-]+\.jar$/;
 const MAX_JAR = 200 * 1024 * 1024;
-const GROUPS = ['pvp']; // groupes de mods désactivables (réglage « Mods PvP (latence) »)
+/**
+ * Groupes de mods désactivables, chacun avec son réglage par profil : pvp (« Mods PvP (latence) », activé par défaut),
+ * optifine (« Packs OptiFine » : Continuity, Entity Texture / Model Features, activé par défaut) et
+ * replay (« Replay Mod », coupé par défaut). Les optionnels (Iris) suivent le réglage « Shaders ».
+ */
+const GROUPS = ['pvp', 'optifine', 'replay'];
+/** Valeur de chaque groupe quand rien n'est précisé. */
+const GROUP_DEFAULTS = { pvp: true, optifine: true, replay: false };
+const LICENSE = /^[A-Za-z0-9][A-Za-z0-9.+-]{0,63}$/; // identifiant de licence Modrinth (SPDX ou LicenseRef-…)
 
 /**
  * Valide un pack et renvoie sa version nettoyée (seuls les champs connus). `profile` : entrée du catalogue.
@@ -54,6 +62,10 @@ function validatePack(pack, profile) {
       throw new Error(`Pack de mods : l'adresse de ${slug} ne désigne pas ${filename}`);
     }
     if (raw.group !== undefined && !GROUPS.includes(raw.group)) throw new Error(`Pack de mods : groupe invalide pour ${slug}`);
+    if (raw.license !== undefined && (typeof raw.license !== 'string' || !LICENSE.test(raw.license))) throw new Error(`Pack de mods : licence invalide pour ${slug}`);
+    if (raw.author !== undefined && (typeof raw.author !== 'string' || raw.author === '' || raw.author.length > 64)) {
+      throw new Error(`Pack de mods : auteur invalide pour ${slug}`);
+    }
     if (slugs.has(slug) || names.has(filename.toLowerCase())) throw new Error(`Pack de mods : doublon (${slug})`);
     slugs.add(slug);
     names.add(filename.toLowerCase());
@@ -61,12 +73,14 @@ function validatePack(pack, profile) {
     if (sha1) mod.sha1 = sha1;
     if (raw.optional === true) mod.optional = true;
     if (raw.group !== undefined) mod.group = raw.group;
+    if (raw.license !== undefined) mod.license = raw.license;
+    if (raw.author !== undefined) mod.author = raw.author;
     return mod;
   });
   return { profileId: pack.profileId, mc: pack.mc, loader: pack.loader, mods };
 }
 
-/** Pack figé d'un profil (null si le profil n'en a pas, comme Forge 1.8.9). */
+/** Pack figé d'un profil (null si le profil n'en a pas). */
 function loadPack(profile, dir = PACKS_DIR) {
   if (!profile.pack) return null;
   if (!PACK_ID.test(profile.pack)) throw new Error(`Identifiant de pack invalide : ${profile.pack}`);
@@ -74,18 +88,27 @@ function loadPack(profile, dir = PACKS_DIR) {
   return validatePack(JSON.parse(fs.readFileSync(file, 'utf8')), profile);
 }
 
+/** Valeur d'un groupe dans les options d'installation { pvp, optifine, replay } (défaut du groupe si l'option manque). */
+function groupEnabled(group, options = {}) {
+  const value = options[group];
+  return typeof value === 'boolean' ? value : GROUP_DEFAULTS[group];
+}
+
 /**
- * Mods à installer : tous ceux du pack, sauf les optionnels (Iris) quand les shaders sont désactivés et ceux du groupe
- * PvP (Crystal Optimizer, Anchor Optimizer, WalksyLib) quand les mods PvP sont désactivés (activés par défaut).
+ * Mods à installer : tous ceux du pack, sauf les optionnels (Iris) quand les shaders sont désactivés et ceux d'un groupe
+ * désactivé : pvp (Crystal Optimizer, Anchor Optimizer, WalksyLib, BetterHitReg…), optifine (Continuity, ETF, EMF) ou
+ * replay (Replay Mod). Par défaut pvp et optifine sont activés, replay est coupé.
  */
-function selectedMods(pack, { shaders = false, pvp = true } = {}) {
-  return pack.mods.filter((mod) => (!mod.optional || shaders) && (mod.group !== 'pvp' || pvp));
+function selectedMods(pack, { shaders = false, ...groups } = {}) {
+  return pack.mods.filter((mod) => (!mod.optional || shaders) && (!mod.group || groupEnabled(mod.group, groups)));
 }
 
 /**
  * Installe le pack dans <gameDir>/mods. options :
  *   shaders        installe aussi les mods optionnels
  *   pvp            installe les mods du groupe PvP (vrai par défaut)
+ *   optifine       installe les mods du groupe « packs OptiFine » (vrai par défaut)
+ *   replay         installe Replay Mod (faux par défaut)
  *   previousManaged  noms de fichiers installés par un pack précédent (fichier d'état) : supprimés s'ils sortent du pack
  *   protectedNames noms jamais supprimés (le jar ATTACK)
  *   net, report    options réseau et rapport de progression ('pack', fait, total, message)
@@ -95,8 +118,8 @@ function selectedMods(pack, { shaders = false, pvp = true } = {}) {
  * `managed` et est listé dans `removeFailed`.
  */
 async function installPack(gameDir, pack, options = {}) {
-  const { shaders = false, pvp = true, previousManaged = [], protectedNames = [], net = {}, report } = options;
-  const mods = selectedMods(pack, { shaders, pvp });
+  const { shaders = false, pvp, optifine, replay, previousManaged = [], protectedNames = [], net = {}, report } = options;
+  const mods = selectedMods(pack, { shaders, pvp, optifine, replay });
   const modsDir = path.join(gameDir, 'mods');
   await fsp.mkdir(modsDir, { recursive: true });
   let done = 0;
@@ -147,9 +170,12 @@ async function installPack(gameDir, pack, options = {}) {
   };
 }
 
-/** Vue pour l'interface : nom, version, optionnel, groupe (pas d'URL ni de hash). */
+/** Vue pour l'interface : nom, version, optionnel, groupe, licence et auteur (pas d'URL ni de hash). */
 function view(pack) {
-  return pack ? pack.mods.map((mod) => ({ slug: mod.slug, name: mod.name, version: mod.version, optional: Boolean(mod.optional), group: mod.group || null })) : [];
+  return pack ? pack.mods.map((mod) => ({
+    slug: mod.slug, name: mod.name, version: mod.version, optional: Boolean(mod.optional), group: mod.group || null,
+    license: mod.license || null, author: mod.author || null,
+  })) : [];
 }
 
-module.exports = { PACKS_DIR, validatePack, loadPack, selectedMods, installPack, view };
+module.exports = { PACKS_DIR, GROUPS, GROUP_DEFAULTS, validatePack, loadPack, groupEnabled, selectedMods, installPack, view };

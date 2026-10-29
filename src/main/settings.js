@@ -2,9 +2,11 @@
 // Réglages du launcher (settings.json dans le dossier de données de l'app). Toute valeur venant de l'interface
 // passe par sanitize() : type, bornes et chemins absolus.
 // Réglages globaux (mémoire, langue, mode développeur, ID client Azure, profil choisi) + réglages PAR PROFIL
-// (dossier de jeu, Java, arguments Java ajoutés, dossier des jars de développement, shaders, mods PvP) rangés dans `profiles`.
-// Les clés à plat gameDir / javaPath / devJarDir / shaders / pvpMods d'un fichier ou d'une modification s'appliquent au profil
-// courant : c'est ce qui migre l'ancien fichier (réglages globaux) vers le profil forge-1.8.9.
+// (dossier de jeu, Java, arguments Java ajoutés, dossier des jars de développement, shaders, groupes de mods du pack : mods PvP,
+// packs OptiFine, Replay Mod, et pour le profil 1.8.9 l'OptiFine du joueur) rangés dans `profiles`.
+// Les clés à plat gameDir / javaPath / jvmArgs / devJarDir / shaders / pvpMods / optifinePacks / replayMod / optifine / optifineJar
+// d'un fichier ou d'une modification s'appliquent au profil courant : c'est ce qui migre l'ancien fichier (réglages
+// globaux) vers le profil forge-1.8.9.
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
@@ -41,7 +43,13 @@ function profileDefaults(env, profile) {
   const values = { gameDir: defaultGameDir(env, profile), javaPath: '', jvmArgs: '', devJarDir: defaultDevJarDir(env, profile) };
   if (catalog.isFabric(profile)) {
     values.shaders = false;
-    values.pvpMods = true; // mods PvP anti-latence du pack (Crystal Optimizer, Anchor Optimizer)
+    values.pvpMods = true; // mods PvP anti-latence du pack (Crystal Optimizer, Anchor Optimizer, BetterHitReg…)
+    values.optifinePacks = true; // Continuity, Entity Texture Features, Entity Model Features : les packs OptiFine marchent sans OptiFine
+  }
+  values.replayMod = false; // Replay Mod : coupé par défaut (gros jar, usage de niche)
+  if (catalog.hasOptifine(profile)) {
+    values.optifine = true; // utilise la copie d'OptiFine du joueur si elle existe (jamais téléchargée)
+    values.optifineJar = ''; // fichier choisi par le joueur ; vide = recherche automatique dans .minecraft
   }
   return values;
 }
@@ -95,10 +103,20 @@ function sanitizeProfile(input, base, profile, otherDirs = []) {
   if ('devJarDir' in input) s.devJarDir = cleanPath(input.devJarDir, base.devJarDir);
   if (catalog.isFabric(profile) && typeof input.shaders === 'boolean') s.shaders = input.shaders;
   if (catalog.isFabric(profile) && typeof input.pvpMods === 'boolean') s.pvpMods = input.pvpMods;
+  if (catalog.isFabric(profile) && typeof input.optifinePacks === 'boolean') s.optifinePacks = input.optifinePacks;
+  if (typeof input.replayMod === 'boolean') s.replayMod = input.replayMod;
+  if (catalog.hasOptifine(profile)) {
+    if (typeof input.optifine === 'boolean') s.optifine = input.optifine;
+    if ('optifineJar' in input) {
+      // chemin absolu d'un .jar (vide = recherche automatique) ; autre chose : ancienne valeur gardée
+      const jar = cleanPath(input.optifineJar, base.optifineJar || '', { allowEmpty: true });
+      s.optifineJar = jar === '' || /\.jar$/i.test(jar) ? jar : base.optifineJar || '';
+    }
+  }
   return s;
 }
 
-const PROFILE_KEYS = ['gameDir', 'javaPath', 'jvmArgs', 'devJarDir', 'shaders', 'pvpMods'];
+const PROFILE_KEYS = ['gameDir', 'javaPath', 'jvmArgs', 'devJarDir', 'shaders', 'pvpMods', 'optifinePacks', 'replayMod', 'optifine', 'optifineJar'];
 
 /** Fusionne `input` sur `base` en ne gardant que des valeurs valides. */
 function sanitize(input, base = defaults()) {
@@ -152,7 +170,8 @@ function sanitize(input, base = defaults()) {
 }
 
 /**
- * Réglages effectifs d'un profil (le courant par défaut), à plat : globaux + gameDir, javaPath, jvmArgs, devJarDir, shaders, pvpMods.
+ * Réglages effectifs d'un profil (le courant par défaut), à plat : globaux + gameDir, javaPath, jvmArgs, devJarDir, shaders,
+ * pvpMods, optifinePacks, replayMod, optifine et optifineJar.
  * C'est cette vue que reçoivent l'installateur, le lancement et l'interface.
  */
 function forProfile(settings, profileId = settings.profileId) {
@@ -170,6 +189,10 @@ function forProfile(settings, profileId = settings.profileId) {
     devJarDir: own.devJarDir,
     shaders: Boolean(own.shaders),
     pvpMods: own.pvpMods !== false, // activé par défaut (sans effet hors profils Fabric)
+    optifinePacks: own.optifinePacks !== false, // activé par défaut (sans effet hors profils Fabric)
+    replayMod: Boolean(own.replayMod), // coupé par défaut
+    optifine: own.optifine !== false, // activé par défaut : la copie d'OptiFine du joueur est utilisée si elle existe (profil 1.8.9)
+    optifineJar: typeof own.optifineJar === 'string' ? own.optifineJar : '',
   };
 }
 

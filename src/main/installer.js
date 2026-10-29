@@ -1,6 +1,7 @@
 'use strict';
 // Installation complète d'un profil : Minecraft (JSON, jar, bibliothèques, assets), son chargeur de mods (Forge 1.8.9 ou
-// Fabric Loader, sans jamais exécuter d'installateur), le pack de mods Fabric figé et les réglages vidéo de départ, le jar
+// Fabric Loader, sans jamais exécuter d'installateur), le pack de mods figé du profil, la copie d'OptiFine du joueur (1.8.9)
+// et les réglages de départ d'options.txt (vidéo en Fabric, langue partout), le jar
 // ATTACK dans le dossier de jeu séparé du profil, puis le profil du launcher officiel.
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
@@ -13,6 +14,7 @@ const forge = require('./forge');
 const fabric = require('./fabric');
 const gameoptions = require('./gameoptions');
 const modpack = require('./modpack');
+const optifine = require('./optifine');
 const mod = require('./mod');
 const profiles = require('./profiles');
 const { mavenPath, safeJoin } = require('./maven');
@@ -21,8 +23,9 @@ const { mavenPath, safeJoin } = require('./maven');
 const STEPS_FORGE = [
   { id: 'minecraft', weight: 8 },
   { id: 'libraries', weight: 10 },
-  { id: 'assets', weight: 57 },
+  { id: 'assets', weight: 53 },
   { id: 'forge', weight: 12 },
+  { id: 'pack', weight: 4 },
   { id: 'mod', weight: 8 },
   { id: 'profile', weight: 5 },
 ];
@@ -244,20 +247,36 @@ async function writeState(gameDir, state) {
 }
 
 /**
+ * Groupes du pack voulus par les réglages d'un profil : { shaders, pvp, optifine, replay } (pvp et optifine activés par
+ * défaut, replay coupé). Seuls les groupes que le pack contient comptent.
+ */
+function packOptions(settings = {}) {
+  return {
+    shaders: Boolean(settings.shaders),
+    pvp: settings.pvpMods !== false,
+    optifine: settings.optifinePacks !== false,
+    replay: Boolean(settings.replayMod),
+  };
+}
+
+/**
  * Pack de mods du profil : télécharge les jars figés, supprime ceux d'un ancien pack qui n'en font plus partie
  * (jamais un jar ajouté par le joueur) et garde la liste dans l'état.
  */
 async function installPack(gameDir, profile, settings, report, net, pack = modpack.loadPack(profile)) {
   const previous = await readState(gameDir);
+  const options = packOptions(settings);
   const result = await modpack.installPack(gameDir, pack, {
-    shaders: Boolean(settings.shaders),
-    pvp: settings.pvpMods !== false,
+    ...options,
     previousManaged: previous?.pack?.managed || [],
     protectedNames: [profile.modFile],
     net,
     report,
   });
-  const info = { id: pack.profileId, shaders: Boolean(settings.shaders), pvpMods: settings.pvpMods !== false, managed: result.managed, mods: result.mods };
+  const info = {
+    id: pack.profileId, shaders: options.shaders, pvpMods: options.pvp, optifinePacks: options.optifine, replayMod: options.replay,
+    managed: result.managed, mods: result.mods,
+  };
   // enregistré tout de suite : si la suite échoue, la liste des jars gérés reste exacte
   await writeState(gameDir, { ...(previous || {}), pack: info });
   if (result.removeFailed.length > 0) {
@@ -279,26 +298,60 @@ async function journal(gameDir, message) {
 }
 
 /**
- * Réglages vidéo de départ (options.txt, voir gameoptions.js) : appliqués une seule fois par dossier de jeu, ce que le drapeau
- * `gameOptions` du fichier d'état enregistre. Un échec (fichier illisible ou verrouillé) est journalisé sans faire échouer
- * l'installation ; le drapeau n'est alors pas posé et la prochaine installation réessaie.
+ * Réglages de départ d'options.txt (voir gameoptions.js), par étapes : 1 = vidéo (profils Fabric), 2 = langue du launcher (tous
+ * les profils). Chaque étape est appliquée une seule fois par dossier de jeu : le drapeau `gameOptions` du fichier d'état garde la
+ * dernière faite (un dossier déjà à 1 ne refait pas l'étape 1). Un échec (fichier illisible ou verrouillé) est journalisé sans faire
+ * échouer l'installation ; le drapeau n'est alors pas posé et la prochaine installation réessaie.
+ * `profile` : entrée du catalogue (Fabric = étape vidéo ; Forge 1.8.9 = langue en écriture « fr_FR »), Fabric par défaut ;
+ * `lang` : langue du launcher ('fr' | 'en').
  * Renvoie { action: 'created' | 'updated' | 'unchanged' | 'skipped' | 'error', changed, error? }.
  */
-async function installGameOptions(gameDir) {
+async function installGameOptions(gameDir, profile = null, lang = null) {
   try {
     const state = await readState(gameDir);
     if (state?.gameOptions >= gameoptions.VERSION) return { action: 'skipped', changed: [] };
-    const result = await gameoptions.apply(gameDir);
+    const fabric = !profile || catalog.isFabric(profile);
+    const result = await gameoptions.apply(gameDir, { from: Number(state?.gameOptions) || 0, video: fabric, lang, legacy: !fabric });
     if (result.action === 'error') {
-      await journal(gameDir, `options.txt : réglages vidéo de départ non appliqués (${result.error})`);
+      await journal(gameDir, `options.txt : réglages de départ non appliqués (${result.error})`);
       return result;
     }
     await writeState(gameDir, { ...(state || {}), gameOptions: gameoptions.VERSION });
-    if (result.changed.length > 0) await journal(gameDir, `options.txt : réglages vidéo de départ appliqués (${result.action} : ${result.changed.join(', ')})`);
+    if (result.changed.length > 0) await journal(gameDir, `options.txt : réglages de départ appliqués (${result.action} : ${result.changed.join(', ')})`);
     return result;
   } catch (error) {
-    await journal(gameDir, `options.txt : réglages vidéo de départ non appliqués (${error.message})`);
+    await journal(gameDir, `options.txt : réglages de départ non appliqués (${error.message})`);
     return { action: 'error', changed: [], error: error.message };
+  }
+}
+
+/**
+ * OptiFine (profil 1.8.9) : copie dans <gameDir>/mods la copie d'OptiFine que le joueur possède déjà (jamais téléchargée), ou
+ * retire celle que le launcher y avait copiée quand l'option est coupée (voir optifine.js). Le jar copié est suivi dans l'état
+ * (`optifine`). Un échec est journalisé sans faire échouer l'installation (le jeu marche sans OptiFine) : l'état n'est pas
+ * modifié et la prochaine installation réessaie.
+ * Renvoie { action: 'copied' | 'kept' | 'removed' | 'own' | 'missing' | 'disabled' | 'error', name?, source?, error? }.
+ */
+async function installOptifine(gameDir, minecraftDir, settings = {}) {
+  try {
+    const state = await readState(gameDir);
+    const result = await optifine.apply({
+      minecraftDir,
+      gameDir,
+      enabled: settings.optifine !== false,
+      chosen: settings.optifineJar || '',
+      tracked: state?.optifine || null,
+    });
+    const next = { ...(state || {}) };
+    if (result.info) next.optifine = result.info;
+    else delete next.optifine;
+    if (JSON.stringify(next.optifine) !== JSON.stringify(state?.optifine)) await writeState(gameDir, next);
+    if (result.action === 'copied') await journal(gameDir, `OptiFine : copie de ${result.info.file} (${result.info.source}) dans mods`);
+    else if (result.action === 'removed') await journal(gameDir, 'OptiFine : copie retirée de mods (option coupée ou OptiFine du joueur déjà présent)');
+    return { action: result.action, name: result.info?.file || result.view.name, source: result.view.source };
+  } catch (error) {
+    await journal(gameDir, `OptiFine : non appliqué (${error.message})`);
+    return { action: 'error', error: error.message };
   }
 }
 
@@ -358,15 +411,17 @@ async function installProfile(mcDir, gameDir, settings, icon, report, profile = 
 
 /**
  * L'état lu dans un dossier de jeu désigne-t-il un autre profil que `profile` ? Un état sans profileId (ancien launcher,
- * installation interrompue) se reconnaît à ses champs : `forge` vient du profil 1.8.9, `pack` d'un profil Fabric
- * (`pack.id` est l'identifiant de ce profil).
+ * installation interrompue) se reconnaît à ses champs : `pack.id` est l'identifiant du profil qui a posé le pack (Forge 1.8.9
+ * comme Fabric), `forge` vient du profil 1.8.9 ; un `pack` sans identifiant date d'avant les packs Forge : il vient d'un profil Fabric.
  */
 function gameDirConflict(state, profile) {
   if (!state || typeof state !== 'object') return false;
   if (typeof state.profileId === 'string') return state.profileId !== profile.id;
-  const fabricState = Boolean(state.pack) && typeof state.pack === 'object';
-  if (!catalog.isFabric(profile)) return fabricState;
-  return Boolean(state.forge) || (fabricState && Boolean(state.pack.id) && state.pack.id !== profile.id);
+  const pack = state.pack && typeof state.pack === 'object' ? state.pack : null;
+  if (pack && typeof pack.id === 'string' && pack.id !== '') return pack.id !== profile.id;
+  if (state.forge) return profile.loader.type !== 'forge';
+  if (pack) return !catalog.isFabric(profile);
+  return false;
 }
 
 /**
@@ -390,15 +445,16 @@ async function install(options) {
   const libraries = await installLibraries(minecraftDir, versionJson, report, net, env);
   const assets = await installAssets(minecraftDir, versionJson, report, net);
   let loaderLibraries;
-  let packResult = null;
-  let gameOptions;
+  let optifineResult;
   if (catalog.isFabric(profile)) {
     loaderLibraries = (await installFabric(minecraftDir, profile, report, net)).libraries;
-    packResult = await installPack(gameDir, profile, settings, report, net);
-    gameOptions = await installGameOptions(gameDir);
   } else {
     loaderLibraries = (await installForge(minecraftDir, report, net, profile)).libraries;
   }
+  // pack de mods du profil (Fabric comme Forge 1.8.9), puis OptiFine du joueur (1.8.9) et réglages de départ d'options.txt
+  const packResult = profile.pack ? await installPack(gameDir, profile, settings, report, net) : null;
+  if (catalog.hasOptifine(profile)) optifineResult = await installOptifine(gameDir, minecraftDir, settings);
+  const gameOptions = await installGameOptions(gameDir, profile, settings.lang);
   const modInfo = await installMod(gameDir, settings, report, net, profile, options.appVersion);
   await installProfile(minecraftDir, gameDir, settings, icon, report, profile);
 
@@ -421,19 +477,23 @@ async function install(options) {
     loaderLibraries,
     forgeLibraries: profile.loader.type === 'forge' ? loaderLibraries : undefined,
     pack: packResult ? { ...packResult.info, downloaded: packResult.downloaded, skipped: packResult.skipped, removed: packResult.removed } : undefined,
+    optifine: optifineResult,
     gameOptions,
   };
 }
 
-/** Le pack du profil est-il complet dans le dossier de jeu ? (fichiers présents, taille exacte ; pas de jar en trop) */
-async function packStatus(gameDir, profile, shaders, pvpMods, state) {
+/**
+ * Le pack du profil est-il complet dans le dossier de jeu ? (fichiers présents, taille exacte ; pas de jar en trop)
+ * `options` : { shaders, pvp, optifine, replay } (voir packOptions).
+ */
+async function packStatus(gameDir, profile, options, state) {
   let pack;
   try {
     pack = modpack.loadPack(profile);
   } catch {
     return false;
   }
-  const selected = modpack.selectedMods(pack, { shaders, pvp: pvpMods });
+  const selected = modpack.selectedMods(pack, options);
   const wanted = new Set(selected.map((m) => m.filename));
   for (const m of selected) {
     try {
@@ -442,12 +502,19 @@ async function packStatus(gameDir, profile, shaders, pvpMods, state) {
       return false;
     }
   }
-  // un mod optionnel ou PvP désactivé depuis (Iris, Crystal Optimizer…) mais encore installé : le pack est à mettre à jour
+  // un mod optionnel ou d'un groupe désactivé depuis (Iris, Crystal Optimizer, Replay Mod…) mais encore installé : le pack est à mettre à jour
   return !(state?.pack?.managed || []).some((name) => !wanted.has(name) && fs.existsSync(path.join(gameDir, 'mods', name)));
 }
 
-/** État rapide (présence des fichiers, sans hash) pour l'écran d'accueil. `profile` : catalogue, Forge 1.8.9 par défaut. */
-async function status({ minecraftDir, gameDir, profile: profileOption, shaders = false, pvpMods = true }) {
+/**
+ * État rapide (présence des fichiers, sans hash) pour l'écran d'accueil. `profile` : catalogue, Forge 1.8.9 par défaut.
+ * Réglages du profil : shaders, pvpMods, optifinePacks, replayMod (groupes du pack) ; optifine et optifineJar (profil 1.8.9 :
+ * la copie d'OptiFine du joueur, voir optifine.js). Le résultat contient `optifine` pour ce profil.
+ */
+async function status({
+  minecraftDir, gameDir, profile: profileOption, shaders = false, pvpMods = true, optifinePacks = true, replayMod = false,
+  optifine: optifineEnabled = true, optifineJar = '',
+}) {
   const profile = resolveProfile(profileOption);
   const has = (...parts) => fs.existsSync(path.join(...parts));
   const mc = profile.mc;
@@ -474,7 +541,7 @@ async function status({ minecraftDir, gameDir, profile: profileOption, shaders =
     minecraft: has(minecraftDir, 'versions', mc, `${mc}.json`) && has(minecraftDir, 'versions', mc, `${mc}.jar`)
       && Boolean(assetIndex) && /^[\w.-]+$/.test(assetIndex) && has(minecraftDir, 'assets', 'indexes', `${assetIndex}.json`),
     loader: (await isJsonFile(path.join(minecraftDir, 'versions', vid, `${vid}.json`))) && has(minecraftDir, 'libraries', ...loaderLibrary.split('/')),
-    pack: profile.pack ? await packStatus(gameDir, profile, shaders, pvpMods, state) : null,
+    pack: profile.pack ? await packStatus(gameDir, profile, packOptions({ shaders, pvpMods, optifinePacks, replayMod }), state) : null,
     mod: has(gameDir, 'mods', profile.modFile),
     profile: launcherProfile,
     profileError,
@@ -482,13 +549,17 @@ async function status({ minecraftDir, gameDir, profile: profileOption, shaders =
     modSource: state?.mod?.source || null,
     installedAt: state?.installedAt || null,
   };
+  // OptiFine du joueur (1.8.9) : à copier, à remplacer ou à retirer = l'installation a quelque chose à faire
+  if (catalog.hasOptifine(profile)) {
+    result.optifine = await optifine.inspect({ minecraftDir, gameDir, enabled: optifineEnabled, chosen: optifineJar, tracked: state?.optifine || null });
+  }
   // nom historique du chargeur (forge / fabric) à côté de `loader`
   result[profile.loader.type] = result.loader;
-  result.installed = result.minecraft && result.loader && result.pack !== false && result.mod && result.profile;
+  result.installed = result.minecraft && result.loader && result.pack !== false && result.mod && result.profile && !result.optifine?.pending;
   return result;
 }
 
 module.exports = {
   STEPS, STEPS_FORGE, STEPS_FABRIC, stepsFor, InstallError, install, status, progressReporter,
-  installMinecraft, installForge, installFabric, installPack, installGameOptions, installMod, readState, gameDirConflict,
+  installMinecraft, installForge, installFabric, installPack, installGameOptions, installOptifine, installMod, readState, gameDirConflict, packOptions,
 };
