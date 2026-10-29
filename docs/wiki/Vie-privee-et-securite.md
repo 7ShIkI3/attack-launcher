@@ -15,6 +15,14 @@ vérifiée dans le code ; les références sont de la forme `fichier:ligne` (ét
   de Modrinth (`cdn.modrinth.com`) et GitHub** : la liste est fixe et codée en dur.
 - Il **ne contacte pas l'API ATTACK** ni **l'API de Modrinth** (aucune des deux n'est dans la liste des hôtes autorisés) :
   les mods du pack sont des adresses et des hash écrits dans le dépôt.
+- Il **ne télécharge jamais OptiFine** (sa licence l'interdit) : il copie seulement la copie que tu as récupérée toi-même, après
+  l'avoir validée ; le lien optifine.net s'ouvre dans ton navigateur, le launcher n'y fait aucune requête.
+- **WalksyLib** (mod PvP du pack Fabric) interroge `api.modrinth.com` au démarrage du jeu pour chercher des mises à jour, avec
+  l'empreinte de chaque mod : le launcher écrit une fois sa configuration de départ pour couper cette vérification
+  (`config/WalksyLib/walksylib.json`, clé « Notify For New Updates » à `false`), seulement si ce fichier n'existe pas. Tu peux la
+  rallumer dans l'écran de réglages de WalksyLib. WalksyLib recopie ce fichier dans son fichier partagé
+  `%APPDATA%\WalksyLib\walksylib.json` s'il n'y a pas encore de réglage d'apparence : un réglage déjà là n'est jamais changé.
+  Mod Menu et Crystal Optimizer ont chacun leur propre vérification de mises à jour, laissée telle quelle.
 - Il ne voit **jamais ton mot de passe** Microsoft.
 - Le jeton Minecraft reste **en mémoire** ; le jeton de renouvellement est **chiffré par Windows**.
 - Tout fichier téléchargé est **vérifié par un hash** ; la page d'interface **n'a pas le droit de faire de requête réseau**.

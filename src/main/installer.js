@@ -356,6 +356,40 @@ async function installOptifine(gameDir, minecraftDir, settings = {}) {
 }
 
 /**
+ * Configuration que WalksyLib lit à son premier démarrage (config/WalksyLib/walksylib.json, format 2) : sa vérification de mises à
+ * jour (« Notify For New Updates », Appearance > Notifications) est coupée. Sans cela, WalksyLib interroge api.modrinth.com au
+ * démarrage avec l'empreinte de chaque mod, puis propose d'installer des jars dans mods : le pack est figé, vérifié par SHA-512,
+ * et un jar ajouté à côté ferait deux versions du même mod. Le joueur peut la rallumer dans l'écran de réglages de WalksyLib.
+ * Vérifié avec WalksyLib 2.0.4 en 26.3 (le mod relit ce fichier au premier démarrage et en tire son fichier partagé).
+ */
+const WALKSYLIB_CONFIG = { format: 2, categories: { Appearance: { groups: { Notifications: { options: { 'Notify For New Updates': false } } } } } };
+
+/**
+ * Écrit la configuration de WalksyLib UNE SEULE FOIS par dossier de jeu (drapeau `walksylibConfig` de l'état), et seulement si le
+ * fichier n'existe pas : un fichier déjà là, le choix du joueur, n'est jamais modifié. Un échec est journalisé sans faire échouer
+ * l'installation. Renvoie { action: 'written' | 'exists' | 'skipped' | 'error', error? }.
+ */
+async function installWalksyLibConfig(gameDir) {
+  try {
+    const state = await readState(gameDir);
+    if (state?.walksylibConfig) return { action: 'skipped' };
+    const file = path.join(gameDir, 'config', 'WalksyLib', 'walksylib.json');
+    let action = 'exists';
+    if (!fs.existsSync(file)) {
+      await fsp.mkdir(path.dirname(file), { recursive: true });
+      await http.writeFileAtomic(file, Buffer.from(`${JSON.stringify(WALKSYLIB_CONFIG, null, 2)}\n`));
+      action = 'written';
+      await journal(gameDir, 'WalksyLib : vérification de mises à jour coupée (config/WalksyLib/walksylib.json)');
+    }
+    await writeState(gameDir, { ...(state || {}), walksylibConfig: true });
+    return { action };
+  } catch (error) {
+    await journal(gameDir, `WalksyLib : configuration non écrite (${error.message})`);
+    return { action: 'error', error: error.message };
+  }
+}
+
+/**
  * Jar ATTACK -> <gameDir>/mods/<profile.modFile>, depuis la release GitHub (jar du profil, choisi par sa règle exacte)
  * ou le build local (mode développeur). `appVersion` : version du launcher ; une préversion (0.5.0-beta.1) prend la
  * dernière release publiée, préversion comprise, au lieu de la dernière release stable.
@@ -453,6 +487,8 @@ async function install(options) {
   }
   // pack de mods du profil (Fabric comme Forge 1.8.9), puis OptiFine du joueur (1.8.9) et réglages de départ d'options.txt
   const packResult = profile.pack ? await installPack(gameDir, profile, settings, report, net) : null;
+  // WalksyLib (groupe PvP) : sa vérification de mises à jour est coupée avant son premier démarrage
+  const walksylib = packResult?.info.mods.some((m) => m.slug === 'walksylib') ? await installWalksyLibConfig(gameDir) : undefined;
   if (catalog.hasOptifine(profile)) optifineResult = await installOptifine(gameDir, minecraftDir, settings);
   const gameOptions = await installGameOptions(gameDir, profile, settings.lang);
   const modInfo = await installMod(gameDir, settings, report, net, profile, options.appVersion);
@@ -478,6 +514,7 @@ async function install(options) {
     forgeLibraries: profile.loader.type === 'forge' ? loaderLibraries : undefined,
     pack: packResult ? { ...packResult.info, downloaded: packResult.downloaded, skipped: packResult.skipped, removed: packResult.removed } : undefined,
     optifine: optifineResult,
+    walksylib,
     gameOptions,
   };
 }
@@ -579,5 +616,5 @@ async function status({
 
 module.exports = {
   STEPS, STEPS_FORGE, STEPS_FABRIC, stepsFor, InstallError, install, status, progressReporter,
-  installMinecraft, installForge, installFabric, installPack, installGameOptions, installOptifine, installMod, readState, gameDirConflict, packOptions,
+  installMinecraft, installForge, installFabric, installPack, installGameOptions, installOptifine, installWalksyLibConfig, WALKSYLIB_CONFIG, installMod, readState, gameDirConflict, packOptions,
 };

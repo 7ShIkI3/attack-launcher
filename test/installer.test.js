@@ -513,3 +513,53 @@ test('pack : jar à retirer verrouillé = il reste suivi, erreur PACK_CLEANUP ap
   assert.deepEqual(mods(dir), ['sodium-2.jar']);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+// ---------- WalksyLib : vérification de mises à jour coupée ----------
+
+test('WalksyLib : config/WalksyLib/walksylib.json écrit une seule fois, avec la clé « Notify For New Updates » à false', async () => {
+  const dir = tempDir();
+  const file = path.join(dir, 'config', 'WalksyLib', 'walksylib.json');
+  fs.writeFileSync(path.join(dir, 'attack-launcher.json'), JSON.stringify({ pack: { id: 'fabric-26.3', managed: ['a.jar'] }, mod: { version: '3.4.2' } }));
+  const first = await installer.installWalksyLibConfig(dir);
+  assert.deepEqual(first, { action: 'written' });
+  const written = JSON.parse(fs.readFileSync(file, 'utf8'));
+  // format lu par WalksyLib 2.0.4 : la valeur d'une option simple est écrite telle quelle (pas { value: … })
+  assert.deepEqual(written, { format: 2, categories: { Appearance: { groups: { Notifications: { options: { 'Notify For New Updates': false } } } } } });
+  const state = JSON.parse(fs.readFileSync(path.join(dir, 'attack-launcher.json'), 'utf8'));
+  assert.equal(state.walksylibConfig, true);
+  assert.deepEqual(state.pack.managed, ['a.jar'], 'le reste de l’état est conservé');
+  assert.equal(state.mod.version, '3.4.2');
+  assert.match(fs.readFileSync(path.join(dir, 'logs', 'launcher', 'install.log'), 'utf8'), /WalksyLib : vérification de mises à jour coupée/);
+
+  // le joueur rallume la vérification (WalksyLib réécrit son fichier) : jamais modifié, même si on relance
+  fs.writeFileSync(file, '{ "format": 2, "categories": { "Appearance": { "groups": { "Notifications": { "options": { "Notify For New Updates": true } } } } } }');
+  assert.deepEqual(await installer.installWalksyLibConfig(dir), { action: 'skipped' });
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).categories.Appearance.groups.Notifications.options['Notify For New Updates'], true);
+  // fichier supprimé par le joueur : toujours pas réécrit (une seule fois par dossier de jeu)
+  fs.rmSync(file);
+  assert.deepEqual(await installer.installWalksyLibConfig(dir), { action: 'skipped' });
+  assert.ok(!fs.existsSync(file));
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('WalksyLib : un fichier déjà présent (choix du joueur ou autre instance) n’est jamais remplacé', async () => {
+  const dir = tempDir();
+  const file = path.join(dir, 'config', 'WalksyLib', 'walksylib.json');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const mine = '{ "format": 2, "categories": { "Key Binds": { "groups": {} } } }';
+  fs.writeFileSync(file, mine);
+  assert.deepEqual(await installer.installWalksyLibConfig(dir), { action: 'exists' });
+  assert.equal(fs.readFileSync(file, 'utf8'), mine);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'attack-launcher.json'), 'utf8')).walksylibConfig, true, 'décision mémorisée');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('WalksyLib : un dossier impossible à écrire est journalisé sans exception', async () => {
+  const dir = tempDir();
+  fs.writeFileSync(path.join(dir, 'config'), 'un fichier à la place du dossier config');
+  const result = await installer.installWalksyLibConfig(dir);
+  assert.equal(result.action, 'error');
+  assert.ok(result.error);
+  assert.ok(!fs.existsSync(path.join(dir, 'attack-launcher.json')), 'drapeau non posé : nouvel essai à la prochaine installation');
+  fs.rmSync(dir, { recursive: true, force: true });
+});

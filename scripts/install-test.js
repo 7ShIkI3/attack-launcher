@@ -217,6 +217,14 @@ async function main() {
   if (!optionsText.split(/\r?\n/).includes(wantedLang)) failures.push(`options.txt : ${wantedLang} absent`);
   else extra.push(`options.txt (${wantedLang})`);
 
+  // WalksyLib (groupe PvP du pack Fabric) : sa vérification de mises à jour est coupée dans sa configuration de départ
+  if (summary.walksylib) {
+    const walksy = path.join(gameDir, 'config', 'WalksyLib', 'walksylib.json');
+    const value = fs.existsSync(walksy) ? JSON.parse(fs.readFileSync(walksy, 'utf8')).categories?.Appearance?.groups?.Notifications?.options?.['Notify For New Updates'] : undefined;
+    if (value !== false) failures.push(`WalksyLib : « Notify For New Updates » devrait être false (lu : ${value})`);
+    else extra.push(`WalksyLib sans vérification de mises à jour (${summary.walksylib.action})`);
+  }
+
   const modFile = path.join(gameDir, 'mods', profile.modFile);
   const localJar = findDevJar(settings.devJarDir, profile);
   if (!useRelease) await check(modFile, 'sha256', await hashFile(localJar.file, 'sha256'), 'mod (copie du build local)');
