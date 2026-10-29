@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{t.notfound.title}}</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; script-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#09090c">
+<meta name="robots" content="noindex">
+<link rel="icon" href="{{root}}favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="{{root}}styles.css">
+</head>
+<body class="page-404">
+<main class="notfound">
+<div class="notfound-card">
+{{html.logoHero}}
+<h1>{{t.notfound.heading}} <span class="h1-sub" lang="en">{{t.notfound.headingEn}}</span></h1>
+<p>{{t.notfound.text}}</p>
+<p class="cta-row">
+<a class="btn btn-primary" href="{{root}}" lang="fr"><span class="btn-title">{{t.notfound.fr}}</span></a>
+<a class="btn btn-ghost" href="{{root}}en/" lang="en"><span class="btn-title">{{t.notfound.en}}</span></a>
+</p>
+</div>
+</main>
+</body>
+</html>
