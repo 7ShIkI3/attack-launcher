@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('attack', {
   pickJava: invoke('dialog:pickJava'),
   openGameDir: invoke('shell:openGameDir'),
   openRepo: invoke('shell:openRepo'),
+  pickOptifine: invoke('optifine:pick'),
+  openOptifine: invoke('shell:openOptifine'),
   openAzureHelp: invoke('shell:openAzureHelp'),
   accounts: {
     list: invoke('accounts:list'),

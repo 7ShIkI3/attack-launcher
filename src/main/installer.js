@@ -482,28 +482,44 @@ async function install(options) {
   };
 }
 
+/** Le jar du pack est-il dans le dossier mods avec la taille exacte ? */
+async function modPresent(gameDir, m) {
+  try {
+    return (await fsp.stat(path.join(gameDir, 'mods', m.filename))).size === m.size;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Le pack du profil est-il complet dans le dossier de jeu ? (fichiers présents, taille exacte ; pas de jar en trop)
  * `options` : { shaders, pvp, optifine, replay } (voir packOptions).
+ * Renvoie { complete, groups } ; `groups` donne, pour chaque groupe (shaders = mods optionnels, pvp, optifine, replay), le nombre de
+ * mods du pack et combien sont présents : la page en déduit « appliqué » ou « à appliquer » pour chaque réglage.
  */
 async function packStatus(gameDir, profile, options, state) {
   let pack;
   try {
     pack = modpack.loadPack(profile);
   } catch {
-    return false;
+    return { complete: false, groups: null };
+  }
+  const groups = {};
+  for (const m of pack.mods) {
+    const name = m.optional ? 'shaders' : m.group;
+    if (!name) continue;
+    groups[name] ||= { total: 0, present: 0 };
+    groups[name].total++;
+    if (await modPresent(gameDir, m)) groups[name].present++;
   }
   const selected = modpack.selectedMods(pack, options);
   const wanted = new Set(selected.map((m) => m.filename));
   for (const m of selected) {
-    try {
-      if ((await fsp.stat(path.join(gameDir, 'mods', m.filename))).size !== m.size) return false;
-    } catch {
-      return false;
-    }
+    if (!(await modPresent(gameDir, m))) return { complete: false, groups };
   }
   // un mod optionnel ou d'un groupe désactivé depuis (Iris, Crystal Optimizer, Replay Mod…) mais encore installé : le pack est à mettre à jour
-  return !(state?.pack?.managed || []).some((name) => !wanted.has(name) && fs.existsSync(path.join(gameDir, 'mods', name)));
+  const leftover = (state?.pack?.managed || []).some((name) => !wanted.has(name) && fs.existsSync(path.join(gameDir, 'mods', name)));
+  return { complete: !leftover, groups };
 }
 
 /**
@@ -536,12 +552,14 @@ async function status({
   const loaderLibrary = profile.loader.type === 'forge'
     ? mavenPath(`net.minecraftforge:forge:${profile.loader.fullVersion}`)
     : mavenPath(`net.fabricmc:fabric-loader:${profile.loader.version}`);
+  const packInfo = profile.pack ? await packStatus(gameDir, profile, packOptions({ shaders, pvpMods, optifinePacks, replayMod }), state) : null;
   const result = {
     profileId: profile.id,
     minecraft: has(minecraftDir, 'versions', mc, `${mc}.json`) && has(minecraftDir, 'versions', mc, `${mc}.jar`)
       && Boolean(assetIndex) && /^[\w.-]+$/.test(assetIndex) && has(minecraftDir, 'assets', 'indexes', `${assetIndex}.json`),
     loader: (await isJsonFile(path.join(minecraftDir, 'versions', vid, `${vid}.json`))) && has(minecraftDir, 'libraries', ...loaderLibrary.split('/')),
-    pack: profile.pack ? await packStatus(gameDir, profile, packOptions({ shaders, pvpMods, optifinePacks, replayMod }), state) : null,
+    pack: packInfo ? packInfo.complete : null,
+    packGroups: packInfo ? packInfo.groups : null,
     mod: has(gameDir, 'mods', profile.modFile),
     profile: launcherProfile,
     profileError,

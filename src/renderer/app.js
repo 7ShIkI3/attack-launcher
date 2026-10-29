@@ -1,10 +1,13 @@
-// Logique de l'interface : navigation, état d'installation, bouton JOUER, vitrine des mods, réglages.
+// Logique de l'interface : navigation, état d'installation, bouton JOUER, vitrine des mods, réglages, comptes, historique et crédits.
+// Aucun innerHTML ni style en ligne (CSP stricte) : tout le DOM est construit avec el() / textContent.
 (function () {
   'use strict';
   const api = window.attack;
   const { t } = window.I18n;
-  const { CATEGORIES, MODS, CHANGELOG, PACK_INFO } = window.AttackData;
+  const { CATEGORIES, MODS, CHANGELOG, PACK_INFO, LICENSE_NAMES } = window.AttackData;
   const $ = (id) => document.getElementById(id);
+  const NBSP = ' ';
+  const SVG_NS = 'http://www.w3.org/2000/svg';
 
   let info = null;
   let settings = null;
@@ -13,6 +16,9 @@
   let playing = false; // lancement du jeu en cours
   let statusToken = 0; // ignore une lecture d'état arrivée après un changement de profil
   let modFilter = 'all';
+  let modQuery = '';
+  let historyKind = 'all';
+  let progress = { percent: 0, step: '', done: 0, total: 0 };
   let accountsView = { accounts: [], hasClientId: false, devMode: false };
 
   function el(tag, props = {}, children = []) {
@@ -26,10 +32,27 @@
     return node;
   }
 
+  /** Icône du sprite de index.html (<use href="#i-…">). */
+  function icon(name, className = '') {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('class', `ic ${className}`.trim());
+    const use = document.createElementNS(SVG_NS, 'use');
+    use.setAttribute('href', `#i-${name}`);
+    svg.append(use);
+    return svg;
+  }
+
+  const nb = (text) => String(text).replace(/ /g, NBSP);
+
   // --- navigation ---
+  function closeReady() {
+    $('ready-pop').hidden = true;
+    $('ready-btn').setAttribute('aria-expanded', 'false');
+  }
   function showPage(page) {
     document.querySelectorAll('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.page === page));
     document.querySelectorAll('.page').forEach((p) => p.classList.toggle('active', p.id === `page-${page}`));
+    closeReady();
     // la vue 3D du skin ne dessine que sur la page Compte (sinon WebGL tourne en continu, même pendant une partie)
     document.dispatchEvent(new CustomEvent('attack:page', { detail: page }));
   }
@@ -40,16 +63,33 @@
   $('wc-min').addEventListener('click', () => api.window.minimize());
   $('wc-max').addEventListener('click', () => api.window.maximize());
   $('wc-close').addEventListener('click', () => api.window.close());
-  // SVG constant généré par logo.js (aucune donnée externe)
-  $('titlebar-logo').innerHTML = window.AttackLogo.svg({ id: 'tb', size: 18 });
-  $('hero-logo').innerHTML = window.AttackLogo.svg({ id: 'hero', size: 132, glow: true });
+  // SVG constant généré par logo.js (aucune donnée externe), lu comme un document SVG plutôt qu'injecté en HTML
+  function mountSvg(node, text) {
+    node.replaceChildren(document.importNode(new DOMParser().parseFromString(text, 'image/svg+xml').documentElement, true));
+  }
+  mountSvg($('titlebar-logo'), window.AttackLogo.svg({ id: 'tb', size: 18 }));
+  mountSvg($('hero-logo'), window.AttackLogo.svg({ id: 'hero', size: 104, glow: true }));
+  mountSvg($('empty-logo'), window.AttackLogo.svg({ id: 'empty', size: 120, glow: true }));
 
-  // --- accueil ---
+  // --- notification et message ---
+  let toastTimer = null;
+  function showToast(text, kind = 'ok') {
+    const toast = $('toast');
+    $('toast-text').textContent = text;
+    toast.classList.toggle('ok', kind === 'ok');
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 3600);
+  }
+  /** Réussite : notification ; erreur : texte sous JOUER (il peut être long) ; vide : efface tout. */
   function setMessage(text, kind = '') {
     const node = $('message');
-    node.textContent = text || '';
+    const inline = Boolean(text) && kind !== 'ok';
+    node.textContent = inline ? text : '';
     node.className = `message ${kind}`;
-    node.classList.toggle('hidden', !text);
+    node.classList.toggle('hidden', !inline);
+    if (text && kind === 'ok') showToast(text);
+    if (!text) $('toast').classList.remove('show');
   }
 
   // --- profils (version de Minecraft + chargeur de mods) ---
@@ -58,15 +98,15 @@
   const loaderName = (profile) => (profile.loaderType === 'fabric' ? 'Fabric' : 'Forge');
   const isFabric = (profile) => Boolean(profile) && profile.loaderType === 'fabric';
 
-  /** Sous-titre de l'accueil et sélecteur de profil (désactivé pendant une installation ou un lancement). */
+  /** Sous-titre de l'accueil et cartes de profil (désactivées pendant une installation ou un lancement). */
   function renderProfiles() {
     const profile = currentProfile();
     if (!profile) return;
     $('hero-sub').textContent = `Minecraft ${profile.mc} · ${loaderName(profile)} ${profile.loaderVersion}`;
     $('profile-select').replaceChildren(...profileList().map((p) => {
-      const button = el('button', { type: 'button', class: p.id === profile.id ? 'active' : '', 'data-profile': p.id }, [
-        el('b', { text: p.label }),
-        el('small', { text: loaderName(p) }),
+      const button = el('button', { type: 'button', class: `profile${p.id === profile.id ? ' active' : ''}`, role: 'radio', 'aria-checked': String(p.id === profile.id), 'data-profile': p.id }, [
+        el('span', { class: 'pv' }, [el('b', { text: p.label }), el('em', { text: loaderName(p) })]),
+        el('span', { class: 'ps', text: t(`home.tag.${p.id}`) }),
       ]);
       button.disabled = busy || playing;
       button.addEventListener('click', () => switchProfile(p.id));
@@ -77,7 +117,7 @@
   async function switchProfile(id) {
     if (busy || playing || !settings || id === settings.profileId) return;
     setMessage('');
-    $('progress').classList.add('hidden');
+    progress = { percent: 0, step: '', done: 0, total: 0 };
     statusToken++; // une lecture d'état déjà partie pour l'ancien profil sera ignorée
     status = null; // l'état du profil précédent ne doit pas rester affiché
     renderStatus();
@@ -86,44 +126,163 @@
     if (failure) setMessage(t('error.generic', { message: failure }), 'error');
   }
 
-  /** Mods du pack qui seront installés : tous, plus Iris seulement avec l'option Shaders, moins les mods PvP si l'option est coupée. */
-  function packSize(profile) {
-    const shaders = Boolean(settings && settings.shaders);
-    const pvp = !settings || settings.pvpMods !== false;
-    return profile.pack.filter((m) => (!m.optional || shaders) && (m.group !== 'pvp' || pvp)).length;
+  // --- groupes du pack : un réglage par profil chacun ---
+  /**
+   * Groupes de mods du pack avec leur réglage. `match` : les mods du pack concernés ; `on()` : réglage actuel ;
+   * `tag` : étiquette des cartes de la page Mods. Un groupe sans mod dans le pack du profil n'apparaît pas (Fabric : les 4, 1.8.9 : Replay Mod).
+   */
+  const PACK_GROUPS = [
+    { id: 'shaders', setting: 'shaders', match: (m) => m.optional, on: () => Boolean(settings.shaders), title: 'settings.shaders', help: 'settings.shadersHelp', tag: 'mods.optional' },
+    { id: 'pvp', setting: 'pvpMods', match: (m) => m.group === 'pvp', on: () => settings.pvpMods !== false, title: 'settings.pvp', help: 'settings.pvpHelp', tag: 'mods.pvp' },
+    { id: 'optifine', setting: 'optifinePacks', match: (m) => m.group === 'optifine', on: () => settings.optifinePacks !== false, title: 'settings.optifinePacks', help: 'settings.optifinePacksHelp', tag: 'mods.optifinePacks' },
+    { id: 'replay', setting: 'replayMod', match: (m) => m.group === 'replay', on: () => Boolean(settings.replayMod), title: 'settings.replay', help: 'settings.replayHelp', tag: 'mods.replay' },
+  ];
+  const groupOf = (mod) => PACK_GROUPS.find((g) => g.match(mod)) || null;
+  const groupsOf = (profile) => PACK_GROUPS.filter((g) => profile.pack.some(g.match));
+  const modSelected = (mod) => {
+    const group = groupOf(mod);
+    return !group || group.on();
+  };
+
+  /** Mods du pack qui seront installés avec les réglages actuels. */
+  const selectedPack = (profile) => profile.pack.filter(modSelected);
+
+  /** OptiFine du joueur (profil 1.8.9) : la copie sera-t-elle dans le jeu ? (copiée par le launcher, ou déjà mise là par le joueur) */
+  function optifineInGame() {
+    const of = status && status.optifine;
+    return Boolean(of && ((of.enabled && of.found) || of.own));
+  }
+
+  /** Nombre de mods installés : le pack choisi, plus l'OptiFine du joueur. Le même nombre partout (accueil, rail, page Mods). */
+  function modCount(profile) {
+    return selectedPack(profile).length + (profile.hasOptifine && optifineInGame() ? 1 : 0);
+  }
+
+  const modsText = (n) => t('home.mods', { n });
+
+  /** Variante d'OptiFine lisible : « OptiFine HD U M5 ». */
+  const optifineLabel = (of) => `OptiFine${of && of.version ? ` ${of.version.replace(/_/g, ' ')}` : ''}`;
+
+  // --- accueil : état, JOUER, ligne « prêt » ---
+  const launchAccount = () => {
+    const active = accountsView.accounts.find((a) => a.active);
+    return active && (active.type === 'msa' || (settings && settings.devMode)) ? active : null;
+  };
+
+  /** Lignes du détail : { label, state: 'ok' | 'bad' | 'info', detail }. `bad` = à installer. */
+  function statusRows(profile) {
+    const rows = [];
+    const ok = (label, good, detail, badDetail) => rows.push({ label, state: good ? 'ok' : 'bad', detail: good ? detail || t('status.ok') : badDetail || t('status.missing') });
+    ok(t('status.minecraft', { mc: profile.mc }), status && status.minecraft);
+    ok(t(`status.loader.${profile.loaderType}`, { version: profile.loaderVersion }), status && status.loader);
+    if (profile.hasPack) {
+      const tags = [];
+      if (settings.shaders && profile.pack.some((m) => m.optional)) tags.push('Iris');
+      if (isFabric(profile) && settings.pvpMods !== false) tags.push('PvP');
+      if (isFabric(profile) && settings.optifinePacks !== false) tags.push('OptiFine');
+      if (settings.replayMod) tags.push('Replay');
+      ok(t('status.pack'), status && status.pack, [modsText(selectedPack(profile).length), ...tags].join(' · '));
+    }
+    if (profile.hasOptifine && status && status.optifine) {
+      const of = status.optifine;
+      let state = 'ok';
+      let detail;
+      if (of.own) detail = t('optifine.stateOwn');
+      else if (!of.enabled) { state = 'info'; detail = t('optifine.stateOff'); }
+      else if (!of.found) { state = 'info'; detail = t('optifine.stateMissing'); }
+      else if (of.pending) { state = 'bad'; detail = t('optifine.stateToCopy'); }
+      else detail = optifineLabel(of);
+      rows.push({ label: 'OptiFine', state, detail });
+    }
+    const modDetail = status && status.modVersion ? `v${status.modVersion}${status.modSource === 'dev' ? ` · ${t('status.dev')}` : ''}` : null;
+    ok(t('status.mod'), status && status.mod, modDetail);
+    ok(t('status.profile'), status && status.profile);
+    return rows;
   }
 
   function renderStatus() {
-    const list = $('status-list');
-    list.replaceChildren();
     const profile = currentProfile();
     if (!profile) return;
-    const modDetail = status?.modVersion ? `v${status.modVersion}${status.modSource === 'dev' ? ` · ${t('status.dev')}` : ''}` : null;
-    const rows = [
-      [t('status.minecraft', { mc: profile.mc }), status?.minecraft],
-      [t(`status.loader.${profile.loaderType}`, { version: profile.loaderVersion }), status?.loader],
-    ];
-    if (profile.hasPack) {
-      const pvp = settings.pvpMods !== false;
-      const detail = settings.shaders ? (pvp ? 'status.packShadersPvp' : 'status.packShaders') : (pvp ? 'status.packPvp' : 'status.packCount');
-      rows.push([t('status.pack'), status?.pack, t(detail, { n: packSize(profile) })]);
-    }
-    rows.push([t('status.mod'), status?.mod, modDetail], [t('status.profile'), status?.profile]);
-    for (const [label, ok, detail] of rows) {
-      list.append(el('li', { class: ok ? 'ok' : '' }, [
-        el('span', { class: 'state', text: ok ? '✓' : '·' }),
-        el('span', {}, [label, el('small', { text: ok ? detail || t('status.ok') : t('status.missing') })]),
-      ]));
-    }
+    const rows = statusRows(profile);
+    const bad = rows.filter((r) => r.state === 'bad');
+    const checking = !status;
+    const needs = !checking && (!status.installed || bad.length > 0);
+    const mode = busy ? 'installing' : checking ? 'checking' : needs ? 'missing' : 'ready';
+    document.body.dataset.install = mode;
+    document.body.dataset.launch = playing ? '1' : '';
+
+    // ligne « prêt » : une phrase à la place de 4 ou 5 tuiles, le détail s'ouvre à la demande
+    const stateIcon = busy ? 'refresh' : needs ? 'info' : 'check';
+    $('ready-icon').replaceChildren(...icon(stateIcon).childNodes);
+    // peu d'éléments à installer : on les nomme ; sinon leur nombre (le détail les liste)
+    const needsText = bad.length > 2 ? t('home.needsMany', { n: bad.length }) : t('home.needs', { items: bad.map((r) => r.label).join(', ') });
+    $('ready-main').textContent = busy ? t('home.installingNow') : checking ? t('home.checking') : needs ? needsText : t('home.ready');
+    let summary = '';
+    if (busy) {
+      const step = progress.step ? t(`step.${progress.step}`, { mc: profile.mc }) + (progress.total > 1 ? ` ${progress.done}/${progress.total}` : '') : '';
+      summary = [step, `${Math.floor(progress.percent)} %`].filter(Boolean).join(' · ');
+    } else if (!checking && !needs) summary = [profile.hasPack || profile.hasOptifine ? modsText(modCount(profile)) : null, status.modVersion ? t('home.clientVersion', { version: status.modVersion }) : 'ATTACK Client'].filter(Boolean).join(' · ');
+    $('ready-sum').textContent = summary;
+    $('ready-pop').replaceChildren(...rows.map((r) => el('div', { class: `pop-row${r.state === 'bad' ? ' bad' : ''}` }, [
+      el('span', { class: 'r-ico' }, [icon(r.state === 'ok' ? 'check' : 'info')]),
+      el('span', {}, [el('b', { text: r.label }), el('small', { text: r.detail })]),
+    ])));
+
+    // JOUER : même bouton, même taille ; la progression est dans le bouton, la phrase dessous garde sa hauteur
     const button = $('play-button');
-    button.disabled = busy || playing || !status;
-    $('play-label').textContent = busy ? t('home.installing') : status?.installed ? t('home.play') : t('home.install');
-    const player = launchAccount();
-    const installHint = t(isFabric(profile) ? 'home.installHintFabric' : 'home.installHintForge', { mc: profile.mc });
-    $('play-hint').textContent = busy ? '' : !status?.installed ? installHint
-      : player ? t('home.playAs', { name: player.name }) : t('home.playHint', { name: profile.name });
+    const account = launchAccount();
+    button.disabled = busy || playing || checking;
+    button.classList.toggle('busy', busy || playing);
+    $('play-fill').style.width = busy ? `${progress.percent}%` : '0%';
+    $('play-label').textContent = playing ? t('home.launching') : busy ? t('home.installingPct', { n: Math.floor(progress.percent) }) : checking ? '…' : status.installed ? t('home.play') : t('home.install');
+    const caption = $('play-caption');
+    if (playing) {
+      caption.replaceChildren(account ? el('span', {}, [t('home.launchingAsPre'), el('b', { text: account.name }), '…']) : t('home.launchingOfficial'));
+    } else if (busy) {
+      caption.replaceChildren(t('home.profileNote'));
+    } else if (checking) {
+      caption.replaceChildren();
+    } else if (!status.installed) {
+      caption.replaceChildren(t(isFabric(profile) ? 'home.installHintFabric' : 'home.installHintForge', { mc: profile.mc }));
+    } else if (account) {
+      const offline = account.type !== 'msa';
+      caption.replaceChildren(
+        el('span', { class: 'mini-avatar' }, [avatarCanvas(account, 18)]),
+        el('span', {}, [t('home.playAsPre'), el('b', { text: account.name }), offline ? t('home.playAsOffline') : '']),
+      );
+    } else {
+      const connect = el('button', { class: 'link accent', type: 'button', text: t('home.connect') });
+      connect.addEventListener('click', () => showPage('account'));
+      caption.replaceChildren(`${t('home.playOfficial', { name: nb(profile.name) })}${NBSP}· `, connect);
+    }
     renderProfiles();
+    renderProfileCard(profile);
+    renderPending();
   }
+
+  /** Carte « Profil actuel » du rail : mémoire, Java et ce que le profil installe. */
+  function renderProfileCard(profile) {
+    $('pc-sub').textContent = t('pc.sub', { name: nb(profile.name) });
+    const java = el('dd', { text: `${profile.javaMajor} ` }, [el('small', { text: settings.javaPath ? t('pc.custom') : t('pc.minecraft') })]);
+    const cells = [
+      [t('pc.ram'), el('dd', { text: formatRam(settings.ramMb) })],
+      ['Java', java],
+      [t('pc.pack'), el('dd', { text: status || !profile.hasOptifine ? modsText(modCount(profile)) : '…' })],
+    ];
+    if (isFabric(profile)) cells.push([t('pc.pvp'), el('dd', { text: settings.pvpMods !== false ? t('pc.on') : t('pc.off') })]);
+    else cells.push(['OptiFine', el('dd', { text: !status || !status.optifine ? '…' : optifineInGame() ? (status.optifine.version ? status.optifine.version.replace(/_/g, ' ') : t('pc.on')) : status.optifine.enabled ? t('optifine.stateMissing') : t('pc.off') })]);
+    $('pc-grid').replaceChildren(...cells.map(([label, value]) => el('div', {}, [el('dt', { text: label }), value])));
+  }
+
+  $('ready-btn').addEventListener('click', (event) => {
+    event.stopPropagation();
+    const open = $('ready-pop').hidden;
+    $('ready-pop').hidden = !open;
+    $('ready-btn').setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('click', (event) => {
+    if (!$('ready-pop').contains(event.target)) closeReady();
+  });
 
   async function refreshStatus() {
     const token = ++statusToken;
@@ -132,6 +291,7 @@
     status = next;
     renderStatus();
     renderMods(); // la carte ATTACK de la page Mods affiche la version installée
+    renderSettings();
   }
 
   function errorText(result) {
@@ -161,63 +321,42 @@
     }
   }
 
-  // masquage différé de la barre de progression : annulé si une nouvelle installation ou un lancement commence
-  let hideProgressTimer = null;
-  function showProgress() {
-    clearTimeout(hideProgressTimer);
-    $('progress-bar').style.width = '0%';
-    $('progress').classList.remove('hidden');
-  }
-  function hideProgress(delay) {
-    clearTimeout(hideProgressTimer);
-    hideProgressTimer = setTimeout(() => $('progress').classList.add('hidden'), delay);
-  }
-
   async function runInstall() {
     busy = true;
-    setMessage(t('home.profileNote'));
-    showProgress();
+    progress = { percent: 0, step: '', done: 0, total: 0 };
+    setMessage('');
     renderStatus();
     const result = await call(() => api.install());
     busy = false;
     if (result.ok) {
-      $('progress-bar').style.width = '100%';
+      progress.percent = 100;
       setMessage(t('home.done'), 'ok');
     } else {
       setMessage(errorText(result), 'error');
     }
     await refreshStatus();
-    hideProgress(result.ok ? 1500 : 0);
     return result.ok;
   }
 
   api.onProgress((p) => {
-    $('progress-bar').style.width = `${p.percent}%`;
-    $('progress-percent').textContent = `${Math.floor(p.percent)} %`;
-    const profile = currentProfile();
-    $('progress-step').textContent = `${t(`step.${p.step}`, { mc: profile ? profile.mc : '' })}${p.total > 1 ? ` · ${p.done}/${p.total}` : ''}`;
+    progress = { percent: p.percent, step: p.step, done: p.done, total: p.total };
+    // pendant le lancement direct (Java, connexion) la progression ne change que le texte : le bouton reste à « LANCEMENT »
+    if (busy) renderStatus();
   });
 
   $('play-button').addEventListener('click', async () => {
     if (busy || playing) return;
-    if (!status?.installed) {
+    if (!status || !status.installed) {
       await runInstall();
       return;
     }
-    $('play-button').disabled = true;
     playing = true;
-    renderProfiles();
+    setMessage('');
+    renderStatus();
     const profile = currentProfile();
-    const direct = Boolean(launchAccount());
-    if (direct) {
-      setMessage('');
-      showProgress();
-    }
     const result = await call(() => api.play());
     playing = false;
-    renderProfiles();
-    $('play-button').disabled = false;
-    if (direct) hideProgress(result.ok ? 1200 : 0);
+    renderStatus();
     if (result.ok && result.mode === 'direct') setMessage(t('home.launchedDirect', { name: result.name }), 'ok');
     else if (result.ok) setMessage(t('home.launched', { name: profile.name }), 'ok');
     else if (result.code === 'NOT_INSTALLED') await refreshStatus();
@@ -226,26 +365,108 @@
   $('repair-button').addEventListener('click', () => !busy && !playing && runInstall());
   $('open-dir-button').addEventListener('click', () => guarded(() => api.openGameDir()));
   $('repo-button').addEventListener('click', () => api.openRepo());
+  $('about-repo').addEventListener('click', () => api.openRepo());
   $('logs-button').addEventListener('click', () => guarded(() => api.openLogs()));
+  $('profile-settings').addEventListener('click', () => {
+    showPage('settings');
+    selectTab('profile');
+  });
 
-  /** Accueil : les dernières versions (texte coupé à 3 lignes) ; « Tout voir » ouvre l'historique complet. */
-  const CHANGELOG_ON_HOME = 3;
-  function changelogItem(entry) {
-    return el('li', {}, [
-      el('div', { class: 'version' }, [
-        el('b', { text: entry[`version_${window.I18n.lang}`] || entry.version }),
-        el('time', { text: entry.date }),
-      ]),
-      el('p', { text: entry[window.I18n.lang] || entry.fr }),
-    ]);
+  // --- Nouveautés et historique ---
+  const entryKind = (entry) => entry.kind || (/^Launcher/.test(entry.version) ? 'launcher' : /^ATTACK Client/.test(entry.version) ? 'client' : 'other');
+  const entryText = (entry) => entry[window.I18n.lang] || entry.fr;
+  /** Phrases du texte (une puce chacune). */
+  const entryBullets = (entry) => entryText(entry).split(/(?<=[.!?])\s+(?=[A-ZÉÈÀ«“"(])/).filter(Boolean);
+  /** Titre court (celui de l'entrée, sinon sa première phrase) et détail (le reste du texte, en puces). */
+  function entryParts(entry) {
+    const lines = entryBullets(entry);
+    const own = entry[`title_${window.I18n.lang}`] || entry.title_fr;
+    if (own) {
+      // la première phrase qui répète le titre (« Plus de FPS en 1.21.1 et 26.3 : Entity Culling… ») garde seulement la suite
+      if (lines[0] && lines[0].toLowerCase().startsWith(own.toLowerCase())) {
+        const rest = lines[0].slice(own.length).replace(/^[\s:,–-]+/, '');
+        if (rest) lines[0] = rest.charAt(0).toUpperCase() + rest.slice(1);
+        else lines.shift();
+      }
+      return { title: own, lines };
+    }
+    const [first = '', ...rest] = lines;
+    return { title: first.length > 80 ? `${first.slice(0, 77)}…` : first, lines: rest };
   }
-  function renderChangelog() {
-    $('changelog').replaceChildren(...CHANGELOG.slice(0, CHANGELOG_ON_HOME).map(changelogItem));
-    $('changelog-full').replaceChildren(...CHANGELOG.map(changelogItem));
-    $('changelog-all').classList.toggle('hidden', CHANGELOG.length <= CHANGELOG_ON_HOME);
+  const entryTag = (entry) => entry.tag && ['perf', 'new', 'fix', 'tweak'].includes(entry.tag) ? entry.tag : null;
+  const parseDate = (text) => (/^\d{4}-\d{2}-\d{2}$/.test(text || '') ? new Date(`${text}T12:00:00`) : null);
+  const sameDay = (a, b) => a.toDateString() === b.toDateString();
+
+  function dateLabel(text, long = false) {
+    const date = parseDate(text);
+    if (!date) return '';
+    const now = new Date();
+    if (sameDay(date, now)) return t('home.today');
+    return new Intl.DateTimeFormat(window.I18n.lang === 'en' ? 'en-GB' : 'fr-FR', {
+      day: 'numeric', month: long ? 'long' : 'short', ...(date.getFullYear() !== now.getFullYear() || long ? { year: 'numeric' } : {}),
+    }).format(date);
   }
+
+  const NEWS_ON_HOME = 3;
+  function renderNews() {
+    $('changelog').replaceChildren(...CHANGELOG.slice(0, NEWS_ON_HOME).map((entry) => {
+      const tag = entryTag(entry);
+      const date = dateLabel(entry.date);
+      const { title, lines } = entryParts(entry);
+      return el('li', { class: 'news-item' }, [
+        el('div', { class: 'n-top' }, [
+          el('span', { class: 'n-who', text: entry[`version_${window.I18n.lang}`] || entry.version }, date ? [el('em', { class: 'nd', text: ` · ${date}` })] : []),
+          ...(tag ? [el('span', { class: `tag ${tag}`, text: t(`tag.${tag}`) })] : []),
+        ]),
+        el('h4', { class: 'n-title', text: title }),
+        ...(lines.length > 0 ? [el('p', { class: 'n-text', text: lines.join(' ') })] : []),
+      ]);
+    }));
+    $('changelog-all').classList.toggle('hidden', CHANGELOG.length <= NEWS_ON_HOME);
+  }
+
   const changelogDialog = $('changelog-dialog');
+  function renderHistory() {
+    const kinds = [['all', t('history.all')], ['launcher', 'Launcher'], ['client', 'ATTACK Client']];
+    $('changelog-filters').replaceChildren(...kinds.map(([id, label]) => {
+      const chip = el('button', { class: `chip${historyKind === id ? ' active' : ''}`, type: 'button', text: label });
+      chip.addEventListener('click', () => {
+        historyKind = id;
+        renderHistory();
+        $('changelog-full').scrollTop = 0;
+      });
+      return chip;
+    }));
+    const list = $('changelog-full');
+    list.replaceChildren();
+    let month = null;
+    for (const entry of CHANGELOG.filter((e) => historyKind === 'all' || entryKind(e) === historyKind)) {
+      const key = entry.date ? entry.date.slice(0, 7) : '';
+      if (key !== month) {
+        month = key;
+        const label = key ? new Intl.DateTimeFormat(window.I18n.lang === 'en' ? 'en-GB' : 'fr-FR', { month: 'long', year: 'numeric' }).format(parseDate(`${key}-15`)) : t('history.older');
+        list.append(el('div', { class: 'month', text: label }));
+      }
+      const tag = entryTag(entry);
+      const fresh = parseDate(entry.date) && Date.now() - parseDate(entry.date).getTime() < 3 * 86400000;
+      const kind = entryKind(entry);
+      const { title, lines } = entryParts(entry);
+      list.append(el('article', { class: 'h-item' }, [
+        el('div', { class: 'h-meta' }, [
+          el('b', { text: entry[`version_${window.I18n.lang}`] || entry.version }),
+          ...(entry.date ? [el('time', { text: dateLabel(entry.date, true) })] : []),
+          ...(kind !== 'other' ? [el('span', { class: 'kind', text: kind === 'launcher' ? 'Launcher' : 'Client' })] : []),
+        ]),
+        el('div', { class: 'h-body' }, [
+          el('h4', {}, [title, ...(tag ? [el('span', { class: `tag ${tag}`, text: t(`tag.${tag}`) })] : []), ...(fresh ? [el('span', { class: 'fresh', text: t('history.new') })] : [])]),
+          ...(lines.length > 0 ? [el('ul', {}, lines.map((line) => el('li', { text: line })))] : []),
+        ]),
+      ]));
+    }
+  }
   $('changelog-all').addEventListener('click', () => {
+    historyKind = 'all';
+    renderHistory();
     changelogDialog.showModal();
     $('changelog-full').scrollTop = 0;
   });
@@ -256,60 +477,114 @@
   });
 
   // --- mods ---
+  /** Nom lisible d'une licence Modrinth (SPDX ou LicenseRef-…). */
+  function licenseName(id) {
+    if (!id) return t('credits.unknown');
+    return (LICENSE_NAMES[id] && (LICENSE_NAMES[id][window.I18n.lang] || LICENSE_NAMES[id].fr)) || id.replace(/^LicenseRef-/, '').replace(/-/g, ' ');
+  }
+
   /**
-   * Cartes de la page Mods : les modules d'ATTACK Client pour Forge 1.8.9 ; pour un profil Fabric, le mod ATTACK
-   * (avec sa version installée) et les mods du pack figé avec leur version.
+   * Cartes de la page Mods : le mod ATTACK (avec sa version installée), l'OptiFine du joueur en 1.8.9, les mods du pack figé avec leur
+   * version et, pour chaque mod d'un groupe réglable, son interrupteur ; en 1.8.9, les modules d'ATTACK Client.
    */
   function modItems(profile, lang) {
-    if (!isFabric(profile)) {
-      return MODS.map((m) => ({ name: (lang === 'en' && m.en_name) || m.name, icon: m.icon, cat: m.cat, text: m[lang] || m.fr, tags: [] }));
-    }
     const attackVersion = status && status.mod && status.modVersion ? t('mods.attackVersion', { version: status.modVersion }) : t('mods.attackMissing');
-    const items = [{ name: 'ATTACK Client', icon: 'AT', cat: 'attack', text: t('mods.attackDesc', { mc: profile.mc }), tags: [attackVersion] }];
+    const items = [{
+      name: 'ATTACK Client', icon: 'AT', cat: 'attack', text: t(isFabric(profile) ? 'mods.attackDesc' : 'mods.attackDescForge', { mc: profile.mc }), meta: attackVersion,
+    }];
+    if (profile.hasOptifine) {
+      const of = status && status.optifine;
+      items.push({
+        name: 'OptiFine', icon: 'OF', cat: 'visual', text: t('mods.optifineDesc'), off: !optifineInGame(),
+        meta: of ? (of.own ? t('optifine.stateOwn') : of.found ? optifineLabel(of) : t('optifine.stateMissing')) : '…',
+        option: { label: t('mods.optifineOption'), checked: !of || of.enabled, change: (value) => save({ optifine: value }), hint: t('mods.optifineHint') },
+      });
+    }
     for (const mod of profile.pack) {
       const known = PACK_INFO[mod.slug] || { icon: mod.name.slice(0, 2).toUpperCase(), cat: 'utility', fr: '', en: '' };
+      const group = groupOf(mod);
       items.push({
         name: mod.name,
         icon: known.icon,
         cat: known.cat,
         text: known[lang] || known.fr,
-        tags: [t('mods.version', { version: mod.version }), ...(mod.optional ? [t('mods.optional')] : []), ...(mod.group === 'pvp' ? [t('mods.pvp')] : [])],
+        meta: t('mods.version', { version: mod.version }),
+        off: group ? !group.on() : false,
+        option: group ? { label: t(group.tag), checked: group.on(), change: (value) => save({ [group.setting]: value }), hint: t('mods.linked', { name: t(group.title) }) } : null,
       });
     }
+    if (!isFabric(profile)) {
+      for (const m of MODS) items.push({ name: (lang === 'en' && m.en_name) || m.name, icon: m.icon, cat: m.cat, text: m[lang] || m.fr, meta: '', module: true });
+    }
     return items;
+  }
+
+  /** Bandeau « le pack a changé » : le pack ou OptiFine attend une installation alors que le reste est en place. */
+  function pendingApply() {
+    return Boolean(status && status.minecraft && status.loader && status.mod && status.profile && !busy && (status.pack === false || (status.optifine && status.optifine.pending)));
+  }
+  function renderPending() {
+    const on = pendingApply();
+    for (const [id, key] of [['mods-pending', 'pending.mods'], ['pack-pending', 'pending.pack']]) {
+      const node = $(id);
+      node.classList.toggle('hidden', !on);
+      if (!on) continue;
+      const action = el('button', { class: 'btn small accent', type: 'button', text: t('pending.install') });
+      action.addEventListener('click', () => !busy && !playing && runInstall());
+      node.replaceChildren(icon('info'), el('span', { text: t(key) }), action);
+    }
   }
 
   function renderMods() {
     const lang = window.I18n.lang;
     const profile = currentProfile();
-    if (!profile) return;
+    if (!profile || !settings) return;
     const fabricMode = isFabric(profile);
     $('mods-title').textContent = fabricMode ? t('mods.titleFabric', { label: profile.label }) : t('mods.title');
-    $('mods-subtitle').textContent = fabricMode ? t('mods.subtitleFabric') : t('mods.subtitle');
+    const installed = modCount(profile);
+    const off = profile.pack.length - selectedPack(profile).length;
+    $('mods-subtitle').textContent = fabricMode
+      ? `${t('mods.subtitleFabric', { n: installed })}${off > 0 ? ` · ${t(off === 1 ? 'mods.off1' : 'mods.off', { n: off })}` : ''}`
+      : `${t('mods.subtitleForge', { modules: MODS.length, n: installed })}${off > 0 ? ` · ${t(off === 1 ? 'mods.off1' : 'mods.off', { n: off })}` : ''}`;
     const items = modItems(profile, lang);
     const used = CATEGORIES.filter((c) => items.some((item) => item.cat === c.id));
     if (modFilter !== 'all' && !used.some((c) => c.id === modFilter)) modFilter = 'all';
-    const chips = [{ id: 'all', fr: t('mods.all'), en: t('mods.all') }, ...used].map((c) => {
-      const chip = el('button', { class: `chip${modFilter === c.id ? ' active' : ''}`, text: c[lang] || c.fr });
+    const countOf = (id) => (id === 'all' ? items.length : items.filter((i) => i.cat === id).length);
+    $('mods-filters').replaceChildren(...[{ id: 'all', fr: t('mods.all'), en: t('mods.all') }, ...used].map((c) => {
+      const chip = el('button', { class: `chip${modFilter === c.id ? ' active' : ''}`, type: 'button' }, [c[lang] || c.fr, el('i', { text: String(countOf(c.id)) })]);
       chip.addEventListener('click', () => {
         modFilter = c.id;
         renderMods();
       });
       return chip;
-    });
-    $('mods-filters').replaceChildren(...chips);
-    const visible = items.filter((m) => modFilter === 'all' || m.cat === modFilter);
+    }));
+    const query = modQuery.trim().toLowerCase();
+    const visible = items.filter((m) => (modFilter === 'all' || m.cat === modFilter) && (!query || `${m.name} ${m.text}`.toLowerCase().includes(query)));
     const category = (id) => CATEGORIES.find((c) => c.id === id)[lang];
-    $('mods-grid').replaceChildren(...visible.map((m) => el('article', { class: 'card mod' }, [
-      el('div', { class: 'mod-icon', text: m.icon }),
-      el('div', {}, [
-        el('h3', { text: m.name }),
+    const grid = $('mods-grid');
+    if (visible.length === 0) {
+      grid.replaceChildren(el('div', { class: 'mods-empty', text: t('mods.none', { q: modQuery.trim() }) }));
+      return;
+    }
+    grid.replaceChildren(...visible.map((m) => {
+      const children = [
+        el('div', { class: 'mod-top' }, [el('div', { class: 'mod-icon', text: m.icon }), el('h3', { text: m.name })]),
         el('p', { text: m.text }),
-        el('div', { class: 'tags' }, [m.cat, ...m.tags].map((tag, i) => el('span', { class: 'tag', text: i === 0 ? category(tag) : tag }))),
-      ]),
-    ])));
-    $('mods-count').textContent = t('mods.count', { n: items.length });
+        el('div', { class: 'mod-foot' }, [el('span', { class: 'meta', text: [category(m.cat), m.meta].filter(Boolean).join(' · ') })]),
+      ];
+      if (m.option) {
+        const input = el('input', { type: 'checkbox', 'aria-label': m.option.label });
+        input.checked = m.option.checked;
+        input.addEventListener('change', () => m.option.change(input.checked));
+        children.push(el('div', { class: 'mod-opt', title: m.option.hint || '' }, [el('span', { text: m.option.label }), el('label', { class: 'switch' }, [input, el('span')])]));
+      }
+      return el('article', { class: `card mod${m.off ? ' off' : ''}` }, children);
+    }));
   }
+  $('mods-q').addEventListener('input', (event) => {
+    modQuery = event.target.value;
+    renderMods();
+  });
 
   // --- réglages ---
   let savedTimer = null;
@@ -331,46 +606,154 @@
     renderProfiles();
     renderMods();
     if ('profileId' in patch) renderStatus();
-    // « Enregistré », ou l'erreur au même endroit : sur la page Réglages, pas sur l'accueil
-    const saved = $('saved');
-    clearTimeout(savedTimer);
-    saved.classList.toggle('error', Boolean(failure));
-    if (failure && !showError) {
-      saved.classList.add('hidden');
-    } else {
-      saved.textContent = failure ? t('error.generic', { message: failure }) : t('settings.saved');
-      saved.classList.remove('hidden');
-      savedTimer = setTimeout(() => saved.classList.add('hidden'), failure ? 6000 : 1600);
-    }
-    if (['profileId', 'gameDir', 'devMode', 'devJarDir', 'shaders', 'pvpMods'].some((key) => key in patch)) refreshStatus();
+    flashSaved(failure, showError);
+    if (['profileId', 'gameDir', 'devMode', 'devJarDir', 'shaders', 'pvpMods', 'optifinePacks', 'replayMod', 'optifine', 'optifineJar'].some((key) => key in patch)) refreshStatus();
+    else renderStatus();
     if ('devMode' in patch || 'msClientId' in patch) refreshAccounts();
     return failure;
   }
 
+  /** « Enregistré », ou l'erreur au même endroit : sur la page Réglages, pas sur l'accueil. */
+  function flashSaved(failure, showError = true) {
+    const saved = $('saved');
+    clearTimeout(savedTimer);
+    saved.classList.toggle('error', Boolean(failure));
+    if (failure && !showError) {
+      saved.classList.remove('show');
+      return;
+    }
+    $('saved-text').textContent = failure ? t('error.generic', { message: failure }) : t('settings.saved');
+    saved.classList.add('show');
+    savedTimer = setTimeout(() => saved.classList.remove('show'), failure ? 6000 : 1600);
+  }
+
   function formatRam(mb) {
     const gb = mb / 1024;
-    return `${Number.isInteger(gb) ? gb : gb.toFixed(2).replace(/0$/, '')} ${window.I18n.lang === 'en' ? 'GB' : 'Go'}`;
+    const text = Number.isInteger(gb) ? String(gb) : gb.toFixed(2).replace(/0$/, '');
+    return window.I18n.lang === 'en' ? `${text} GB` : `${text.replace('.', ',')} Go`;
+  }
+
+  // onglets des réglages
+  function selectTab(name) {
+    document.querySelectorAll('.tab').forEach((tab) => {
+      tab.classList.toggle('active', tab.dataset.tab === name);
+      tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
+    });
+    document.querySelectorAll('.tabpanel').forEach((panel) => panel.classList.toggle('active', panel.id === `tab-${name}`));
+  }
+  document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => selectTab(tab.dataset.tab)));
+  window.selectSettingsTab = selectTab;
+
+  // Mémoire : curseur avec zone recommandée, graduations en Go et raccourcis
+  const RECOMMENDED = { 'forge-1.8.9': [2, 3] };
+  function ramMaxMb() {
+    return info ? Math.max(4096, Math.min(16384, Math.floor(info.totalRamMb / 1024) * 1024)) : 8192;
+  }
+  function setRamVisual(mb) {
+    const max = ramMaxMb();
+    $('ram-range').style.setProperty('--r', String(Math.min(1, Math.max(0, (mb - 1024) / (max - 1024)))));
+    $('ram-value').textContent = formatRam(mb);
+  }
+  function renderRam() {
+    const max = ramMaxMb();
+    const ratio = (mb) => (mb - 1024) / (max - 1024);
+    const input = $('ram');
+    input.max = String(max);
+    input.value = String(settings.ramMb);
+    setRamVisual(settings.ramMb);
+    const [from, to] = RECOMMENDED[settings.profileId] || [3, 4];
+    const zone = $('ram-zone');
+    zone.style.left = `calc(9px + (100% - 18px) * ${ratio(from * 1024)})`;
+    zone.style.width = `calc((100% - 18px) * ${ratio(to * 1024) - ratio(from * 1024)})`;
+    const maxGb = max / 1024;
+    const every = maxGb > 8 ? 2 : 1;
+    const unit = window.I18n.lang === 'en' ? 'GB' : 'Go';
+    // une graduation par Go (une sur deux au-delà de 8 Go), l'unité sur la dernière
+    const marks = Array.from({ length: maxGb }, (_, i) => i + 1).filter((g) => g === 1 || g % every === 0);
+    $('ram-ticks').replaceChildren(...marks.map((g) => {
+      const tick = el('span', { text: g === marks[marks.length - 1] ? `${g} ${unit}` : String(g) });
+      tick.style.left = `calc(9px + (100% - 18px) * ${ratio(g * 1024)})`;
+      return tick;
+    }));
+    $('ram-presets').replaceChildren(
+      ...[2, 3, 4, 6].filter((g) => g <= maxGb).map((g) => {
+        const chip = el('button', { class: `chip${settings.ramMb === g * 1024 ? ' active' : ''}`, type: 'button', text: `${g} ${unit}` });
+        chip.addEventListener('click', () => save({ ramMb: g * 1024 }));
+        return chip;
+      }),
+      el('span', { class: 'note', text: info ? t('settings.pcRam', { n: Math.round(info.totalRamMb / 1024) }) : '' }),
+    );
+    $('ram-warn').classList.toggle('hidden', !info || settings.ramMb <= info.totalRamMb / 2);
+  }
+
+  /** « Appliqué », « À appliquer » ou « Désactivé » pour un groupe du pack, d'après les jars réellement présents. */
+  function groupBadge(group) {
+    const on = group.on();
+    const counts = status && status.packGroups && status.packGroups[group.id];
+    if (!counts || !status.minecraft || !status.loader) return { cls: '', text: t('state.toInstall') };
+    if (on) return counts.present === counts.total ? { cls: 'good', text: t('state.applied') } : { cls: 'warn', text: t('state.pending') };
+    return counts.present === 0 ? { cls: 'good', text: t('state.disabled') } : { cls: 'warn', text: t('state.pending') };
+  }
+
+  function renderPackRows(profile) {
+    $('pack-rows').replaceChildren(...groupsOf(profile).map((group) => {
+      const badge = groupBadge(group);
+      const input = el('input', { type: 'checkbox', id: `group-${group.id}`, 'aria-label': t(group.title) });
+      input.checked = group.on();
+      input.addEventListener('change', () => save({ [group.setting]: input.checked }));
+      return el('div', { class: 'pack-row' }, [
+        el('div', {}, [el('h4', { text: t(group.title) }), el('p', { text: t(group.help) }), el('span', { class: `badge st ${badge.cls}`, text: badge.text })]),
+        el('label', { class: 'switch' }, [input, el('span')]),
+      ]);
+    }));
+  }
+
+  const OPTIFINE_REASONS = ['NOT_JAR', 'WRONG_NAME', 'BAD_ZIP', 'NO_TWEAK', 'TOO_BIG', 'UNREADABLE'];
+  /** Carte OptiFine du profil 1.8.9 : copie trouvée ou non, interrupteur, choix du fichier, lien officiel. */
+  function renderOptifine(profile) {
+    const card = $('optifine-card');
+    card.classList.toggle('hidden', !profile.hasOptifine);
+    if (!profile.hasOptifine) return;
+    const of = status && status.optifine;
+    const badge = $('optifine-badge');
+    let text;
+    if (!of) {
+      badge.className = 'badge';
+      badge.textContent = '…';
+      text = t('optifine.checking');
+    } else if (of.own) {
+      badge.className = 'badge good';
+      badge.textContent = t('optifine.badgeOwn');
+      text = t('optifine.textOwn', { name: of.own });
+    } else if (of.found) {
+      badge.className = 'badge good';
+      badge.textContent = t('optifine.badgeFound');
+      text = t('optifine.textFound', { name: optifineLabel(of), source: t(`optifine.source.${of.source}`) });
+    } else {
+      badge.className = 'badge warn';
+      badge.textContent = t('optifine.badgeMissing');
+      text = t('optifine.textMissing');
+    }
+    $('optifine-text').textContent = text;
+    const refused = of && of.chosenError && OPTIFINE_REASONS.includes(of.chosenError);
+    $('optifine-warn').textContent = refused ? t('optifine.chosenRefused', { reason: t(`error.OPTIFINE_${of.chosenError}`) }) : '';
+    $('optifine-warn').classList.toggle('hidden', !refused);
+    $('optifine-enabled').checked = settings.optifine !== false;
+    $('optifine-use-help').textContent = t('optifine.useHelp');
+    $('optifine-clear').classList.toggle('hidden', !settings.optifineJar);
   }
 
   function renderSettings() {
     const profile = currentProfile();
-    if (profile) {
-      $('settings-profile').textContent = `${profile.label} · ${loaderName(profile)}`;
-      $('ram-help').textContent = isFabric(profile) ? t('settings.ramHelpModern', { mc: profile.mc }) : t('settings.ramHelp');
-      $('java-help').textContent = t('settings.javaHelp', { java: profile.javaMajor, mc: profile.mc });
-      $('jvm-args-help').textContent = t('settings.jvmArgsHelp', { java: profile.javaMajor });
-      $('dev-help').textContent = t('settings.devHelp', { glob: profile.jarGlob });
-      $('shaders-card').classList.toggle('hidden', !isFabric(profile));
-      $('shaders').checked = Boolean(settings.shaders);
-      $('pvp-card').classList.toggle('hidden', !isFabric(profile));
-      $('pvp-mods').checked = settings.pvpMods !== false;
-    }
-    const ram = $('ram');
-    const max = info ? Math.max(4096, Math.min(16384, Math.floor(info.totalRamMb / 1024) * 1024)) : 8192;
-    ram.max = String(max);
-    ram.value = String(settings.ramMb);
-    $('ram-value').textContent = formatRam(settings.ramMb);
-    $('ram-warn').classList.toggle('hidden', !info || settings.ramMb <= info.totalRamMb / 2);
+    if (!profile || !settings) return;
+    $('settings-profile').textContent = `${profile.label} · ${loaderName(profile)}`;
+    $('ram-help').textContent = isFabric(profile) ? t('settings.ramHelpModern', { mc: profile.mc }) : t('settings.ramHelp');
+    $('java-help').textContent = t('settings.javaHelp', { java: profile.javaMajor, mc: profile.mc });
+    $('jvm-args-help').textContent = t('settings.jvmArgsHelp', { java: profile.javaMajor });
+    $('dev-help').textContent = t('settings.devHelp', { glob: profile.jarGlob });
+    renderRam();
+    renderPackRows(profile);
+    renderOptifine(profile);
     $('game-dir').value = settings.gameDir;
     const custom = settings.javaPath !== '' || $('java-mode').dataset.forceCustom === '1';
     $('java-mode').querySelectorAll('button').forEach((b) => b.classList.toggle('active', (b.dataset.value === 'custom') === custom));
@@ -390,19 +773,19 @@
     $('client-id').placeholder = settings.msClientId ? '00000000-0000-0000-0000-000000000000'
       : accountsView.clientIdFromEnv ? t('settings.clientIdEnv') : t('settings.clientIdDefault');
     if (info) $('about').textContent = t('settings.about', { version: info.version, dir: info.minecraftDir });
+    renderPending();
   }
 
-  $('ram').addEventListener('input', (e) => {
-    $('ram-value').textContent = formatRam(Number(e.target.value));
-  });
-  $('ram').addEventListener('change', (e) => save({ ramMb: Number(e.target.value) }));
+  $('ram').addEventListener('input', (event) => setRamVisual(Number(event.target.value)));
+  $('ram').addEventListener('change', (event) => save({ ramMb: Number(event.target.value) }));
+  $('game-dir-open').addEventListener('click', () => guarded(() => api.openGameDir(), (text) => flashSaved(text)));
   $('game-dir-change').addEventListener('click', async () => {
     const dir = await api.pickFolder(settings.gameDir);
     if (dir) save({ gameDir: dir });
   });
   $('game-dir-reset').addEventListener('click', () => save({ gameDir: '' }));
-  $('java-mode').addEventListener('click', (e) => {
-    const value = e.target.dataset?.value;
+  $('java-mode').addEventListener('click', (event) => {
+    const value = event.target.dataset?.value;
     if (!value) return;
     $('java-mode').dataset.forceCustom = value === 'custom' ? '1' : '';
     if (value === 'bundled') save({ javaPath: '' });
@@ -421,49 +804,90 @@
     $('jvm-args-warn').classList.toggle('hidden', !failure);
   }
   $('jvm-args-save').addEventListener('click', () => saveJvmArgs($('jvm-args').value));
-  $('jvm-args').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') saveJvmArgs(e.target.value);
+  $('jvm-args').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') saveJvmArgs(event.target.value);
   });
   $('jvm-args-reset').addEventListener('click', () => saveJvmArgs(''));
-  $('lang').addEventListener('click', async (e) => {
-    const value = e.target.dataset?.value;
+  $('lang').addEventListener('click', async (event) => {
+    const value = event.target.dataset?.value;
     if (!value) return;
     await save({ lang: value });
     applyLanguage();
   });
-  $('dev-mode').addEventListener('change', (e) => save({ devMode: e.target.checked }));
-  $('shaders').addEventListener('change', (e) => save({ shaders: e.target.checked }));
-  $('pvp-mods').addEventListener('change', (e) => save({ pvpMods: e.target.checked }));
+  $('dev-mode').addEventListener('change', (event) => save({ devMode: event.target.checked }));
+  $('optifine-enabled').addEventListener('change', (event) => save({ optifine: event.target.checked }));
+  $('optifine-pick').addEventListener('click', async () => {
+    const result = await call(() => api.pickOptifine());
+    if (result.ok) {
+      settings = await api.getSettings();
+      flashSaved(null);
+      renderSettings();
+      await refreshStatus();
+    } else if (result.code !== 'CANCELLED') {
+      flashSaved(errorText(result));
+    }
+  });
+  $('optifine-clear').addEventListener('click', () => save({ optifineJar: '' }));
+  $('optifine-download').addEventListener('click', () => api.openOptifine());
   $('dev-dir-change').addEventListener('click', async () => {
     const dir = await api.pickFolder(settings.devJarDir);
     if (dir) save({ devJarDir: dir });
   });
 
-  // --- comptes ---
-  /** Compte utilisé par JOUER : le compte actif (hors ligne seulement en mode développeur). */
-  function launchAccount() {
-    const active = accountsView.accounts.find((a) => a.active);
-    return active && (active.type === 'msa' || settings?.devMode) ? active : null;
+  // --- crédits : mods du pack avec auteur, version et licence ---
+  const creditsDialog = $('credits-dialog');
+  function renderCredits() {
+    const profile = currentProfile();
+    if (!profile) return;
+    $('credits-dialog-title').textContent = `${t('credits.title')} · ${profile.label}`;
+    $('credits-credit').textContent = t('credits.credit');
+    const list = $('credits-list');
+    list.replaceChildren(
+      el('div', { class: 'credit-section', text: t('credits.packSection', { label: profile.label }) }),
+      el('div', { class: 'credit-row credit-head' }, [el('span', { text: t('credits.mod') }), el('span', { text: t('credits.author') }), el('span', { text: t('credits.license') })]),
+      ...profile.pack.map((mod) => el('div', { class: 'credit-row' }, [
+        el('span', {}, [el('b', { text: mod.name }), el('small', { text: `v${mod.version}` })]),
+        el('span', { text: mod.author || t('credits.unknown') }),
+        el('span', { text: licenseName(mod.license) }),
+      ])),
+      el('div', { class: 'credit-section', text: t('credits.otherSection') }),
+      el('div', { class: 'credit-row' }, [el('span', {}, [el('b', { text: 'ATTACK Client' })]), el('span', { text: '7ShIkI3' }), el('span', { text: t('credits.attackLicense') })]),
+      ...(profile.hasOptifine ? [el('div', { class: 'credit-row' }, [el('span', {}, [el('b', { text: 'OptiFine' })]), el('span', { text: 'sp614x' }), el('span', { text: t('credits.optifineLicense') })])] : []),
+      el('p', { class: 'credit-note', text: t('credits.note') }),
+    );
   }
+  $('credits-open').addEventListener('click', () => {
+    renderCredits();
+    creditsDialog.showModal();
+    $('credits-list').scrollTop = 0;
+  });
+  $('credits-close').addEventListener('click', () => creditsDialog.close());
+  creditsDialog.addEventListener('click', (event) => {
+    if (event.target === creditsDialog) creditsDialog.close();
+  });
 
-  /** Tête du joueur (visage + calque du chapeau) dessinée depuis la skin, en pixels nets. */
-  function avatar(account) {
-    const box = el('div', { class: 'avatar', text: account.name.slice(0, 1).toUpperCase() });
-    if (!account.skin) return box;
-    const image = new Image();
-    image.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 8;
-      canvas.height = 8;
-      const ctx = canvas.getContext('2d');
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(image, 8, 8, 8, 8, 0, 0, 8, 8);
-      ctx.drawImage(image, 40, 8, 8, 8, 0, 0, 8, 8);
-      box.replaceChildren(canvas);
-    };
-    image.src = account.skin;
+  // --- comptes ---
+  /** Tête du joueur (visage + calque du chapeau) dessinée depuis la skin, en pixels nets ; l'initiale tant que la skin n'est pas là. */
+  function avatarCanvas(account, size) {
+    const box = el('span', { class: 'avatar-fill' });
+    box.textContent = account.name.slice(0, 1).toUpperCase();
+    if (account.skin) {
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 8;
+        canvas.height = 8;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(image, 8, 8, 8, 8, 0, 0, 8, 8);
+        ctx.drawImage(image, 40, 8, 8, 8, 0, 0, 8, 8);
+        box.replaceChildren(canvas);
+      };
+      image.src = account.skin;
+    }
     return box;
   }
+  const avatar = (account) => el('div', { class: 'avatar' }, [avatarCanvas(account, 56)]);
 
   function accountMessage(text, kind = '') {
     const node = $('account-message');
@@ -472,50 +896,61 @@
     node.classList.toggle('hidden', !text);
   }
 
+  /** Bouton Compte de la barre latérale : tête du joueur et point de présence, ou icône et point rouge sans compte. */
+  function renderNavAccount() {
+    const active = accountsView.accounts.find((a) => a.active);
+    $('nav-account').dataset.account = !active ? 'none' : active.type === 'msa' ? 'msa' : 'offline';
+    $('nav-avatar').replaceChildren(...(active ? [avatarCanvas(active, 28)] : []));
+  }
+
   function renderAccounts() {
     const view = accountsView;
+    const none = view.accounts.length === 0;
     $('azure-setup').classList.toggle('hidden', view.hasClientId);
-    $('login-button').disabled = !view.hasClientId || loggingIn;
+    $('account-empty').classList.toggle('hidden', !none || !view.hasClientId);
+    for (const button of document.querySelectorAll('.js-login')) button.disabled = !view.hasClientId || loggingIn;
+    $('login-button').classList.toggle('hidden', none);
     $('offline-card').classList.toggle('hidden', !view.devMode);
-    const list = $('accounts-list');
-    if (view.accounts.length === 0) {
-      list.replaceChildren(el('p', { class: 'empty', text: t('account.none') }));
-    } else {
-      list.replaceChildren(...view.accounts.map((account) => {
-        const actions = [];
-        if (!account.active) {
-          const use = el('button', { class: 'btn', text: t('account.use') });
-          use.addEventListener('click', async () => {
-            const view = await guarded(() => api.accounts.select(account.id), (text) => accountMessage(text, 'error'));
-            if (view) accountsView = view;
-            renderAccounts();
-            renderStatus();
-          });
-          actions.push(use);
-        }
-        const remove = el('button', { class: 'btn ghost danger', text: t('account.remove') });
-        remove.addEventListener('click', async () => {
-          const view = await guarded(() => api.accounts.remove(account.id), (text) => accountMessage(text, 'error'));
-          if (view) accountsView = view;
+    const active = view.accounts.find((a) => a.active);
+    $('skin-offline-actions').classList.toggle('hidden', !active || active.type === 'msa');
+    $('accounts-list').replaceChildren(...view.accounts.map((account) => {
+      const actions = [];
+      if (!account.active) {
+        const use = el('button', { class: 'btn', text: t('account.use') });
+        use.addEventListener('click', async () => {
+          const next = await guarded(() => api.accounts.select(account.id), (text) => accountMessage(text, 'error'));
+          if (next) accountsView = next;
           renderAccounts();
           renderStatus();
         });
-        actions.push(remove);
-        return el('div', { class: `card account-card${account.active ? ' active' : ''}` }, [
-          avatar(account),
-          el('div', { class: 'account-info' }, [
-            el('b', { text: account.name }),
+        actions.push(use);
+      }
+      const remove = el('button', { class: 'btn ghost danger', text: t('account.remove') });
+      remove.addEventListener('click', async () => {
+        const next = await guarded(() => api.accounts.remove(account.id), (text) => accountMessage(text, 'error'));
+        if (next) accountsView = next;
+        renderAccounts();
+        renderStatus();
+      });
+      actions.push(remove);
+      return el('div', { class: `card account-card${account.active ? ' active' : ''}` }, [
+        avatar(account),
+        el('div', { class: 'account-info' }, [
+          el('div', { class: 'name', text: account.name }),
+          el('div', { class: 'badges' }, [
             el('span', { class: 'badge', text: t(account.type === 'msa' ? 'account.msa' : 'account.offline') }),
-            ...(account.active ? [' ', el('span', { class: 'badge on', text: t('account.active') })] : []),
+            ...(account.active ? [el('span', { class: 'badge on', text: t('account.active') })] : []),
           ]),
-          el('div', { class: 'setup-actions' }, actions),
-        ]);
-      }));
-    }
+          ...(account.active ? [el('p', { class: 'sub', text: t(account.type === 'msa' ? 'account.subMsa' : 'account.subOffline') })] : []),
+        ]),
+        el('div', { class: 'setup-actions' }, actions),
+      ]);
+    }));
+    renderNavAccount();
     document.dispatchEvent(new CustomEvent('attack:accounts', { detail: view }));
   }
 
-  // skin.js (vue 3D du skin) suit le compte actif et reutilise la traduction des erreurs
+  // skin.js (vue 3D du skin) suit le compte actif et réutilise la traduction des erreurs
   window.AttackUI = { errorText, view: () => accountsView };
 
   async function refreshAccounts() {
@@ -526,9 +961,10 @@
   }
 
   let loggingIn = false;
-  $('login-button').addEventListener('click', async () => {
+  async function startLogin() {
     if (loggingIn) return;
     loggingIn = true;
+    showPage('account');
     accountMessage('');
     $('device-code').textContent = '--------';
     $('device-uri').textContent = '';
@@ -541,7 +977,8 @@
     if (result.ok) accountMessage(t('login.done', { name: result.name }), 'ok');
     else if (result.code !== 'CANCELLED') accountMessage(errorText(result), 'error');
     await refreshAccounts();
-  });
+  }
+  document.querySelectorAll('.js-login').forEach((button) => button.addEventListener('click', startLogin));
   api.onAuthEvent((event) => {
     if (event.stage === 'code') {
       $('device-code').textContent = event.userCode;
@@ -575,6 +1012,7 @@
   $('azure-form').addEventListener('click', () => api.openAzureHelp(1));
   $('azure-settings').addEventListener('click', () => {
     showPage('settings');
+    selectTab('advanced');
     $('client-id').focus();
   });
   $('offline-add').addEventListener('click', async () => {
@@ -645,14 +1083,20 @@
     window.I18n.setLang(settings.lang);
     renderProfiles();
     renderStatus();
-    renderChangelog();
+    renderNews();
     renderMods();
     renderSettings();
     renderAccounts();
     renderUpdate();
+    if (changelogDialog.open) renderHistory();
+    if (creditsDialog.open) renderCredits();
   }
 
   api.onWindowState(({ maximized }) => document.body.classList.toggle('maximized', maximized));
+  // retour sur la fenêtre (après avoir téléchargé ou installé OptiFine, par exemple) : l'état est relu
+  window.addEventListener('focus', () => {
+    if (!busy && !playing && info && settings) refreshStatus();
+  });
 
   async function init() {
     [info, settings] = await Promise.all([api.info(), api.getSettings()]);
