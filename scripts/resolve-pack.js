@@ -16,6 +16,7 @@ const CDN_HOST = 'cdn.modrinth.com';
 /**
  * versionNumber = numéro de version Modrinth exact (version_number) ; version = texte affiché dans le launcher.
  * optional : mod installé seulement si le réglage « Shaders (Iris) » est activé.
+ * group: 'pvp' : mod installé seulement si le réglage « Mods PvP (latence) » est activé.
  * ModMenu embarque déjà Text Placeholder API (META-INF/jars) : pas besoin de placeholder-api à côté.
  */
 const SPECS = {
@@ -29,6 +30,19 @@ const SPECS = {
       { slug: 'immediatelyfast', name: 'ImmediatelyFast', versionNumber: '1.6.15+1.21.1-fabric', version: '1.6.15' },
       { slug: 'modmenu', name: 'Mod Menu', versionNumber: '11.0.5', version: '11.0.5' },
       { slug: 'iris', name: 'Iris Shaders', versionNumber: '1.8.14-beta.1+1.21.1-fabric', version: '1.8.14-beta.1', optional: true },
+      { slug: 'entityculling', name: 'Entity Culling', versionNumber: '1.11.3', version: '1.11.3' },
+      { slug: 'moreculling', name: 'More Culling', versionNumber: '1.0.10', version: '1.0.10' },
+      { slug: 'cloth-config', name: 'Cloth Config', versionNumber: '15.0.140+fabric', version: '15.0.140' },
+      { slug: 'badoptimizations', name: 'BadOptimizations', versionNumber: '2.4.1', version: '2.4.1' },
+      { slug: 'dynamic-fps', name: 'Dynamic FPS', versionNumber: '3.11.4', version: '3.11.4' },
+      { slug: 'modernfix', name: 'ModernFix', versionNumber: '5.25.1+mc1.21.1', version: '5.25.1' },
+      { slug: 'krypton', name: 'Krypton', versionNumber: '0.2.8', version: '0.2.8' },
+      { slug: 'fast-ip-ping', name: 'Fast IP Ping', versionNumber: 'v1.0.12-mc1.21.1-fabric', version: '1.0.12' },
+      { slug: 'serverpingerfixer', name: 'Server Pinger Fixer', versionNumber: '1.0.6', version: '1.0.6' },
+      { slug: 'reflex-antilag', name: 'Reflex AntiLag', versionNumber: '1.1.3+fabric-1.21.1', version: '1.1.3' },
+      { slug: 'marlow-crystal-optimizer', name: 'Crystal Optimizer', versionNumber: '2.0.0+mc1.20.5-1.21.4', version: '2.0.0', group: 'pvp' },
+      { slug: 'anchor-optimizer', name: 'Anchor Optimizer', versionNumber: '1.3.0+1.21-1.21.1', version: '1.3.0', group: 'pvp' },
+      { slug: 'walksylib', name: 'WalksyLib', versionNumber: '2.0.4+1.21-1.21.1', version: '2.0.4', group: 'pvp' },
     ],
   },
   'fabric-26.3': {
@@ -41,6 +55,18 @@ const SPECS = {
       { slug: 'immediatelyfast', name: 'ImmediatelyFast', versionNumber: '1.17.1+26.3-fabric', version: '1.17.1' },
       { slug: 'modmenu', name: 'Mod Menu', versionNumber: '21.0.0', version: '21.0.0' },
       { slug: 'iris', name: 'Iris Shaders', versionNumber: '1.11.7+26.3-fabric', version: '1.11.7', optional: true },
+      { slug: 'entityculling', name: 'Entity Culling', versionNumber: '1.11.3', version: '1.11.3' },
+      { slug: 'moreculling', name: 'More Culling', versionNumber: '1.9.0', version: '1.9.0' },
+      { slug: 'cloth-config', name: 'Cloth Config', versionNumber: '26.3.159+fabric', version: '26.3.159' },
+      { slug: 'badoptimizations', name: 'BadOptimizations', versionNumber: '2.4.1', version: '2.4.1' },
+      { slug: 'dynamic-fps', name: 'Dynamic FPS', versionNumber: '3.11.10', version: '3.11.10' },
+      { slug: 'krypton', name: 'Krypton', versionNumber: '0.3.2', version: '0.3.2' },
+      { slug: 'fast-ip-ping', name: 'Fast IP Ping', versionNumber: 'v1.0.12-mc26.3', version: '1.0.12' },
+      { slug: 'serverpingerfixer', name: 'Server Pinger Fixer', versionNumber: '1.1.1', version: '1.1.1' },
+      { slug: 'reflex-antilag', name: 'Reflex AntiLag', versionNumber: '1.1.3+fabric-26.3', version: '1.1.3' },
+      { slug: 'marlow-crystal-optimizer', name: 'Crystal Optimizer', versionNumber: '2.0.0+mc26.1-26.3', version: '2.0.0', group: 'pvp' },
+      { slug: 'anchor-optimizer', name: 'Anchor Optimizer', versionNumber: '1.3.0+26.3', version: '1.3.0', group: 'pvp' },
+      { slug: 'walksylib', name: 'WalksyLib', versionNumber: '2.0.4+26.3', version: '2.0.4', group: 'pvp' },
     ],
   },
 };
@@ -81,6 +107,7 @@ async function resolveMod(spec, mc) {
     size: file.size,
   };
   if (spec.optional) entry.optional = true;
+  if (spec.group) entry.group = spec.group;
   return { entry, version };
 }
 
@@ -99,7 +126,7 @@ async function resolveProfile(profileId, spec) {
     const { entry, version } = await resolveMod(modSpec, spec.mc);
     const missing = await dependencyNotes(version, slugs);
     const note = missing.length > 0 ? `  dépendance requise hors pack : ${missing.join(', ')} (à vérifier : embarquée ?)` : '';
-    console.log(`  ${entry.slug.padEnd(16)} ${entry.version.padEnd(9)} ${version.version_type.padEnd(8)} ${entry.filename} (${entry.size} o)${entry.optional ? ' [optionnel]' : ''}${note}`);
+    console.log(`  ${entry.slug.padEnd(24)} ${entry.version.padEnd(9)} ${version.version_type.padEnd(8)} ${entry.filename} (${entry.size} o)${entry.optional ? ' [optionnel]' : ''}${note}`);
     mods.push(entry);
   }
   return { profileId, mc: spec.mc, loader: 'fabric', mods };

@@ -80,6 +80,141 @@
       "sha1": "fa03640ba1e4ef2f7ae3619c6373a06e46d0ba2c",
       "size": 2850938,
       "optional": true
+    },
+    {
+      "slug": "entityculling",
+      "name": "Entity Culling",
+      "version": "1.11.3",
+      "versionNumber": "1.11.3",
+      "filename": "entityculling-fabric-1.11.3-mc26.3.jar",
+      "url": "https://cdn.modrinth.com/data/NNAgCjsB/versions/X1g3VhTx/entityculling-fabric-1.11.3-mc26.3.jar",
+      "sha512": "b6209bb62d72376d3fd284da137ec93a6dd38ebe5fd38ab9190deeade68b5b7f4bf915f4abcb4a807afe18cb9f0b59e11be789d46df6f0e6f64388ed2edc284d",
+      "sha1": "45f47f7a067f5efd733a32767dc3d1d770678b2a",
+      "size": 1508547
+    },
+    {
+      "slug": "moreculling",
+      "name": "More Culling",
+      "version": "1.9.0",
+      "versionNumber": "1.9.0",
+      "filename": "moreculling-fabric-26.3-1.9.0.jar",
+      "url": "https://cdn.modrinth.com/data/51shyZVL/versions/t7vAlfgO/moreculling-fabric-26.3-1.9.0.jar",
+      "sha512": "b1975ef43606a3baa1c93a040fbef96abfbf46ae6a1e364c60effd03a42568f945ede0bde329241e87adc6a9c2769dd1d13ad286869c689018035eff677442b2",
+      "sha1": "7308b0b0b6fffb0e076cabf97db7fc889d9ada68",
+      "size": 294320
+    },
+    {
+      "slug": "cloth-config",
+      "name": "Cloth Config",
+      "version": "26.3.159",
+      "versionNumber": "26.3.159+fabric",
+      "filename": "cloth-config-fabric-26.3.159.jar",
+      "url": "https://cdn.modrinth.com/data/9s6osm5g/versions/fg2uyxOW/cloth-config-fabric-26.3.159.jar",
+      "sha512": "8924e19d41845096724fa10f3717bc51964a0edbbbcad0ff1e6c6187a398b08f356e49579a657c2dc44a7f92e3850771f3ca70bf8c1f654de60425163b91dbb1",
+      "sha1": "9a5cce069380a2047250831dcb19f4ef1b15872d",
+      "size": 1135009
+    },
+    {
+      "slug": "badoptimizations",
+      "name": "BadOptimizations",
+      "version": "2.4.1",
+      "versionNumber": "2.4.1",
+      "filename": "BadOptimizations-2.4.1-26.3-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/g96Z4WVZ/versions/Sp0ctspw/BadOptimizations-2.4.1-26.3-fabric.jar",
+      "sha512": "048a0979807afb96bae7801b7445746c985081bb55fab9b80b286036234a9869cc84f83c40ab77a2600b7e06ad44178ee17935b706b751c9b38f87ebc6e180f8",
+      "sha1": "4cc25ce6217326ff14169f5358921773297e9475",
+      "size": 60760
+    },
+    {
+      "slug": "dynamic-fps",
+      "name": "Dynamic FPS",
+      "version": "3.11.10",
+      "versionNumber": "3.11.10",
+      "filename": "dynamic-fps-3.11.10+minecraft-26.3.0-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/LQ3K71Q1/versions/Jwq069rR/dynamic-fps-3.11.10%2Bminecraft-26.3.0-fabric.jar",
+      "sha512": "7976d11411babfa3ac0c38898f26ee6192f22a4f595b637eeae3cc5185f326c0e4b9fd7d00b3d7e8d020dd861295f0df52f9a9d7c67e88946d0ba9fff4a9f894",
+      "sha1": "a4860c9480f0ce1a468e1e4c254214b1f97e19b3",
+      "size": 189474
+    },
+    {
+      "slug": "krypton",
+      "name": "Krypton",
+      "version": "0.3.2",
+      "versionNumber": "0.3.2",
+      "filename": "krypton-0.3.2.jar",
+      "url": "https://cdn.modrinth.com/data/fQEb0iXm/versions/UugdIYJw/krypton-0.3.2.jar",
+      "sha512": "d1d57ebd41395b75b01f130cd9503eb8d208212424a399ff9f367f50be8fbc1c6472442b33c686e777c3148f6a609520e8fb732c755157c358cb207fd4d1123a",
+      "sha1": "21b21cb88e412f0bce73b6609de6dd6aca958d7d",
+      "size": 268849
+    },
+    {
+      "slug": "fast-ip-ping",
+      "name": "Fast IP Ping",
+      "version": "1.0.12",
+      "versionNumber": "v1.0.12-mc26.3",
+      "filename": "fast-ip-ping-v1.0.12-mc26.3.jar",
+      "url": "https://cdn.modrinth.com/data/9mtu0sUO/versions/N6hOHbOO/fast-ip-ping-v1.0.12-mc26.3.jar",
+      "sha512": "b81e57aff8e161d75a1ca84576db89c7a0d874da50eb7f8ca17c3391bf75be2243db3d56a76294abdf84bca81eb78bb2613c380f4ab70f0f2c7119f08703b813",
+      "sha1": "7db094c0a3f4c0d272d41c800838c57fe6bb823e",
+      "size": 11310
+    },
+    {
+      "slug": "serverpingerfixer",
+      "name": "Server Pinger Fixer",
+      "version": "1.1.1",
+      "versionNumber": "1.1.1",
+      "filename": "serverpingerfixer+26.1-1.1.1.jar",
+      "url": "https://cdn.modrinth.com/data/iqK5uv72/versions/S5jb0bIg/serverpingerfixer%2B26.1-1.1.1.jar",
+      "sha512": "a39ad7675ea41a3e8620101497a14f3242adce55c2d34fae6d6b335c8a35e554a5fd7a0f603b62ffdf0235571c7958d222f143c13ad1746b230f22d9900aa788",
+      "sha1": "38caf552fa0b3cbde8e9becbcb39cf147fee4844",
+      "size": 6440
+    },
+    {
+      "slug": "reflex-antilag",
+      "name": "Reflex AntiLag",
+      "version": "1.1.3",
+      "versionNumber": "1.1.3+fabric-26.3",
+      "filename": "reflex-fabric-1.1.3+26.3.jar",
+      "url": "https://cdn.modrinth.com/data/WTVzusYD/versions/2XbkvTeN/reflex-fabric-1.1.3%2B26.3.jar",
+      "sha512": "700846f4e19a83461be5ec3f46aaea7350f95eed0d86a4aeb302f012aaaa61e2095c4ffb12963302d0e8d50fb7424f64fc4fc8599b7cff001643ec8184f81d1e",
+      "sha1": "7674e0d2e59bac4724e6121ae9d3494fef2faf65",
+      "size": 37407
+    },
+    {
+      "slug": "marlow-crystal-optimizer",
+      "name": "Crystal Optimizer",
+      "version": "2.0.0",
+      "versionNumber": "2.0.0+mc26.1-26.3",
+      "filename": "marlows-crystal-optimizer-2.0.0+mc26.1-26.3.jar",
+      "url": "https://cdn.modrinth.com/data/ozpC8eDC/versions/bGsf0NJz/marlows-crystal-optimizer-2.0.0%2Bmc26.1-26.3.jar",
+      "sha512": "48bc70ee562d6be9235f663a9b53e379c04614ddff5eee5d6c6fb335caefb15fa5bf7d8bf69328848c88a67b011e8306d0bbf034d804e29e9bbe198fda60c948",
+      "sha1": "31c04918aedf6879d6ad10cd8307b644ab67ae44",
+      "size": 153985,
+      "group": "pvp"
+    },
+    {
+      "slug": "anchor-optimizer",
+      "name": "Anchor Optimizer",
+      "version": "1.3.0",
+      "versionNumber": "1.3.0+26.3",
+      "filename": "AnchorOptimizer-1.3.0+26.3.jar",
+      "url": "https://cdn.modrinth.com/data/KvhelBPU/versions/suAVs3GV/AnchorOptimizer-1.3.0%2B26.3.jar",
+      "sha512": "4345d708a373a6a39df6f770b41bcaf0e1dd7cbac2e5f98e2364744bda659b7fcac4a3151c734b4e7b6febf13062f6fd61a43b2286fe7ed3706048814e0cacdb",
+      "sha1": "232bccd504c9414b018e3dbbdcf35b1d479cd171",
+      "size": 1297591,
+      "group": "pvp"
+    },
+    {
+      "slug": "walksylib",
+      "name": "WalksyLib",
+      "version": "2.0.4",
+      "versionNumber": "2.0.4+26.3",
+      "filename": "WalksyLib-2.0.4+26.3.jar",
+      "url": "https://cdn.modrinth.com/data/7P86n6Vg/versions/azO9MlaZ/WalksyLib-2.0.4%2B26.3.jar",
+      "sha512": "3c13c53648a6aa6e4f3aa240479a97d97048944045786deb7ecc86ec88f97005ec73d2b2e7213ddf5a9e10e7fb7b36eb7051c8d8ab50dd3054194998eee0f60d",
+      "sha1": "c1c60251305d9441745a8a6ddef65a57d0bff1f9",
+      "size": 1772088,
+      "group": "pvp"
     }
   ]
 }
