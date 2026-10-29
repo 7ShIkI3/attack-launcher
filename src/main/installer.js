@@ -303,7 +303,7 @@ async function journal(gameDir, message) {
  * dernière faite (un dossier déjà à 1 ne refait pas l'étape 1). Un échec (fichier illisible ou verrouillé) est journalisé sans faire
  * échouer l'installation ; le drapeau n'est alors pas posé et la prochaine installation réessaie.
  * `profile` : entrée du catalogue (Fabric = étape vidéo ; Forge 1.8.9 = langue en écriture « fr_FR »), Fabric par défaut ;
- * `lang` : langue du launcher ('fr' | 'en').
+ * `lang` : langue du launcher ('fr' | 'en'), écrite seulement quand options.txt est créé (jamais dans un fichier existant).
  * Renvoie { action: 'created' | 'updated' | 'unchanged' | 'skipped' | 'error', changed, error? }.
  */
 async function installGameOptions(gameDir, profile = null, lang = null) {

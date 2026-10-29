@@ -203,9 +203,11 @@ ressources au format OptiFine (textures connectées, mobs, ciel) **sans OptiFine
     (`maxFps:260`), sans ombres d'entités, distance 10 ; dans un dossier existant, seules les valeurs par défaut de
     Minecraft `enableVsync:true` et `maxFps:120` sont remplacées ;
   - étape 2, **tous les profils, 1.8.9 comprise** : la **langue du launcher** (`lang:fr_fr` / `en_us` en Fabric,
-    `lang:fr_FR` / `en_US` en 1.8.9) est écrite à la création d'`options.txt` ; dans un fichier existant, seulement si
-    la langue est encore celle par défaut de Minecraft (`en_us`) et que le launcher est en français. Le menu ATTACK sort
-    ainsi en français. Un dossier déjà à `gameOptions=1` ne refait pas l'étape 1.
+    `lang:fr_FR` / `en_US` en 1.8.9) est écrite **seulement quand le launcher crée** `options.txt` (dossier de jeu neuf).
+    Un `options.txt` existant garde sa langue : `en_us` peut être le choix d'un joueur qui joue en anglais exprès, rien ne
+    le distingue de la valeur par défaut de Minecraft. Le menu ATTACK d'un dossier neuf sort ainsi en français ; le drapeau
+    `gameOptions=2` est posé dans tous les cas (l'étape n'est pas refaite). Un dossier déjà à `gameOptions=1` ne refait pas
+    l'étape 1.
   Un choix du joueur n'est jamais modifié.
 - **Iris et Sodium vont ensemble** : en 1.21.1, Sodium 0.8.13 (dernière release, nouveau moteur de rendu) demande
   Iris 1.8.14-beta.1, seule version d'Iris pour Sodium 0.8 en 1.21.1 (publiée en juin 2026, pas de release stable

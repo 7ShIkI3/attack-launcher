@@ -1,5 +1,6 @@
 'use strict';
-// Réglages de départ d'options.txt (Minecraft), par étapes : 1 = vidéo (Fabric), 2 = langue du launcher (tous les profils).
+// Réglages de départ d'options.txt (Minecraft), par étapes : 1 = vidéo (Fabric), 2 = langue du launcher (tous les profils), écrite
+// seulement à la création du fichier : un options.txt existant garde la langue du joueur.
 // Dossier neuf, valeurs par défaut de Minecraft remplacées une seule fois, choix du joueur et mise en forme du fichier intacts,
 // erreurs sans conséquence pour l'installation.
 const test = require('node:test');
@@ -181,41 +182,27 @@ test('texte de départ avec la langue : ajoutée à la fin, seule pour la 1.8.9 
   assert.equal(gameoptions.startText({ video: false }), '', 'rien à écrire');
 });
 
-test('migrateLang : lang:en_us (valeur par défaut) devient français seulement quand le launcher est en français', () => {
-  const text = 'version:3955\nlang:en_us\nautoJump:false\n';
-  assert.deepEqual(gameoptions.migrateLang(text, { lang: 'fr' }), { text: 'version:3955\nlang:fr_fr\nautoJump:false\n', changed: ['lang'] });
-  assert.deepEqual(gameoptions.migrateLang('lang:en_US\r\nfov:0.5\r\n', { lang: 'fr', legacy: true }), { text: 'lang:fr_FR\r\nfov:0.5\r\n', changed: ['lang'] });
-  assert.equal(gameoptions.migrateLang(text, { lang: 'en' }).text, text, 'launcher en anglais : rien');
-  assert.equal(gameoptions.migrateLang(text, {}).changed.length, 0);
-  // choix du joueur : jamais touché
-  for (const chosen of ['de_de', 'fr_ca', 'fr_fr', 'es_es']) {
-    const mine = `lang:${chosen}\nautoJump:true\n`;
-    assert.deepEqual(gameoptions.migrateLang(mine, { lang: 'fr' }), { text: mine, changed: [] }, chosen);
-  }
-});
-
-test('migrateLang : fichier sans ligne lang (valeur par défaut) = ligne ajoutée avec la fin de ligne du fichier', () => {
-  assert.equal(gameoptions.migrateLang('enableVsync:false\n', { lang: 'fr' }).text, 'enableVsync:false\nlang:fr_fr\n');
-  assert.equal(gameoptions.migrateLang('enableVsync:false', { lang: 'fr' }).text, 'enableVsync:false\nlang:fr_fr\n', 'sans retour final');
-  assert.equal(gameoptions.migrateLang('a:1\r\nb:2\r\n', { lang: 'fr' }).text, 'a:1\r\nb:2\r\nlang:fr_fr\r\n');
-  assert.equal(gameoptions.migrateLang('', { lang: 'fr', legacy: true }).text, 'lang:fr_FR\n');
-});
-
-test('apply : un dossier à l’étape 1 ne refait pas la vidéo mais fait la langue', async () => {
+test('apply : un dossier à l’étape 1 ne refait pas la vidéo ; la langue n’est écrite que dans un fichier créé, jamais dans un fichier existant', async () => {
   const dir = tempDir();
-  // le joueur a remis la VSync et 120 FPS après l'étape 1 : seule la langue change
-  fs.writeFileSync(optionsFile(dir), 'version:3955\nenableVsync:true\nmaxFps:120\nlang:en_us\n');
-  const result = await gameoptions.apply(dir, { from: 1, lang: 'fr' });
-  assert.deepEqual(result, { action: 'updated', changed: ['lang'] });
-  assert.equal(fs.readFileSync(optionsFile(dir), 'utf8'), 'version:3955\nenableVsync:true\nmaxFps:120\nlang:fr_fr\n');
+  // le joueur a remis la VSync et 120 FPS après l'étape 1, et joue en anglais (valeur par défaut ou choix : on ne peut pas savoir) : rien ne change
+  const body = 'version:3955\nenableVsync:true\nmaxFps:120\nlang:en_us\n';
+  fs.writeFileSync(optionsFile(dir), body);
+  const before = fs.statSync(optionsFile(dir)).mtimeMs;
+  assert.deepEqual(await gameoptions.apply(dir, { from: 1, lang: 'fr' }), { action: 'unchanged', changed: [] });
+  assert.equal(fs.readFileSync(optionsFile(dir), 'utf8'), body);
+  assert.equal(fs.statSync(optionsFile(dir)).mtimeMs, before, 'fichier non réécrit');
   // dossier neuf déjà à l'étape 1 : seulement la langue est écrite
   const fresh = tempDir();
   assert.deepEqual(await gameoptions.apply(fresh, { from: 1, lang: 'fr' }), { action: 'created', changed: ['lang'] });
   assert.equal(fs.readFileSync(optionsFile(fresh), 'utf8'), 'lang:fr_fr\n');
   // étape 2 déjà faite : rien
   assert.deepEqual(await gameoptions.apply(dir, { from: 2, lang: 'fr' }), { action: 'unchanged', changed: [] });
-  fs.rmSync(dir, { recursive: true, force: true });
-  fs.rmSync(fresh, { recursive: true, force: true });
+  // fichier sans ligne lang : pas de ligne ajoutée non plus (la langue par défaut de Minecraft reste)
+  const noLang = tempDir();
+  fs.writeFileSync(optionsFile(noLang), 'autoJump:false\n');
+  assert.deepEqual(await gameoptions.apply(noLang, { from: 1, lang: 'fr' }), { action: 'unchanged', changed: [] });
+  assert.equal(fs.readFileSync(optionsFile(noLang), 'utf8'), 'autoJump:false\n');
+  for (const d of [dir, fresh, noLang]) fs.rmSync(d, { recursive: true, force: true });
 });
 
 test('installation Forge 1.8.9 : options.txt créé avec lang:fr_FR seulement (pas de réglage vidéo), drapeau posé, jamais refait', async () => {
@@ -231,12 +218,14 @@ test('installation Forge 1.8.9 : options.txt créé avec lang:fr_FR seulement (p
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('installation Forge 1.8.9 : options.txt existant en en_US passe en fr_FR, un autre choix de langue reste', async () => {
+test('installation Forge 1.8.9 : options.txt existant, un joueur en anglais (en_US) reste en anglais, drapeau posé ; un autre choix de langue reste aussi', async () => {
   const dir = tempDir();
-  fs.writeFileSync(optionsFile(dir), 'invertYMouse:false\r\nfov:0.0\r\nlang:en_US\r\nmaxFps:120\r\n');
+  const body = 'invertYMouse:false\r\nfov:0.0\r\nlang:en_US\r\nmaxFps:120\r\n';
+  fs.writeFileSync(optionsFile(dir), body);
   const result = await installer.installGameOptions(dir, FORGE, 'fr');
-  assert.deepEqual(result, { action: 'updated', changed: ['lang'] });
-  assert.equal(fs.readFileSync(optionsFile(dir), 'latin1'), 'invertYMouse:false\r\nfov:0.0\r\nlang:fr_FR\r\nmaxFps:120\r\n', '120 FPS : réglage vidéo non touché en 1.8.9');
+  assert.deepEqual(result, { action: 'unchanged', changed: [] });
+  assert.equal(fs.readFileSync(optionsFile(dir), 'latin1'), body, 'langue non réécrite ; 120 FPS : réglage vidéo non touché en 1.8.9');
+  assert.equal(readState(dir).gameOptions, gameoptions.VERSION, 'étape faite : plus jamais retouchée');
   const german = tempDir();
   fs.writeFileSync(optionsFile(german), 'lang:de_DE\n');
   assert.equal((await installer.installGameOptions(german, FORGE, 'fr')).action, 'unchanged');
@@ -245,20 +234,21 @@ test('installation Forge 1.8.9 : options.txt existant en en_US passe en fr_FR, u
   fs.rmSync(german, { recursive: true, force: true });
 });
 
-test('installation Fabric : un dossier déjà à gameOptions=1 ne refait pas l’étape 1 mais fait la langue (une fois)', async () => {
+test('installation Fabric : un dossier déjà à gameOptions=1 ne refait pas l’étape 1 et ne touche pas à la langue d’un fichier existant (drapeau posé)', async () => {
   const dir = tempDir();
   fs.writeFileSync(stateFile(dir), JSON.stringify({ gameOptions: 1, mod: { version: '1' } }));
-  fs.writeFileSync(optionsFile(dir), 'version:3955\nenableVsync:true\nmaxFps:120\nlang:en_us\n');
+  const body = 'version:3955\nenableVsync:true\nmaxFps:120\nlang:en_us\n';
+  fs.writeFileSync(optionsFile(dir), body);
   const result = await installer.installGameOptions(dir, FABRIC, 'fr');
-  assert.deepEqual(result, { action: 'updated', changed: ['lang'] });
-  assert.equal(fs.readFileSync(optionsFile(dir), 'utf8'), 'version:3955\nenableVsync:true\nmaxFps:120\nlang:fr_fr\n', 'VSync et 120 FPS laissés');
+  assert.deepEqual(result, { action: 'unchanged', changed: [] });
+  assert.equal(fs.readFileSync(optionsFile(dir), 'utf8'), body, 'VSync, 120 FPS et langue laissés');
   assert.equal(readState(dir).gameOptions, 2);
   assert.equal(readState(dir).mod.version, '1');
   assert.equal((await installer.installGameOptions(dir, FABRIC, 'fr')).action, 'skipped');
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('installation Fabric : dossier neuf = réglages vidéo + langue ; launcher en anglais = lang:en_us écrit, existant intact', async () => {
+test('installation Fabric : dossier neuf = réglages vidéo + langue ; launcher en anglais = lang:en_us écrit ; fichier existant intact, même launcher en français', async () => {
   const fresh = tempDir();
   assert.equal((await installer.installGameOptions(fresh, FABRIC, 'fr')).action, 'created');
   assert.equal(fs.readFileSync(optionsFile(fresh), 'utf8'), 'enableVsync:false\nmaxFps:260\nentityShadows:false\nrenderDistance:10\nlang:fr_fr\n');
@@ -269,5 +259,10 @@ test('installation Fabric : dossier neuf = réglages vidéo + langue ; launcher 
   fs.writeFileSync(optionsFile(existing), 'lang:en_us\n');
   assert.equal((await installer.installGameOptions(existing, FABRIC, 'en')).action, 'unchanged');
   assert.equal(readState(existing).gameOptions, 2);
-  for (const dir of [fresh, english, existing]) fs.rmSync(dir, { recursive: true, force: true });
+  // launcher en français, options.txt existant en en_us : la langue du joueur n'est pas écrasée (il peut jouer en anglais exprès)
+  const kept = tempDir();
+  fs.writeFileSync(optionsFile(kept), 'lang:en_us\nenableVsync:false\nmaxFps:90\n');
+  assert.equal((await installer.installGameOptions(kept, FABRIC, 'fr')).action, 'unchanged');
+  assert.equal(fs.readFileSync(optionsFile(kept), 'utf8'), 'lang:en_us\nenableVsync:false\nmaxFps:90\n');
+  for (const dir of [fresh, english, existing, kept]) fs.rmSync(dir, { recursive: true, force: true });
 });

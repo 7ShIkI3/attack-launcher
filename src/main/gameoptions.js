@@ -4,8 +4,9 @@
 //  - étape 1 (profils Fabric seulement) : réglages vidéo pour le PvP. Dossier neuf (pas d'options.txt) : on écrit les réglages de
 //    départ, Minecraft complète le reste avec ses valeurs par défaut ; dossier existant : seules les deux valeurs par défaut de
 //    Minecraft qui brident les FPS sont remplacées (VSync activée, limite à 120 FPS) ;
-//  - étape 2 (tous les profils, 1.8.9 compris) : langue du launcher. Écrite à la création d'options.txt ; dans un options.txt
-//    existant, seulement si la langue est encore celle par défaut de Minecraft (en_us) et que le launcher est en français.
+//  - étape 2 (tous les profils, 1.8.9 compris) : langue du launcher, écrite SEULEMENT quand le launcher crée options.txt. Un fichier
+//    existant n'est jamais touché pour la langue : « en_us » peut être le choix d'un joueur qui joue en anglais exprès, et rien ne le
+//    distingue de la valeur par défaut de Minecraft ; l'étape est alors faite sans rien écrire.
 // Tout autre choix du joueur, les autres lignes, leur ordre et leurs fins de ligne restent tels quels. Le fichier est lu et
 // réécrit en latin1 : chaque octet revient identique, quel que soit l'encodage des lignes qu'on ne touche pas.
 const fsp = require('node:fs/promises');
@@ -61,32 +62,10 @@ function migrate(text) {
 }
 
 /**
- * Étape 2 sur un options.txt existant : `lang:en_us` (la valeur par défaut de Minecraft, ou aucune ligne `lang`) devient la langue du
- * launcher, seulement quand elle est française ; une autre langue choisie par le joueur n'est jamais touchée.
- * Renvoie { text, changed: ['lang'] | [] }.
- */
-function migrateLang(text, { lang, legacy = false } = {}) {
-  const target = langValue(lang, legacy);
-  if (lang !== 'fr' || !target) return { text: String(text), changed: [] };
-  const parts = String(text).split(/(\r\n|\n)/);
-  for (let i = 0; i < parts.length; i += 2) {
-    const line = /^lang:(.*)$/.exec(parts[i]);
-    if (!line) continue;
-    if (line[1].trim().toLowerCase() !== 'en_us') return { text: String(text), changed: [] };
-    parts[i] = `lang:${target}`;
-    return { text: parts.join(''), changed: ['lang'] };
-  }
-  // pas de ligne `lang` : Minecraft utilise sa valeur par défaut (en_us)
-  const eol = String(text).includes('\r\n') ? '\r\n' : '\n';
-  const body = String(text);
-  return { text: `${body}${body === '' || body.endsWith('\n') ? '' : eol}lang:${target}${eol}`, changed: ['lang'] };
-}
-
-/**
  * Applique les étapes manquantes au dossier de jeu. options :
  *   from    dernière étape déjà appliquée (drapeau `gameOptions` de l'état, 0 par défaut) : une étape faite n'est jamais refaite
  *   video   étape 1 permise (profils Fabric ; vrai par défaut)
- *   lang    langue du launcher ('fr' | 'en') pour l'étape 2 ; absente : l'étape 2 ne fait rien
+ *   lang    langue du launcher ('fr' | 'en') pour l'étape 2, écrite à la création du fichier seulement ; absente : l'étape 2 ne fait rien
  *   legacy  options.txt de la 1.8.9 (fr_FR au lieu de fr_fr)
  * Ne lève jamais d'erreur (fichier illisible, verrouillé, disque plein) :
  * renvoie { action: 'created' | 'updated' | 'unchanged' | 'error', changed: [clés], error? } et l'appelant décide quoi en faire.
@@ -108,15 +87,11 @@ async function apply(gameDir, { from = 0, video = true, lang = null, legacy = fa
       await writeFileAtomic(file, Buffer.from(text, 'latin1'));
       return { action: 'created', changed: [...(doVideo ? Object.keys(START_OPTIONS) : []), ...(doLang ? ['lang'] : [])] };
     }
+    // fichier existant : seule l'étape vidéo le modifie ; la langue du joueur n'est jamais réécrite (étape 2 faite sans rien écrire)
     let text = current;
     const changed = [];
     if (doVideo) {
       const step = migrate(text);
-      text = step.text;
-      changed.push(...step.changed);
-    }
-    if (doLang) {
-      const step = migrateLang(text, { lang, legacy });
       text = step.text;
       changed.push(...step.changed);
     }
@@ -128,4 +103,4 @@ async function apply(gameDir, { from = 0, video = true, lang = null, legacy = fa
   }
 }
 
-module.exports = { FILE, VERSION, START_OPTIONS, langValue, startText, migrate, migrateLang, apply };
+module.exports = { FILE, VERSION, START_OPTIONS, langValue, startText, migrate, apply };

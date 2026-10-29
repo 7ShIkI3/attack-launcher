@@ -84,7 +84,7 @@ et son dossier de jars deviennent ceux du profil 1.8.9.
 | Packs OptiFine | Profils Fabric, activé par défaut : Continuity, Entity Texture Features et Entity Model Features lisent les packs de ressources au format OptiFine sans OptiFine. |
 | Replay Mod | Les trois profils, **coupé par défaut** : enregistre les parties pour les revoir et les monter. |
 | OptiFine | Profil 1.8.9, activé par défaut : copie **ta** copie d'OptiFine (trouvée dans `.minecraft\libraries\optifine`, `.minecraft\mods` ou choisie avec **Choisir le fichier…**) dans le dossier mods du profil. Le launcher ne le télécharge jamais : sans copie, un texte explique et **optifine.net** s'ouvre dans le navigateur. Voir [OptiFine pour la 1.8.9](Installation-et-mises-a-jour.md#optifine-pour-la-189-la-copie-du-joueur). |
-| Langue | Français ou English. Elle sert aussi de langue de départ à Minecraft : écrite dans `options.txt` à la création du fichier (voir [Le pack de mods](Installation-et-mises-a-jour.md#le-pack-de-mods-les-trois-profils)). |
+| Langue | Français ou English. Elle sert aussi de langue de départ à Minecraft : écrite dans `options.txt` à la création du fichier seulement, un `options.txt` existant garde sa langue (voir [Le pack de mods](Installation-et-mises-a-jour.md#le-pack-de-mods-les-trois-profils)). |
 | À propos | Version du launcher, dossier `.minecraft`, et **Mods et licences** : tous les mods du pack du profil avec auteur, version et licence, et la phrase de crédit. |
 | Mode développeur | Voir plus bas. |
 | ID client Azure | Identifiant de l'application Azure utilisée pour la connexion Microsoft. Vide : l'application officielle d'ATTACK Launcher est utilisée. Ce n'est pas un secret. Voir [Publier une version](Publier-une-version.md). |
