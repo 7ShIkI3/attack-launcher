@@ -256,7 +256,8 @@ la copie que le joueur a lui-même récupérée sur [optifine.net](https://optif
    autre variante est choisie, **seule la copie du launcher est retirée** (et seulement si son empreinte n'a pas changé) ;
    un OptiFine que le joueur a mis lui-même dans `mods\` n'est jamais doublé ni supprimé. Si la copie d'origine disparaît
    (OptiFine désinstallé, fichier choisi effacé) alors que le réglage est actif, **le jar de `mods\` reste en place** :
-   il marche, l'état est gardé et le profil reste prêt (JOUER, pas INSTALLER).
+   il marche, l'état est gardé et le profil reste prêt (JOUER, pas INSTALLER). Le launcher le compte (détail, nombre de mods,
+   carte **Profil actuel**, page Mods) et l'affiche « déjà copié dans mods », pas « introuvable ».
 4. **Rien trouvé** : un texte explique pourquoi (licence) et un bouton ouvre optifine.net dans le navigateur ; le jeu marche
    sans OptiFine. La page relit l'état au retour sur la fenêtre : un OptiFine installé entre-temps est trouvé tout seul.
 

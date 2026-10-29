@@ -254,6 +254,70 @@ test('accueil : copie à poser = « À installer : OptiFine » comme avant ; cop
   fs.rmSync(dirs.root, { recursive: true, force: true });
 });
 
+/** Tout ce que la page dit d'OptiFine : ligne du détail, compteur, rail « Profil actuel », carte de la page Mods, carte de Réglages. */
+function optifineParts(view) {
+  const cell = view.page.byId('pc-grid').children.find((c) => c.children[0].textContent === 'OptiFine');
+  const card = view.page.byId('mods-grid').children.find((c) => c.children[0].children[1].textContent === 'OptiFine');
+  return {
+    row: view.rows.find((r) => r.label === 'OptiFine'),
+    sum: view.page.byId('ready-sum').textContent,
+    rail: cell.children[1].textContent,
+    cardOff: /\boff\b/.test(card.className),
+    cardMeta: card.children[2].children[0].textContent,
+    badge: view.page.byId('optifine-badge').textContent,
+    badgeClass: view.page.byId('optifine-badge').className,
+    text: view.page.byId('optifine-text').textContent,
+  };
+}
+
+test('accueil : copie d’origine disparue, le jar gardé dans mods est compté et jamais dit « introuvable » (détail, compteur, rail, cartes)', async () => {
+  const dirs = installed189();
+  await installer.installOptifine(dirs.gameDir, dirs.minecraftDir, {});
+  const before = optifineParts(await render(dirs, {}));
+  fs.rmSync(dirs.source); // OptiFine désinstallé : le jar copié dans mods marche toujours
+  const view = await render(dirs, {});
+  const gone = optifineParts(view);
+  assert.deepEqual([view.status.optifine.found, view.status.optifine.installed], [false, true]);
+  assert.deepEqual([gone.row.detail, gone.row.bad], ['déjà copié dans mods', false], 'la ligne du détail');
+  assert.equal(gone.sum, before.sum, 'le compteur de mods compte le jar gardé, comme avant la disparition');
+  assert.equal(gone.rail, before.rail, 'le rail « Profil actuel » nomme la variante');
+  assert.equal(gone.rail, 'HD U M5');
+  assert.equal(gone.cardOff, false, 'la carte de la page Mods n’est pas grisée');
+  assert.equal(gone.cardMeta.includes('déjà copié dans mods'), true);
+  assert.deepEqual([gone.badge, gone.badgeClass], ['Déjà copié', 'badge good'], 'badge de la carte Réglages');
+  assert.match(gone.text, /OptiFine-1\.8\.9_HD_U_M5\.jar/);
+  assert.match(gone.text, /Rien à faire/);
+  for (const [name, value] of Object.entries(gone)) assert.doesNotMatch(String(value), /introuvable|Introuvable|optifine\.net/, `« introuvable » dans ${name}`);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('accueil : copie d’origine disparue, option coupée = ni gardé ni compté (retrait à faire) ; sans jar suivi = « introuvable » comme avant', async () => {
+  const dirs = installed189();
+  await installer.installOptifine(dirs.gameDir, dirs.minecraftDir, {});
+  fs.rmSync(dirs.source);
+  const off = optifineParts(await render(dirs, { optifine: false }));
+  assert.deepEqual([off.row.detail, off.row.bad], ['à retirer', true]);
+  assert.equal(off.cardOff, true);
+  const bare = installed189();
+  fs.rmSync(bare.source);
+  const none = optifineParts(await render(bare, {}));
+  assert.deepEqual([none.row.detail, none.badge, none.cardOff], ['introuvable', 'Introuvable', true], 'rien dans mods : vraiment introuvable');
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+  fs.rmSync(bare.root, { recursive: true, force: true });
+});
+
+test('accueil en anglais : copie d’origine disparue = « already copied to mods », pas « not found »', async () => {
+  const dirs = installed189();
+  await installer.installOptifine(dirs.gameDir, dirs.minecraftDir, {});
+  fs.rmSync(dirs.source);
+  const gone = optifineParts(await render(dirs, { lang: 'en' }));
+  assert.equal(gone.row.detail, 'already copied to mods');
+  assert.equal(gone.badge, 'Already copied');
+  assert.match(gone.text, /Nothing to do/);
+  for (const [name, value] of Object.entries(gone)) assert.doesNotMatch(String(value), /not found|Not found/i, `« not found » dans ${name}`);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
 test('accueil en anglais : « Update to apply » et « to remove »', async () => {
   const dirs = installed189();
   await installer.installOptifine(dirs.gameDir, dirs.minecraftDir, {});

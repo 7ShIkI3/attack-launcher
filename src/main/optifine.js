@@ -181,6 +181,7 @@ function trackedPresent(gameDir, tracked) {
  *   found     une copie valide existe (sinon : `reason` du refus du fichier choisi dans `chosenError`)
  *   own       le joueur a déjà mis un OptiFine dans mods : le launcher n'en ajoute pas un second
  *   installed la copie suivie est dans mods
+ *   kept      nom du jar copié par le launcher et gardé alors que sa copie d'origine a disparu (il marche : la page le compte), sinon null
  *   wantCopy  il faut qu'une copie soit dans mods ; pending : l'installation a quelque chose à faire (copier, remplacer ou retirer)
  * options : { minecraftDir, gameDir, enabled, chosen, tracked (état `optifine`) }.
  */
@@ -190,18 +191,20 @@ async function inspect({ minecraftDir, gameDir, enabled = true, chosen = '', tra
   const present = trackedPresent(gameDir, tracked);
   const wantCopy = Boolean(enabled) && detected.found && !own;
   const upToDate = present && tracked.sha256 === detected.sha256;
+  const kept = Boolean(enabled) && present && !detected.found && !own ? tracked.file : null;
   return {
     enabled: Boolean(enabled),
     found: detected.found,
     source: detected.source || null,
     file: detected.file || null,
     name: detected.name || null,
-    version: detected.version || null,
+    version: detected.version || (kept && tracked.version) || null,
     sha256: detected.sha256 || null,
     size: detected.size || null,
     chosenError: detected.chosenError || null,
     own,
     installed: present,
+    kept,
     wantCopy,
     // sans copie à poser, la copie suivie ne part que si l'option est coupée ou si le joueur a mis la sienne : quand sa source
     // a disparu (found:false), le jar de mods marche toujours et reste en place
@@ -232,7 +235,7 @@ async function apply({ minecraftDir, gameDir, enabled = true, chosen = '', track
   if (!view.wantCopy) {
     // option active, pas d'OptiFine du joueur dans mods et plus aucune copie d'origine (supprimée, déplacée, fichier choisi effacé) :
     // le jar déjà copié marche, il reste en place et l'état est gardé tel quel
-    if (view.enabled && !view.own && view.installed) return { action: 'kept', info: tracked, view: { ...view, pending: false } };
+    if (view.kept) return { action: 'kept', info: tracked, view: { ...view, pending: false } };
     const removed = await removeTracked(gameDir, tracked);
     const action = removed ? 'removed' : view.own ? 'own' : !enabled ? 'disabled' : 'missing';
     return { action, info: null, view: { ...view, installed: false, pending: false } };

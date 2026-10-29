@@ -23,7 +23,8 @@ anglais (Réglages → Langue).
 - **Ligne « Tout est prêt · N mods · ATTACK Client vX »** : un résumé à la place des anciennes tuiles ; **Détails** ouvre la
   liste (Minecraft, chargeur, pack de mods, OptiFine en 1.8.9, ATTACK Client avec sa version, profil du launcher) avec ce qui
   reste à installer. Quand il n'y a rien à installer mais un retrait à faire (réglage OptiFine coupé alors que la copie est encore
-  dans `mods`), la ligne dit « Mise à jour à appliquer » et la ligne OptiFine du détail « à retirer ». Le nombre de mods est le
+  dans `mods`), la ligne dit « Mise à jour à appliquer » et la ligne OptiFine du détail « à retirer ». Si la copie d'origine a
+  disparu mais que le jar copié est toujours dans `mods`, la ligne OptiFine dit « déjà copié dans mods » et il est compté. Le nombre de mods est le
   même que sur la page Mods et dans la carte **Profil actuel**.
 - **Rail de droite** : les trois dernières **Nouveautés** et la carte **Profil actuel** (mémoire, Java, pack de mods, mods PvP
   ou OptiFine) avec un lien **Régler**.

@@ -147,10 +147,10 @@
   /** Mods du pack qui seront installés avec les réglages actuels. */
   const selectedPack = (profile) => profile.pack.filter(modSelected);
 
-  /** OptiFine du joueur (profil 1.8.9) : la copie sera-t-elle dans le jeu ? (copiée par le launcher, ou déjà mise là par le joueur) */
+  /** OptiFine du joueur (profil 1.8.9) : la copie sera-t-elle dans le jeu ? (copiée par le launcher, déjà mise là par le joueur, ou gardée dans mods alors que son origine a disparu) */
   function optifineInGame() {
     const of = status && status.optifine;
-    return Boolean(of && ((of.enabled && of.found) || of.own));
+    return Boolean(of && ((of.enabled && of.found) || of.own || of.kept));
   }
 
   /** Nombre de mods installés : le pack choisi, plus l'OptiFine du joueur. Le même nombre partout (accueil, rail, page Mods). */
@@ -190,6 +190,7 @@
       const remove = Boolean(of.pending && !of.wantCopy); // copie du launcher à retirer (option coupée, OptiFine du joueur arrivé dans mods)
       if (remove) { state = 'bad'; detail = t('optifine.stateToRemove'); }
       else if (of.own) detail = t('optifine.stateOwn');
+      else if (of.kept) detail = t('optifine.stateKept');
       else if (!of.enabled) { state = 'info'; detail = t('optifine.stateOff'); }
       else if (!of.found) { state = 'info'; detail = t('optifine.stateMissing'); }
       else if (of.pending) { state = 'bad'; detail = t('optifine.stateToCopy'); }
@@ -518,7 +519,7 @@
       const of = status && status.optifine;
       items.push({
         name: 'OptiFine', icon: 'OF', cat: 'visual', text: t('mods.optifineDesc'), off: !optifineInGame(),
-        meta: of ? (of.own ? t('optifine.stateOwn') : of.found ? optifineLabel(of) : t('optifine.stateMissing')) : '…',
+        meta: of ? (of.own ? t('optifine.stateOwn') : of.kept ? t('optifine.stateKept') : of.found ? optifineLabel(of) : t('optifine.stateMissing')) : '…',
         option: { label: t('mods.optifineOption'), checked: !of || of.enabled, change: (value) => save({ optifine: value }), hint: t('mods.optifineHint') },
       });
     }
@@ -747,6 +748,10 @@
       badge.className = 'badge good';
       badge.textContent = t('optifine.badgeOwn');
       text = t('optifine.textOwn', { name: of.own });
+    } else if (of.kept) {
+      badge.className = 'badge good';
+      badge.textContent = t('optifine.badgeKept');
+      text = t('optifine.textKept', { name: of.kept });
     } else if (of.found) {
       badge.className = 'badge good';
       badge.textContent = t('optifine.badgeFound');
