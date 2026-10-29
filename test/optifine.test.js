@@ -189,6 +189,72 @@ test('un OptiFine que le joueur a mis lui-même dans mods n’est jamais doublé
   s.clean();
 });
 
+test('source supprimée : le jar de mods reste et installed reste true', async () => {
+  const s = sandbox();
+  const source = s.put(lib('HD_U_M5'), optifineJar());
+  await installer.installOptifine(s.gameDir, s.minecraftDir, {});
+  const copy = path.join(s.gameDir, 'mods', 'OptiFine-1.8.9_HD_U_M5.jar');
+  const state = () => JSON.parse(fs.readFileSync(path.join(s.gameDir, 'attack-launcher.json'), 'utf8'));
+  const tracked = state().optifine;
+  fs.rmSync(source); // le joueur supprime sa copie d'origine (désinstallation d'OptiFine, nettoyage de libraries)
+
+  const view = await optifine.inspect({ minecraftDir: s.minecraftDir, gameDir: s.gameDir, tracked });
+  assert.deepEqual([view.found, view.installed, view.wantCopy, view.pending], [false, true, false, false], 'rien à faire : le jar marche');
+  const result = await installer.installOptifine(s.gameDir, s.minecraftDir, {});
+  assert.equal(result.action, 'kept');
+  assert.ok(fs.existsSync(copy), 'le jar de mods reste');
+  assert.deepEqual(state().optifine, tracked, 'l’état est intact');
+  // plusieurs installations de suite : toujours rien de retiré
+  assert.equal((await installer.installOptifine(s.gameDir, s.minecraftDir, {})).action, 'kept');
+  assert.ok(fs.existsSync(copy));
+
+  // c'est l'interrupteur coupé qui retire la copie, source présente ou non
+  const off = await optifine.inspect({ minecraftDir: s.minecraftDir, gameDir: s.gameDir, enabled: false, tracked });
+  assert.deepEqual([off.installed, off.pending], [true, true]);
+  assert.equal((await installer.installOptifine(s.gameDir, s.minecraftDir, { optifine: false })).action, 'removed');
+  assert.ok(!fs.existsSync(copy));
+  assert.equal(state().optifine, undefined);
+  s.clean();
+});
+
+test('source supprimée puis OptiFine du joueur ajouté dans mods : la copie du launcher part, celle du joueur reste', async () => {
+  const s = sandbox();
+  const source = s.put(lib('HD_U_M5'), optifineJar());
+  await installer.installOptifine(s.gameDir, s.minecraftDir, {});
+  fs.rmSync(source);
+  const mine = s.put('game/mods/OptiFine_1.8.9_HD_U_L5.jar', optifineJar('perso'));
+  const view = await optifine.inspect({ minecraftDir: s.minecraftDir, gameDir: s.gameDir, tracked: JSON.parse(fs.readFileSync(path.join(s.gameDir, 'attack-launcher.json'), 'utf8')).optifine });
+  assert.deepEqual([view.own, view.installed, view.wantCopy, view.pending], ['OptiFine_1.8.9_HD_U_L5.jar', true, false, true]);
+  assert.equal((await installer.installOptifine(s.gameDir, s.minecraftDir, {})).action, 'removed');
+  assert.deepEqual(fs.readdirSync(path.join(s.gameDir, 'mods')), ['OptiFine_1.8.9_HD_U_L5.jar']);
+  assert.ok(fs.existsSync(mine));
+  s.clean();
+});
+
+test('fichier choisi puis supprimé : sans autre copie le jar de mods reste ; avec une copie de libraries, c’est elle qui prend le relais', async () => {
+  const s = sandbox();
+  fs.mkdirSync(s.minecraftDir, { recursive: true });
+  const chosen = s.put('Telechargements/OptiFine_1.8.9_HD_U_M3.jar', optifineJar('m3'));
+  await installer.installOptifine(s.gameDir, s.minecraftDir, { optifineJar: chosen });
+  const copy = path.join(s.gameDir, 'mods', 'OptiFine_1.8.9_HD_U_M3.jar');
+  const state = () => JSON.parse(fs.readFileSync(path.join(s.gameDir, 'attack-launcher.json'), 'utf8'));
+  assert.equal(state().optifine.source, 'chosen');
+  const tracked = state().optifine;
+  fs.rmSync(chosen);
+
+  const view = await optifine.inspect({ minecraftDir: s.minecraftDir, gameDir: s.gameDir, chosen, tracked });
+  assert.deepEqual([view.found, view.chosenError, view.installed, view.pending], [false, 'UNREADABLE', true, false]);
+  assert.equal((await installer.installOptifine(s.gameDir, s.minecraftDir, { optifineJar: chosen })).action, 'kept');
+  assert.ok(fs.existsSync(copy), 'le jar de mods reste');
+  assert.deepEqual(state().optifine, tracked);
+
+  // une copie de libraries apparaît : la recherche automatique la trouve, une seule copie reste dans mods
+  s.put(lib('HD_U_M5'), optifineJar('m5'));
+  assert.equal((await installer.installOptifine(s.gameDir, s.minecraftDir, { optifineJar: chosen })).action, 'copied');
+  assert.deepEqual(fs.readdirSync(path.join(s.gameDir, 'mods')), ['OptiFine-1.8.9_HD_U_M5.jar']);
+  s.clean();
+});
+
 test('jar remplacé par le joueur depuis la copie du launcher : plus suivi, jamais supprimé', async () => {
   const s = sandbox();
   s.put(lib('HD_U_M5'), optifineJar());
@@ -272,6 +338,12 @@ test('état du profil 1.8.9 : OptiFine en attente = installation à refaire ; sa
   assert.deepEqual([done.installed, done.optifine.installed, done.optifine.pending], [true, true, false]);
   const off = await status({ optifine: false });
   assert.deepEqual([off.installed, off.optifine.pending], [false, true], 'option coupée alors que la copie est encore dans mods');
+
+  // la copie d'origine disparaît : le jar de mods marche, JOUER reste JOUER
+  fs.rmSync(path.join(mc, 'libraries', 'optifine'), { recursive: true, force: true });
+  const gone = await status();
+  assert.deepEqual([gone.installed, gone.optifine.found, gone.optifine.installed, gone.optifine.pending], [true, false, true, false], 'source supprimée');
+  assert.equal((await status({ optifine: false })).installed, false, 'option coupée : le retrait reste à faire');
   s.clean();
 });
 

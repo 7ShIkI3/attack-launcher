@@ -251,7 +251,9 @@ la copie que le joueur a lui-même récupérée sur [optifine.net](https://optif
 3. **Copie** dans `<dossier de jeu>\mods\` (fichier temporaire puis renommage, empreinte SHA-256 relue), **suivie dans
    `attack-launcher.json`** (`optifine` : nom, origine, SHA-256, taille). Quand le réglage **OptiFine** est coupé, ou qu'une
    autre variante est choisie, **seule la copie du launcher est retirée** (et seulement si son empreinte n'a pas changé) ;
-   un OptiFine que le joueur a mis lui-même dans `mods\` n'est jamais doublé ni supprimé.
+   un OptiFine que le joueur a mis lui-même dans `mods\` n'est jamais doublé ni supprimé. Si la copie d'origine disparaît
+   (OptiFine désinstallé, fichier choisi effacé) alors que le réglage est actif, **le jar de `mods\` reste en place** :
+   il marche, l'état est gardé et le profil reste prêt (JOUER, pas INSTALLER).
 4. **Rien trouvé** : un texte explique pourquoi (licence) et un bouton ouvre optifine.net dans le navigateur ; le jeu marche
    sans OptiFine. La page relit l'état au retour sur la fenêtre : un OptiFine installé entre-temps est trouvé tout seul.
 

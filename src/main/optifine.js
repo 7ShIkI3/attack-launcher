@@ -201,7 +201,9 @@ async function inspect({ minecraftDir, gameDir, enabled = true, chosen = '', tra
     own,
     installed: present,
     wantCopy,
-    pending: wantCopy ? !upToDate : present,
+    // sans copie à poser, la copie suivie ne part que si l'option est coupée ou si le joueur a mis la sienne : quand sa source
+    // a disparu (found:false), le jar de mods marche toujours et reste en place
+    pending: wantCopy ? !upToDate : present && (!enabled || Boolean(own)),
   };
 }
 
@@ -226,6 +228,9 @@ async function apply({ minecraftDir, gameDir, enabled = true, chosen = '', track
   const view = await inspect({ minecraftDir, gameDir, enabled, chosen, tracked });
   const modsDir = path.join(gameDir, 'mods');
   if (!view.wantCopy) {
+    // option active, pas d'OptiFine du joueur dans mods et plus aucune copie d'origine (supprimée, déplacée, fichier choisi effacé) :
+    // le jar déjà copié marche, il reste en place et l'état est gardé tel quel
+    if (view.enabled && !view.own && view.installed) return { action: 'kept', info: tracked, view: { ...view, pending: false } };
     const removed = await removeTracked(gameDir, tracked);
     const action = removed ? 'removed' : view.own ? 'own' : !enabled ? 'disabled' : 'missing';
     return { action, info: null, view: { ...view, installed: false, pending: false } };
