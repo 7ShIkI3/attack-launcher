@@ -169,7 +169,7 @@
     return active && (active.type === 'msa' || (settings && settings.devMode)) ? active : null;
   };
 
-  /** Lignes du détail : { label, state: 'ok' | 'bad' | 'info', detail }. `bad` = à installer. */
+  /** Lignes du détail : { label, state: 'ok' | 'bad' | 'info', detail, remove? }. `bad` = travail en attente ; `remove` : c'est un retrait, pas une installation. */
   function statusRows(profile) {
     const rows = [];
     const ok = (label, good, detail, badDetail) => rows.push({ label, state: good ? 'ok' : 'bad', detail: good ? detail || t('status.ok') : badDetail || t('status.missing') });
@@ -187,12 +187,14 @@
       const of = status.optifine;
       let state = 'ok';
       let detail;
-      if (of.own) detail = t('optifine.stateOwn');
+      const remove = Boolean(of.pending && !of.wantCopy); // copie du launcher à retirer (option coupée, OptiFine du joueur arrivé dans mods)
+      if (remove) { state = 'bad'; detail = t('optifine.stateToRemove'); }
+      else if (of.own) detail = t('optifine.stateOwn');
       else if (!of.enabled) { state = 'info'; detail = t('optifine.stateOff'); }
       else if (!of.found) { state = 'info'; detail = t('optifine.stateMissing'); }
       else if (of.pending) { state = 'bad'; detail = t('optifine.stateToCopy'); }
       else detail = optifineLabel(of);
-      rows.push({ label: 'OptiFine', state, detail });
+      rows.push({ label: 'OptiFine', state, detail, remove });
     }
     const modDetail = status && status.modVersion ? `v${status.modVersion}${status.modSource === 'dev' ? ` · ${t('status.dev')}` : ''}` : null;
     ok(t('status.mod'), status && status.mod, modDetail);
@@ -231,8 +233,10 @@
     // ligne « prêt » : une phrase à la place de 4 ou 5 tuiles, le détail s'ouvre à la demande
     const stateIcon = busy ? 'refresh' : needs ? 'info' : 'check';
     $('ready-icon').replaceChildren(...icon(stateIcon).childNodes);
-    // peu d'éléments à installer : on les nomme ; sinon leur nombre (le détail les liste)
-    const needsText = bad.length > 2 ? t('home.needsMany', { n: bad.length }) : t('home.needs', { items: bad.map((r) => r.label).join(', ') });
+    // peu d'éléments à installer : on les nomme ; sinon leur nombre (le détail les liste) ; rien à installer (seulement un retrait, ou
+    // un état inattendu) : texte générique, jamais « À installer : » sans rien derrière
+    const toInstall = bad.filter((r) => !r.remove);
+    const needsText = toInstall.length === 0 ? t('home.needsUpdate') : toInstall.length > 2 ? t('home.needsMany', { n: toInstall.length }) : t('home.needs', { items: toInstall.map((r) => r.label).join(', ') });
     $('ready-main').textContent = busy ? t('home.installingNow') : checking ? t('home.checking') : needs ? needsText : t('home.ready');
     let summary = '';
     if (busy || playing) summary = progressSummary(profile);

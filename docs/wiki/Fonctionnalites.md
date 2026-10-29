@@ -22,7 +22,9 @@ anglais (Réglages → Langue).
   l'explication (« Ouvre le launcher officiel sur le profil … » et un lien **Connecter un compte**).
 - **Ligne « Tout est prêt · N mods · ATTACK Client vX »** : un résumé à la place des anciennes tuiles ; **Détails** ouvre la
   liste (Minecraft, chargeur, pack de mods, OptiFine en 1.8.9, ATTACK Client avec sa version, profil du launcher) avec ce qui
-  reste à installer. Le nombre de mods est le même que sur la page Mods et dans la carte **Profil actuel**.
+  reste à installer. Quand il n'y a rien à installer mais un retrait à faire (réglage OptiFine coupé alors que la copie est encore
+  dans `mods`), la ligne dit « Mise à jour à appliquer » et la ligne OptiFine du détail « à retirer ». Le nombre de mods est le
+  même que sur la page Mods et dans la carte **Profil actuel**.
 - **Rail de droite** : les trois dernières **Nouveautés** et la carte **Profil actuel** (mémoire, Java, pack de mods, mods PvP
   ou OptiFine) avec un lien **Régler**.
 - **Vérifier / réparer l'installation** : relance l'installation, qui recontrôle chaque fichier et ne retélécharge que

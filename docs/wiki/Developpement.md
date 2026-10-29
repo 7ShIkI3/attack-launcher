@@ -61,8 +61,9 @@ Les 167 tests tournent en quelques secondes et n'ont besoin ni du réseau ni d'E
 | `http.test.js` | Hôtes https autorisés seulement, téléchargement vérifié (SHA-1, SHA-256, SHA-512), hash faux rejeté (`.part` supprimé), redirection hors liste refusée, parallélisme |
 | `catalog.test.js` | Les 3 profils, règles exactes des jars ATTACK, dossiers de jeu et de jars par profil, alias de `constants.js`, hôtes autorisés |
 | `fabric.test.js` | Adresse du profil Fabric, validation stricte (vrais profils 1.21.1 et 26.3, profils piégés refusés), plan de téléchargement avec ou sans hash, JSON de version écrit |
-| `optifine.test.js` | OptiFine du joueur : détection (libraries, mods, fichier choisi), validation du manifeste, copie suivie dans l'état, retrait de la seule copie du launcher, OptiFine du joueur jamais touché |
+| `optifine.test.js` | OptiFine du joueur : détection (libraries, mods, fichier choisi), validation du manifeste, copie suivie dans l'état, retrait de la seule copie du launcher, copie d'origine disparue (le jar de `mods` reste), OptiFine du joueur jamais touché |
 | `renderer.test.js` | Interface : clés de traduction FR/EN complètes, identifiants du HTML, CSP stricte (ni script ni style en ligne, pas d'innerHTML), historique et fiches des mods du pack |
+| `renderer-dom.test.js` | Accueil : `app.js` tourne sur un faux DOM avec l'état d'installation réel de `installer.status()` ; phrase « prêt », lignes du détail (OptiFine « à retirer », « Mise à jour à appliquer ») en français et en anglais |
 | `gameoptions.test.js` | `options.txt` de départ par étapes (vidéo en Fabric, langue partout), choix du joueur et fins de ligne intacts |
 | `modpack.test.js` | Packs figés valides (versions demandées, licence et auteur), groupes `pvp` / `optifine` / `replay`, validation (URL, hash, noms), installation, Iris selon l'option, jars gérés supprimés, jars du joueur intacts, échec sans suppression |
 | `game-modern.test.js` | Fusion Fabric + Minecraft, arguments modernes (1.21.1 et 26.3), un seul `-cp`, variables sans découpage, natives de 26.x, détection d'une partie |
