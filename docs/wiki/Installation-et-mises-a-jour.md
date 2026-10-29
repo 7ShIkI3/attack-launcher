@@ -17,7 +17,8 @@ son chargeur de mods, son dossier de jeu, son état d'installation et son profil
 | Dossier de jeu par défaut | `%APPDATA%\.attack` | `%APPDATA%\.attack\profiles\fabric-1.21.1` | `%APPDATA%\.attack\profiles\fabric-26.3` |
 | Jar du mod | `mods\attack-client.jar` | `mods\attack-fabric.jar` | `mods\attack-fabric.jar` |
 | Profil du launcher officiel | `attack-client`, « ATTACK Client » | `attack-fabric-1.21.1`, « ATTACK 1.21.1 » | `attack-fabric-26.3`, « ATTACK 26.3 » |
-| Pack de mods | aucun | `src/main/packs/fabric-1.21.1.json` | `src/main/packs/fabric-26.3.json` |
+| Pack de mods | `src/main/packs/forge-1.8.9.json` | `src/main/packs/fabric-1.21.1.json` | `src/main/packs/fabric-26.3.json` |
+| OptiFine | copie du joueur (jamais téléchargé) | — | — |
 
 Le profil 1.8.9 garde **exactement** son identifiant officiel (`attack-client`) et son dossier de jeu : un joueur qui
 l'utilisait déjà ne perd rien. L'ancien réglage « dossier de jeu » (global) est repris tel quel pour ce profil lors de la
@@ -31,7 +32,9 @@ première lecture de `settings.json` (migration automatique).
 | Chargeur de mods du profil | `%APPDATA%\.minecraft\versions\<version du profil>` et ses bibliothèques dans `libraries` |
 | Dossier de jeu séparé (mods, réglages, captures, mondes) | un par profil, voir le tableau ci-dessus (modifiable dans Réglages, profil par profil) |
 | Mod ATTACK | `<dossier de jeu>\mods\attack-client.jar` (1.8.9) ou `attack-fabric.jar` (Fabric) |
-| Pack de mods (profils Fabric) | `<dossier de jeu>\mods\` : un jar par mod du pack |
+| Pack de mods | `<dossier de jeu>\mods\` : un jar par mod du pack |
+| OptiFine du joueur (1.8.9) | `<dossier de jeu>\mods\OptiFine-1.8.9_*.jar` : copie de la sienne, suivie dans l'état |
+| `options.txt` de départ (langue, et vidéo en Fabric) | `<dossier de jeu>\options.txt`, une fois par étape |
 | État de l'installation (profil, versions, source du mod, SHA-256, pack et jars gérés, date) | `<dossier de jeu>\attack-launcher.json` |
 | Profil du launcher officiel | fusionné dans `%APPDATA%\.minecraft\launcher_profiles.json` (copie `.bak` avant chaque écriture) |
 | Java officiel de Mojang (lancement direct) | `%LOCALAPPDATA%\ATTACK Launcher\runtime\<composant>` : `jre-legacy`, `java-runtime-delta` ou `java-runtime-epsilon` |
@@ -86,7 +89,7 @@ flowchart TD
    `loader.pinnedSha1`), donc pas pris sur le serveur qui sert le jar ; à défaut, on prendrait le fichier `.sha1` publié à
    côté du jar sur le Maven de Fabric (`intermediary` n'existe pas pour 26.3). Un SHA-1 figé est **toujours** vérifié,
    même si le profil Fabric publie un hash pour cette bibliothèque : un hash du profil qui le contredit est refusé.
-5. **Pack de mods** (Fabric seulement, `src/main/modpack.js`) : voir [Le pack de mods](#le-pack-de-mods-profils-fabric).
+5. **Pack de mods** (les trois profils, `src/main/modpack.js`) : voir [Le pack de mods](#le-pack-de-mods-les-trois-profils), puis **OptiFine du joueur** (1.8.9) : voir [OptiFine pour la 1.8.9](#optifine-pour-la-189-la-copie-du-joueur).
 6. **Mod** : voir [Mod ATTACK : d'où vient le jar ?](#mod-attack--doù-vient-le-jar-).
 7. **Profil** : fusion dans `launcher_profiles.json` ([Fonctionnalités](Fonctionnalites.md#profil-du-launcher-officiel)).
 
@@ -140,42 +143,70 @@ Releases, et les deux liens d'aide Azure (`portal.azure.com`, `aka.ms/mce-review
 Les mises à jour du launcher passent par `electron-updater`, qui fait ses propres requêtes (uniquement vers les releases
 de ce dépôt : `github.com` et ses serveurs de fichiers) ; elles ne passent pas par `http.js`.
 
-## Le pack de mods (profils Fabric)
+## Le pack de mods (les trois profils)
 
-Chaque profil Fabric a un pack **figé** dans le dépôt : `src/main/packs/fabric-1.21.1.json` et
-`src/main/packs/fabric-26.3.json`. Une entrée = un mod : nom, version, nom de fichier, adresse `cdn.modrinth.com`,
-SHA-512, SHA-1 et taille. Le launcher **n'appelle jamais l'API Modrinth** : il télécharge seulement ces adresses.
+Chaque profil a un pack **figé** dans le dépôt : `src/main/packs/forge-1.8.9.json`, `fabric-1.21.1.json` et
+`fabric-26.3.json`. Une entrée = un mod : nom, version, nom de fichier, adresse `cdn.modrinth.com`, SHA-512, SHA-1,
+taille, **licence** et **auteur** du projet (lus sur Modrinth au moment de figer le pack, pour l'écran « Mods et licences »).
+Le launcher **n'appelle jamais l'API Modrinth** : il télécharge seulement ces adresses.
 
-| Mod | 1.21.1 | 26.3 |
-| --- | --- | --- |
-| Fabric API | 0.116.17+1.21.1 | 0.164.0+26.3 |
-| Sodium | 0.8.13 | 0.9.2 |
-| Lithium | 0.15.4 | 0.26.2 |
-| FerriteCore | 7.0.3 | 9.0.0 |
-| ImmediatelyFast | 1.6.15+1.21.1 | 1.17.1+26.3 |
-| Mod Menu | 11.0.5 | 21.0.0 |
-| Entity Culling | 1.11.3 | 1.11.3 |
-| More Culling (+ Cloth Config 15.0.140 / 26.3.159) | 1.0.10 | 1.9.0 |
-| BadOptimizations | 2.4.1 | 2.4.1 |
-| ModernFix | 5.25.1 | — (pas de version 26.3) |
-| Krypton | 0.2.8 | 0.3.2 |
-| Fast IP Ping | 1.0.12 | 1.0.12 |
-| Server Pinger Fixer | 1.0.6 | 1.1.1 |
-| Reflex AntiLag | 1.1.3 | 1.1.3 |
-| Crystal Optimizer (Marlow, groupe PvP) | 2.0.0 | 2.0.0 |
-| Anchor Optimizer (Walksy, + WalksyLib 2.0.4, groupe PvP) | 1.3.0 | 1.3.0 |
-| Iris Shaders (optionnel, réglage **Shaders**) | 1.8.14-beta.1 | 1.11.7 |
+### Les groupes du pack
 
-- **Mods PvP (latence)** : Crystal Optimizer, Anchor Optimizer et WalksyLib forment le groupe `pvp` du pack, installé
-  par défaut ; le réglage **Mods PvP (latence)** du profil les retire (à couper sur un serveur qui les interdit). Ils ne
-  changent que l'affichage côté client (cristal retiré dès le coup, explosion d'ancre prévue), jamais le combat lui-même.
+Un mod du pack peut appartenir à un **groupe**, que le joueur active ou coupe avec un réglage **par profil** (appliqué à la
+prochaine installation, bouton INSTALLER). Un jar qui sort du pack (groupe coupé) est retiré, jamais un jar du joueur.
+
+| Groupe | Réglage | Par défaut | Profils | Mods |
+| --- | --- | --- | --- | --- |
+| *(aucun)* | | toujours installés | les 3 | mods de performance, bibliothèques |
+| `pvp` | **Mods PvP (latence)** (`pvpMods`) | activé | 1.21.1, 26.3 | Crystal Optimizer, Anchor Optimizer, WalksyLib, **BetterHitReg**, **Complete Shield Fixes** |
+| `optifine` | **Packs OptiFine** (`optifinePacks`) | activé | 1.21.1, 26.3 | **Continuity**, **Entity Texture Features**, **Entity Model Features** |
+| `replay` | **Replay Mod** (`replayMod`) | coupé | les 3 | **Replay Mod** |
+| *(optionnel)* | **Shaders (Iris)** (`shaders`) | coupé | 1.21.1, 26.3 | Iris Shaders |
+
+Les mods des groupes `pvp` ne changent que ce que le client affiche ou anticipe (cristal retiré dès le coup, coup enregistré
+avant le serveur, bouclier) : à couper sur un serveur qui les interdit. Les trois « packs OptiFine » lisent les packs de
+ressources au format OptiFine (textures connectées, mobs, ciel) **sans OptiFine** : c'est la voie Fabric.
+
+| Mod | 1.8.9 (Forge) | 1.21.1 | 26.3 |
+| --- | --- | --- | --- |
+| Phosphor Legacy (Forge, moteur d'éclairage) | 5 | — | — |
+| Client Side Sounds | 1.1 | — | — |
+| Fabric API | — | 0.116.17+1.21.1 | 0.164.0+26.3 |
+| Sodium | — | 0.8.13 | 0.9.2 |
+| Lithium | — | 0.15.4 | 0.26.2 |
+| FerriteCore | — | 7.0.3 | 9.0.0 |
+| ImmediatelyFast | — | 1.6.15+1.21.1 | 1.17.1+26.3 |
+| Mod Menu | — | 11.0.5 | 21.0.0 |
+| Entity Culling | — | 1.11.3 | 1.11.3 |
+| More Culling (+ Cloth Config 15.0.140 / 26.3.159) | — | 1.0.10 | 1.9.0 |
+| BadOptimizations | — | 2.4.1 | 2.4.1 |
+| ModernFix | — | 5.25.1 | — (pas de version 26.3) |
+| Krypton | — | 0.2.8 | 0.3.2 |
+| Fast IP Ping | — | 1.0.12 | 1.0.12 |
+| Server Pinger Fixer | — | 1.0.6 | 1.1.1 |
+| Reflex AntiLag | — | 1.1.3 | 1.1.3 |
+| Continuity (`optifine`) | — | 3.0.0+1.21 | 3.0.1+26.3 |
+| Entity Texture Features (`optifine`) | — | 7.2.6 | 7.2.6 |
+| Entity Model Features (`optifine`) | — | 3.3.12 | 3.3.12 |
+| Crystal Optimizer (Marlow, `pvp`) | — | 2.0.0 | 2.0.0 |
+| Anchor Optimizer (Walksy, + WalksyLib 2.0.4, `pvp`) | — | 1.3.0 | 1.3.0 |
+| BetterHitReg (`pvp`) | — | 1.0.7 | 1.0.8-BETA |
+| Complete Shield Fixes (`pvp`) | — | 2.1.0 | 2.1.0 |
+| Replay Mod (`replay`) | 1.8.9-2.6.24 | 1-2.6.28 (1.21) | 26.3-2.6.28 |
+| Iris Shaders (optionnel, réglage **Shaders**) | — | 1.8.14-beta.1 | 1.11.7 |
+
 - **Pas de Dynamic FPS** : par défaut il descend à 1 FPS dès que la fenêtre perd le focus (60 FPS au survol), gênant
   avec un second écran, et il ne fait gagner aucun FPS en jeu.
-- **Réglages vidéo de départ** (`src/main/gameoptions.js`) : un dossier de jeu neuf reçoit un `options.txt` sans VSync,
-  sans limite de FPS (`maxFps:260`), sans ombres d'entités, distance 10. Dans un dossier existant, seules les valeurs
-  par défaut de Minecraft `enableVsync:true` et `maxFps:120` sont remplacées, une seule fois (drapeau `gameOptions`
-  de `attack-launcher.json`) : un choix du joueur n'est jamais modifié.
-
+- **Réglages de départ d'`options.txt`** (`src/main/gameoptions.js`), par **étapes** suivies par le drapeau `gameOptions`
+  de `attack-launcher.json` (une étape faite n'est jamais refaite) :
+  - étape 1, **profils Fabric seulement** : un dossier neuf reçoit un `options.txt` sans VSync, sans limite de FPS
+    (`maxFps:260`), sans ombres d'entités, distance 10 ; dans un dossier existant, seules les valeurs par défaut de
+    Minecraft `enableVsync:true` et `maxFps:120` sont remplacées ;
+  - étape 2, **tous les profils, 1.8.9 comprise** : la **langue du launcher** (`lang:fr_fr` / `en_us` en Fabric,
+    `lang:fr_FR` / `en_US` en 1.8.9) est écrite à la création d'`options.txt` ; dans un fichier existant, seulement si
+    la langue est encore celle par défaut de Minecraft (`en_us`) et que le launcher est en français. Le menu ATTACK sort
+    ainsi en français. Un dossier déjà à `gameOptions=1` ne refait pas l'étape 1.
+  Un choix du joueur n'est jamais modifié.
 - **Iris et Sodium vont ensemble** : en 1.21.1, Sodium 0.8.13 (dernière release, nouveau moteur de rendu) demande
   Iris 1.8.14-beta.1, seule version d'Iris pour Sodium 0.8 en 1.21.1 (publiée en juin 2026, pas de release stable
   depuis) ; Iris 1.8.8 (stable) ne marche qu'avec Sodium 0.6.x. En 26.3, Iris 1.11.7 déclare `sodium 0.9.x`
@@ -183,23 +214,57 @@ SHA-512, SHA-1 et taille. Le launcher **n'appelle jamais l'API Modrinth** : il t
 - Mod Menu embarque déjà Text Placeholder API (dans `META-INF/jars`) : il n'y a pas de `placeholder-api` à côté.
 - **Validation** (`modpack.validatePack`) : adresse `https` sur `cdn.modrinth.com` uniquement, SHA-512 de 128 caractères
   hexadécimaux, nom de fichier `^[\w.+-]+\.jar$` (jamais un chemin), l'adresse doit désigner exactement ce fichier, pas de
-  doublon (même à la casse près). Les noms contenant `+` sont encodés `%2B` dans l'adresse.
+  doublon (même à la casse près), groupe parmi `pvp`, `optifine`, `replay`, licence (identifiant SPDX ou `LicenseRef-…`)
+  et auteur courts. Les noms contenant `+` sont encodés `%2B` dans l'adresse.
 - **Installation** : téléchargements en parallèle dans `<dossier de jeu>\mods\`, chacun vérifié par SHA-512 et taille. Iris
-  n'est installé que si l'option **Shaders (Iris)** du profil est activée.
+  n'est installé que si **Shaders (Iris)** est activé, et chaque groupe que si son réglage l'est.
 - **Jars gérés** : la liste des jars posés par le launcher est gardée dans `attack-launcher.json` (`pack.managed`,
   écriture atomique : fichier temporaire puis renommage). À l'installation suivante, un jar géré qui n'est plus dans le pack
-  (mod retiré, version changée, Iris coupé) est **supprimé**, après que tous les téléchargements ont réussi. Si un
+  (mod retiré, version changée, groupe coupé) est **supprimé**, après que tous les téléchargements ont réussi. Si un
   téléchargement échoue, les jars téléchargés pendant ce passage sont retirés (jamais deux versions du même mod côte à côte)
   et les anciens ne sont pas touchés ; si un ancien jar est verrouillé (jeu ouvert), il reste suivi et l'installation
   s'arrête avec un message qui demande de fermer le jeu. L'installation est refusée tant qu'une partie est ouverte dans le dossier
   de jeu de ce profil (lancée ici ou par le launcher officiel) ; une partie d'un autre profil ne bloque pas. Les jars que **tu** ajoutes à `mods\` ne sont **jamais**
   touchés, pas plus que le jar ATTACK ; un nom suspect dans l'état (chemin, autre extension) est ignoré.
-- **État de l'accueil** : le voyant « Pack de mods » est vert quand chaque jar du pack est présent avec la bonne taille et
-  qu'aucun ancien jar géré ne traîne. Activer ou couper les shaders le repasse à « à installer » jusqu'au prochain clic
-  sur **INSTALLER**.
+- **État de l'accueil** : le voyant « Pack de mods » est vert quand chaque jar du pack voulu est présent avec la bonne taille
+  et qu'aucun ancien jar géré ne traîne. Activer ou couper un groupe le repasse à « à installer » (et le réglage affiche
+  « À appliquer ») jusqu'au prochain clic sur **INSTALLER** ; la page Mods propose alors **Installer maintenant**.
+  `packGroups` (jars présents par groupe) alimente les pastilles « Appliqué / À appliquer / Désactivé ».
+- **Dossier de jeu partagé** : un état sans `profileId` est attribué par `pack.id` (identifiant du profil qui a posé le pack,
+  Forge 1.8.9 comme Fabric) ; un `pack` sans identifiant date d'avant les packs Forge et vient d'un profil Fabric.
 - **Figer un pack** (développeurs) : `node scripts/resolve-pack.js` interroge l'API Modrinth, sélectionne exactement les
-  numéros de version listés dans le script et réécrit les deux fichiers ; `--check` compare sans rien écrire. À relire
-  avant de commiter.
+  numéros de version listés dans le script (`SPECS`, avec le chargeur de chaque profil), lit la licence et l'auteur de
+  chaque projet et réécrit les trois fichiers ; `--check` compare sans rien écrire. Les dépendances « requises » hors pack
+  sont signalées (aucune ne manque : Mod Menu embarque la sienne). À relire avant de commiter.
+
+## OptiFine pour la 1.8.9 (la copie du joueur)
+
+OptiFine ne peut pas être redistribué : le launcher **ne le télécharge jamais**. Pour le profil 1.8.9, il utilise seulement
+la copie que le joueur a lui-même récupérée sur [optifine.net](https://optifine.net/downloads) (`src/main/optifine.js`) :
+
+1. **Détection** : `.minecraft\libraries\optifine\OptiFine\1.8.9_*\OptiFine-1.8.9_*.jar` (laissée par l'installateur d'OptiFine,
+   la variante la plus récente d'abord), puis `.minecraft\mods\*OptiFine*1.8.9*.jar`, ou le **fichier choisi** avec le bouton
+   « Choisir le fichier… » de la carte OptiFine (Réglages, onglet Ce profil).
+2. **Validation** avant toute copie : archive ZIP lisible, `META-INF/MANIFEST.MF` avec
+   `TweakClass: optifine.OptiFineForgeTweaker`, nom contenant `1.8.9`. Un fichier refusé est expliqué (pas un .jar, mauvaise
+   version, pas une archive, pas OptiFine pour Forge).
+3. **Copie** dans `<dossier de jeu>\mods\` (fichier temporaire puis renommage, empreinte SHA-256 relue), **suivie dans
+   `attack-launcher.json`** (`optifine` : nom, origine, SHA-256, taille). Quand le réglage **OptiFine** est coupé, ou qu'une
+   autre variante est choisie, **seule la copie du launcher est retirée** (et seulement si son empreinte n'a pas changé) ;
+   un OptiFine que le joueur a mis lui-même dans `mods\` n'est jamais doublé ni supprimé.
+4. **Rien trouvé** : un texte explique pourquoi (licence) et un bouton ouvre optifine.net dans le navigateur ; le jeu marche
+   sans OptiFine. La page relit l'état au retour sur la fenêtre : un OptiFine installé entre-temps est trouvé tout seul.
+
+Réglages par profil 1.8.9 : `optifine` (activé par défaut : la copie est utilisée si elle existe) et `optifineJar` (chemin
+absolu choisi, vide = recherche automatique). ATTACK Client 2.5.4 et OptiFine HD U M5 marchent ensemble (0 mixin en échec).
+
+## Crédits des mods
+
+Réglages, onglet **Launcher**, bouton **Mods et licences** : la liste des mods du pack du profil choisi avec leur **auteur**,
+leur **version** et leur **licence** (noms lisibles pour les identifiants Modrinth), et la phrase de crédit : les mods
+appartiennent à leurs auteurs et restent sous leur licence, ils sont téléchargés sans modification depuis leur page
+officielle sur Modrinth et vérifiés par SHA-512 ; OptiFine appartient à sp614x et n'est jamais embarqué. C'est l'une des
+conditions de tr7zw pour Entity Culling.
 
 ## Mod ATTACK : d'où vient le jar ?
 

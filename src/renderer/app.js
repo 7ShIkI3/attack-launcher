@@ -200,6 +200,23 @@
     return rows;
   }
 
+  /** « Ressources du jeu 358/5147 · 19 % » : l'étape en cours et l'avancement global. */
+  function progressSummary(profile) {
+    const step = progress.step ? t(`step.${progress.step}`, { mc: profile.mc }) + (progress.total > 1 ? ` ${progress.done}/${progress.total}` : '') : '';
+    return [step, `${Math.floor(progress.percent)} %`].filter(Boolean).join(' · ');
+  }
+
+  /** Chaque évènement de progression ne met à jour que le bouton et la ligne « prêt » (pas toute la page : il y en a des milliers). */
+  function renderProgress() {
+    const profile = currentProfile();
+    if (!profile) return;
+    if (busy) {
+      $('play-fill').style.width = `${progress.percent}%`;
+      $('play-label').textContent = t('home.installingPct', { n: Math.floor(progress.percent) });
+    }
+    if (busy || playing) $('ready-sum').textContent = progressSummary(profile);
+  }
+
   function renderStatus() {
     const profile = currentProfile();
     if (!profile) return;
@@ -218,10 +235,8 @@
     const needsText = bad.length > 2 ? t('home.needsMany', { n: bad.length }) : t('home.needs', { items: bad.map((r) => r.label).join(', ') });
     $('ready-main').textContent = busy ? t('home.installingNow') : checking ? t('home.checking') : needs ? needsText : t('home.ready');
     let summary = '';
-    if (busy) {
-      const step = progress.step ? t(`step.${progress.step}`, { mc: profile.mc }) + (progress.total > 1 ? ` ${progress.done}/${progress.total}` : '') : '';
-      summary = [step, `${Math.floor(progress.percent)} %`].filter(Boolean).join(' · ');
-    } else if (!checking && !needs) summary = [profile.hasPack || profile.hasOptifine ? modsText(modCount(profile)) : null, status.modVersion ? t('home.clientVersion', { version: status.modVersion }) : 'ATTACK Client'].filter(Boolean).join(' · ');
+    if (busy || playing) summary = progressSummary(profile);
+    else if (!checking && !needs) summary = [profile.hasPack || profile.hasOptifine ? modsText(modCount(profile)) : null, status.modVersion ? t('home.clientVersion', { version: status.modVersion }) : 'ATTACK Client'].filter(Boolean).join(' · ');
     $('ready-sum').textContent = summary;
     $('ready-pop').replaceChildren(...rows.map((r) => el('div', { class: `pop-row${r.state === 'bad' ? ' bad' : ''}` }, [
       el('span', { class: 'r-ico' }, [icon(r.state === 'ok' ? 'check' : 'info')]),
@@ -283,6 +298,9 @@
   document.addEventListener('click', (event) => {
     if (!$('ready-pop').contains(event.target)) closeReady();
   });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeReady();
+  });
 
   async function refreshStatus() {
     const token = ++statusToken;
@@ -341,7 +359,7 @@
   api.onProgress((p) => {
     progress = { percent: p.percent, step: p.step, done: p.done, total: p.total };
     // pendant le lancement direct (Java, connexion) la progression ne change que le texte : le bouton reste à « LANCEMENT »
-    if (busy) renderStatus();
+    renderProgress();
   });
 
   $('play-button').addEventListener('click', async () => {

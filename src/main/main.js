@@ -590,7 +590,14 @@ function createWindow() {
     win = null;
   });
   win.loadFile(INDEX_HTML);
-  if (process.env.ATTACK_SCREENSHOT_DIR) win.webContents.once('did-finish-load', () => captureScreens());
+  if (process.env.ATTACK_SCREENSHOT_DIR) {
+    // mode capture : les avertissements et erreurs de la page (CSP comprise) sont repris dans la sortie, pour ne rien laisser passer
+    win.webContents.on('console-message', (...args) => {
+      const detail = args[0] && typeof args[0] === 'object' && 'message' in args[0] ? args[0] : { level: args[1], message: args[2] };
+      if (['warning', 'error', 2, 3].includes(detail.level)) console.error(`[page ${detail.level}] ${detail.message}`);
+    });
+    win.webContents.once('did-finish-load', () => captureScreens());
+  }
 }
 
 /** Mode capture (tests) : photographie chaque page puis quitte. */
@@ -645,6 +652,13 @@ async function captureScreens() {
     await win.webContents.executeJavaScript(`window.showPage && window.showPage(${JSON.stringify(page)})`);
     await wait(500);
     await shot(page);
+    if (page === 'settings') {
+      // bas de la page (pack de mods, OptiFine) quand elle dépasse la fenêtre
+      await js("document.getElementById('page-settings').scrollTop = 9999");
+      await wait(300);
+      await shot('settings-bas');
+      await js("document.getElementById('page-settings').scrollTop = 0");
+    }
   }
   // détail de la ligne « prêt » de l'accueil, onglets Launcher et Avancé des réglages, crédits des mods
   await js("window.showPage('home'); document.getElementById('ready-btn').click()");
