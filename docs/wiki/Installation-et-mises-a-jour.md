@@ -247,9 +247,10 @@ la copie que le joueur a lui-même récupérée sur [optifine.net](https://optif
 1. **Détection** : `.minecraft\libraries\optifine\OptiFine\1.8.9_*\OptiFine-1.8.9_*.jar` (laissée par l'installateur d'OptiFine,
    la variante la plus récente d'abord), puis `.minecraft\mods\*OptiFine*1.8.9*.jar`, ou le **fichier choisi** avec le bouton
    « Choisir le fichier… » de la carte OptiFine (Réglages, onglet Ce profil).
-2. **Validation** avant toute copie : archive ZIP lisible, `META-INF/MANIFEST.MF` avec
+2. **Validation** avant toute copie : archive ZIP lisible, `META-INF/MANIFEST.MF` (1 Mo décompressé au plus : un jar piégé qui
+   annonce plus, ou qui ment sur sa taille, est refusé sans geler le launcher) avec
    `TweakClass: optifine.OptiFineForgeTweaker`, nom contenant `1.8.9`. Un fichier refusé est expliqué (pas un .jar, mauvaise
-   version, pas une archive, pas OptiFine pour Forge).
+   version, pas une archive, trop gros, pas OptiFine pour Forge).
 3. **Copie** dans `<dossier de jeu>\mods\` (fichier temporaire puis renommage, empreinte SHA-256 relue), **suivie dans
    `attack-launcher.json`** (`optifine` : nom, origine, SHA-256, taille). Quand le réglage **OptiFine** est coupé, ou qu'une
    autre variante est choisie, **seule la copie du launcher est retirée** (et seulement si son empreinte n'a pas changé) ;

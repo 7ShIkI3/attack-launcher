@@ -438,6 +438,7 @@
       'error.FILES_MISSING': 'Game files are missing: click “Verify / repair installation”.',
       'error.HEAP_TOO_BIG': 'A Java argument (-Xms) is larger than the allocated memory: lower it or raise the memory.',
       'error.PROFILES_UNREADABLE': 'launcher_profiles.json is unreadable, so it was not changed: open the official launcher once, then try again.',
+      'error.ZIP_TOO_BIG': 'An archive announces a size above the allowed limit (corrupt or booby-trapped file?): it was not read.',
       'error.INVALID_NAME': 'Invalid name (3 to 16 characters: letters, digits, _).',
       'error.NO_JAR': 'The latest release has no ATTACK Client jar for this profile yet.',
       'error.MS_ERROR': 'Microsoft returned an error: {message}',

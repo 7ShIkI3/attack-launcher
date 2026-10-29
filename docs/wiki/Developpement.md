@@ -69,6 +69,7 @@ Les 167 tests tournent en quelques secondes et n'ont besoin ni du réseau ni d'E
 | `game-modern.test.js` | Fusion Fabric + Minecraft, arguments modernes (1.21.1 et 26.3), un seul `-cp`, variables sans découpage, natives de 26.x, détection d'une partie |
 | `installer.test.js` | Étapes de l'installateur avec un faux réseau (`fetch` remplacé) : Fabric Loader (hash figés, SHA-512, profil piégé refusé avant tout téléchargement), jar ATTACK d'une release (profil, SHA-256, erreurs), pack et fichier d'état (échec au milieu, jar verrouillé) |
 | `multi-profils.test.js` | Réglages par profil et migration de l'ancien fichier, profils du launcher officiel, jar ATTACK par release, progression par chargeur, état d'un profil Fabric |
+| `zip.test.js` | Lecteur ZIP : plafond de décompression (taille annoncée contrôlée avant, zlib limité à cette taille), zip forgé dont la taille ment, limites de l'installateur Forge |
 | `forge.test.js` | Lecteur ZIP, extraction de `install_profile.json` et du jar universal, installateur piégé refusé, bibliothèques, JSON de version |
 | `mojang.test.js` | Manifeste, règles par plateforme, bibliothèques et natives, assets, chemins incohérents refusés |
 | `maven.test.js` | Chemins et URL Maven, coordonnées malveillantes, `safeJoin` |

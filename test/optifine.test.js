@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { makeZip, tempDir } = require('./helpers');
+const { makeZip, declareSize, tempDir } = require('./helpers');
 const optifine = require('../src/main/optifine');
 const installer = require('../src/main/installer');
 const settings = require('../src/main/settings');
@@ -64,6 +64,25 @@ test('validation : jar OptiFine 1.8.9 accepté (empreinte SHA-256 calculée), re
   assert.equal(missing.reason, 'UNREADABLE');
   assert.equal((await optifine.validate(s.root)).reason, 'UNREADABLE', 'un dossier n’est pas un jar');
   for (const code of Object.keys(optifine.REASONS)) assert.ok(optifine.REASONS[code].length > 10);
+  s.clean();
+});
+
+test('validation : MANIFEST.MF piégé (bombe de décompression) refusé vite : annoncé trop gros = TOO_BIG, taille mensongère = BAD_ZIP', async () => {
+  const s = sandbox();
+  const MIB = 1024 * 1024;
+  // le manifeste annonce (et contient) 2 Mo : refusé sans être décompressé
+  const huge = makeZip({ 'META-INF/MANIFEST.MF': `${MANIFEST}${'x'.repeat(2 * MIB)}\r\n` });
+  const refused = await optifine.validate(s.put('OptiFine-1.8.9_huge.jar', huge));
+  assert.deepEqual([refused.ok, refused.reason], [false, 'TOO_BIG']);
+  // 64 Mo de zéros qui tiennent dans quelques Ko, taille annoncée 100 octets : la décompression s'arrête à 100, le fichier est refusé
+  const bomb = declareSize(makeZip({ 'META-INF/MANIFEST.MF': Buffer.alloc(64 * MIB) }), 100);
+  assert.ok(bomb.length < 256 * 1024);
+  const started = Date.now();
+  const lying = await optifine.validate(s.put('OptiFine-1.8.9_bomb.jar', bomb));
+  assert.deepEqual([lying.ok, lying.reason], [false, 'BAD_ZIP']);
+  assert.ok(Date.now() - started < 2000, 'refusé sans geler');
+  // le vrai manifeste d'un jar OptiFine reste accepté
+  assert.equal((await optifine.validate(s.put('OptiFine_1.8.9_HD_U_M5.jar', optifineJar()))).ok, true);
   s.clean();
 });
 

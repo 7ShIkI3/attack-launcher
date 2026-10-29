@@ -5,6 +5,10 @@ const { readEntries, readEntry } = require('./zip');
 const { mavenPath, mavenUrl } = require('./maven');
 const { FORGE_MAVEN, MOJANG_LIBRARIES } = require('./constants');
 
+/** Tailles décompressées maximales lues dans l'installateur : le vrai install_profile.json fait quelques dizaines de Ko, le jar universal 1.8.9 ~4 Mo. */
+const MAX_PROFILE = 8 * 1024 * 1024;
+const MAX_UNIVERSAL = 64 * 1024 * 1024;
+
 /** Adresse de l'installateur Forge d'un profil du catalogue (Maven Forge officiel). */
 function installerUrl(profile) {
   const version = profile.loader.fullVersion;
@@ -15,7 +19,7 @@ function installerUrl(profile) {
 /** Lit l'installateur (Buffer) : { install, versionInfo, universal: Buffer }. */
 function readInstallProfile(installerBuffer) {
   const entries = readEntries(installerBuffer);
-  const raw = readEntry(installerBuffer, 'install_profile.json', entries);
+  const raw = readEntry(installerBuffer, 'install_profile.json', entries, { maxSize: MAX_PROFILE });
   if (!raw) throw new Error("install_profile.json absent de l'installateur Forge");
   const profile = JSON.parse(raw.toString('utf8'));
   const { install, versionInfo } = profile;
@@ -24,7 +28,7 @@ function readInstallProfile(installerBuffer) {
   if (versionInfo.id !== install.target) throw new Error('install_profile.json : id de version incohérent');
   if (!Array.isArray(versionInfo.libraries)) throw new Error('install_profile.json : bibliothèques absentes');
   if (!/^[\w.-]+\.jar$/.test(install.filePath)) throw new Error(`Nom de jar universal suspect : ${install.filePath}`);
-  const universal = readEntry(installerBuffer, install.filePath, entries);
+  const universal = readEntry(installerBuffer, install.filePath, entries, { maxSize: MAX_UNIVERSAL });
   if (!universal) throw new Error(`${install.filePath} absent de l'installateur Forge`);
   return { install, versionInfo, universal };
 }

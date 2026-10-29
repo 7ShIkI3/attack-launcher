@@ -80,4 +80,12 @@ const FORGE_PROFILE = {
   },
 };
 
-module.exports = { makeZip, tempDir, FORGE_PROFILE };
+/** Copie d'un zip à UNE entrée dont le répertoire central annonce `size` octets décompressés (la vraie taille n'est pas touchée). */
+function declareSize(zip, size) {
+  const copy = Buffer.from(zip);
+  const central = copy.readUInt32LE(copy.length - 22 + 16); // fin de répertoire collée à la fin : makeZip n'écrit pas de commentaire
+  copy.writeUInt32LE(size, central + 24);
+  return copy;
+}
+
+module.exports = { makeZip, declareSize, tempDir, FORGE_PROFILE };

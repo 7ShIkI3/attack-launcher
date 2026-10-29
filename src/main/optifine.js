@@ -20,6 +20,8 @@ const DOWNLOAD_URL = 'https://optifine.net/downloads';
 const MC = '1.8.9';
 const TWEAK = 'optifine.OptiFineForgeTweaker';
 const MAX_JAR = 64 * 1024 * 1024;
+/** Taille décompressée maximale de MANIFEST.MF : le vrai fait quelques lignes ; un jar choisi ou déposé peut être piégé (bombe de décompression). */
+const MAX_MANIFEST = 1024 * 1024;
 const FILENAME = /^[\w.+-]+\.jar$/;
 /** Nom qui désigne un OptiFine 1.8.9 (OptiFine-1.8.9_HD_U_M5.jar, OptiFine_1.8.9_HD_U_M5.jar…). */
 const NAME = /optifine.*1\.8\.9/i;
@@ -57,9 +59,9 @@ function checkBuffer(buffer, name) {
   if (!/1\.8\.9/.test(name)) return { ok: false, reason: 'WRONG_NAME' };
   let manifest;
   try {
-    manifest = readEntry(buffer, 'META-INF/MANIFEST.MF');
-  } catch {
-    return { ok: false, reason: 'BAD_ZIP' };
+    manifest = readEntry(buffer, 'META-INF/MANIFEST.MF', undefined, { maxSize: MAX_MANIFEST });
+  } catch (error) {
+    return { ok: false, reason: error?.code === 'ZIP_TOO_BIG' ? 'TOO_BIG' : 'BAD_ZIP' };
   }
   if (!manifest) return { ok: false, reason: 'NO_TWEAK' };
   if (parseManifest(manifest.toString('utf8')).TweakClass !== TWEAK) return { ok: false, reason: 'NO_TWEAK' };
