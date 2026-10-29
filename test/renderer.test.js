@@ -103,6 +103,15 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; 0
     assert.ok(entry.date === '' || /^\d{4}-\d{2}-\d{2}$/.test(entry.date), `${entry.version} : date`);
   }
   assert.equal(new Set(data.CHANGELOG.map((e) => e.version)).size, data.CHANGELOG.length, 'versions uniques');
+  // les deux versions d'ATTACK Client livrées avec le launcher 0.6.0 suivent son entrée : Fabric (3.5.0) d'abord, puis la 1.8.9 (2.6.0), même date
+  assert.deepEqual(Array.from(data.CHANGELOG.slice(1, 3), (e) => [e.version, e.date, e.tag]), [
+    ['ATTACK Client 3.5.0', data.CHANGELOG[0].date, 'new'],
+    ['ATTACK Client 2.6.0', data.CHANGELOG[0].date, 'new'],
+  ]);
+  // la page découpe chaque texte en puces (une phrase chacune) : aucun texte n'est un bloc unique
+  for (const entry of data.CHANGELOG.slice(1, 3)) {
+    for (const lang of ['fr', 'en']) assert.ok(entry[lang].split(/(?<=[.!?])\s+(?=[A-ZÉÈÀ«“"(])/).length >= 3, `${entry.version} (${lang}) : plusieurs phrases`);
+  }
 });
 
 test('vitrine : chaque mod des packs figés a sa fiche (icône, catégorie, textes) et chaque licence son nom lisible', () => {
