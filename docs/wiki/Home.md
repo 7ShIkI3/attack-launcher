@@ -3,11 +3,13 @@
 [← Retour au README](../../README.md)
 
 ATTACK Launcher est le launcher Windows (Electron) d'**ATTACK Client**, le client de PvP pour Minecraft. Il propose
-trois profils : **1.8.9** (Forge), **1.21.1** et **26.3** (Fabric), chacun avec un pack de mods figé (performance, packs
-OptiFine, mods PvP, Replay Mod, réglables) et, en 1.8.9, ta propre copie d'**OptiFine** (jamais téléchargée). Il installe
+trois profils : **1.8.9** (Forge), **1.21.1** et **26.3** (Fabric), chacun avec un pack de mods figé (en Fabric : performance,
+packs OptiFine, mods PvP, shaders ; Replay Mod dans les trois ; groupes réglables) et, en 1.8.9, ta propre copie d'**OptiFine** (jamais téléchargée). Il installe
 Minecraft, le chargeur et le mod, gère la connexion Microsoft, lance le jeu directement, affiche ton skin en 3D et se met
 à jour tout seul. Les releases (jar du mod compris) sont publiées sur
 [7ShIkI3/attack-launcher](https://github.com/7ShIkI3/attack-launcher/releases).
+
+Le **site du projet** présente le launcher en français ([7shiki3.github.io/attack-launcher](https://7shiki3.github.io/attack-launcher/)) et en anglais ([/en/](https://7shiki3.github.io/attack-launcher/en/)) ; son code est dans le dossier `site/` ([Développement](Developpement.md#site-web)).
 
 ## Sommaire
 
@@ -18,8 +20,8 @@ Minecraft, le chargeur et le mod, gère la connexion Microsoft, lance le jeu dir
 | [Installation et mises à jour](Installation-et-mises-a-jour.md) | Les trois profils, ce qui est installé et où, pack de mods, vérification des hash, sources autorisées, mises à jour automatiques |
 | [Comptes et skin](Comptes-et-skin.md) | Connexion Microsoft par code d'appareil, stockage des jetons, skin 3D et changement de skin |
 | [Vie privée et sécurité](Vie-privee-et-securite.md) | Données, destinataires, durées, protections, avec références `fichier:ligne` |
-| [Développement](Developpement.md) | Commandes npm, tests unitaires et tests réels, captures d'écran |
-| [Publier une version](Publier-une-version.md) | Release du launcher et des jars du mod (Forge et Fabric), mise à jour des packs de mods, application Azure |
+| [Développement](Developpement.md) | Commandes npm, tests unitaires et tests réels, captures d'écran, site web |
+| [Publier une version](Publier-une-version.md) | Release du launcher et des jars du mod (Forge et Fabric), redéploiement du site, mise à jour des packs de mods, application Azure |
 | [Capes réservées](Capes-reservees.md) | Donner une cape réservée avec `cosmetics/cosmetics.json` |
 | [Dépannage](Depannage.md) | SmartScreen, erreurs de connexion, d'installation, de mise à jour |
 
@@ -53,4 +55,4 @@ adresses listées dans [Vie privée et sécurité](Vie-privee-et-securite.md) so
 | --- | --- |
 | ![Accueil](../images/home.png) | ![Compte](../images/account.png) |
 
-Les captures montrent un compte factice (« Raphou ») avec un skin de test.
+Les captures montrent un compte factice (« Raphael ») avec un skin de test.

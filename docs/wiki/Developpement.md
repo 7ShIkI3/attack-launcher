@@ -27,6 +27,9 @@ npm start
 | `npm run launch-test -- <dossier> [--profile <id>]` | Lancement direct **réel** avec un compte hors ligne factice, jusqu'à l'écran titre. Forge : « Forge Mod Loader has successfully loaded N mods ». Fabric : liste « Loading N mods » + « Sound engine started », avec le mod `attack` dans la liste. Installe le Java du profil (8, 21 ou 25). `--keep` laisse le jeu ouvert |
 | `node scripts/resolve-pack.js [profil] [--check]` | Fige les packs de mods (Fabric et Forge 1.8.9, licence et auteur compris) depuis l'API Modrinth dans `src/main/packs/` (outil de développement : le launcher n'appelle jamais cette API) |
 | `npm run screenshot -- <dossier>` | Ouvre l'app dans des dossiers isolés et capture chaque page (`home`, `mods`, `settings`, `account`, `changelog`) ; `ATTACK_PROFILE=fabric-1.21.1` choisit le profil affiché |
+| `npm run site` | Construit le site web du projet (voir [Site web](#site-web)) |
+| `npm run site:serve` | Sert le site en local, pour le relire avant de publier |
+| `npm run site:images` | Produit les images WebP du site, dans `site/img/` |
 | `npm run icons` | Régénère les icônes PNG à partir des polygones du logo (`scripts/make-icons.js`) |
 | `npm run update-test -- <dossier>` | Mise à jour **réelle** 0.2.0 vers 0.2.1 sans GitHub (voir plus bas) |
 | `npm run dist` | Construit `dist/ATTACK-Launcher-Setup-*.exe` (NSIS) avec `latest.yml` et `.blockmap`, et `dist/ATTACK-Launcher-Portable-*.exe` ; **ne publie rien** (`--publish never`) |
@@ -43,6 +46,8 @@ npm start
 | `assets/`, `build/` | Icône de l'app et icône du profil Minecraft ; ressources d'electron-builder |
 | `cosmetics/` | `cosmetics.json` lu par le mod ([Capes réservées](Capes-reservees.md)) |
 | `docs/` | Ce wiki (`docs/wiki/`) et les captures (`docs/images/`) |
+| `site/` | Le site web du projet, en français et en anglais (voir [Site web](#site-web)) |
+| `.github/workflows/` | `pages.yml` : le workflow qui publie le site sur GitHub Pages |
 | `dist/` | Sortie de `npm run dist` (ignorée par git) |
 
 La logique de `src/main/*.js` (sauf `main.js` et `preload.js`) **n'utilise pas Electron** : elle se teste avec Node seul.
@@ -116,8 +121,38 @@ sans `--keep`, l'app de test est désinstallée ensuite. Détails dans l'en-têt
 | `ATTACK_SETTINGS='{"replayMod":true}'` | Réglages à plat ajoutés au profil affiché |
 
 Les images de `docs/images/` sont de vraies captures du launcher (0.6.0), prises le 2026-10-29 sur des installations de test
-(`npm run install-test`) avec un compte factice (« Raphael ») et un skin de test. `ATTACK_SETTINGS='{"replayMod":true}'` ajoute des
+(`npm run install-test`) avec un compte factice (« Raphael ») et un skin de test, dans un dossier de jeu sans nom d'utilisateur
+(`C:\Users\Public\ATTACK`) et sans mode développeur. `account.png` est coupée à 618 px de haut : le compte factice, qui n'a pas de
+jeton de renouvellement, affiche en bas un message d'erreur. `ATTACK_SETTINGS='{"replayMod":true}'` ajoute des
 réglages à plat au profil affiché (pour photographier l'état « à appliquer »). Garde les PNG sous environ 1 Mo.
+
+## Site web
+
+Le site du projet présente le launcher en français ([7shiki3.github.io/attack-launcher](https://7shiki3.github.io/attack-launcher/)) et en
+anglais ([/en/](https://7shiki3.github.io/attack-launcher/en/)). Son code est dans le dossier `site/`.
+
+| Commande | Rôle |
+| --- | --- |
+| `npm run site` | Construit le site |
+| `npm run site:serve` | Sert le site en local, pour le relire avant de publier |
+| `npm run site:images -- --sources <dossier>` | Produit les images WebP du site à partir d'un dossier de captures PNG (le dossier est **obligatoire**) |
+
+- **Images** : les WebP sont dans `site/img/`, nommés `<clé>-<fr|en>-<largeur>.webp` (par exemple `client-menu-fr-854.webp`, la capture
+  du menu ATTACK en jeu, que le README affiche aussi). GitHub sait afficher le WebP. `npm run site:images` demande un dossier de PNG
+  nommés `<clé>-<fr|en>.png` (`launcher-home-fr.png`, `client-menu-en.png`…) et **refuse de travailler sans lui** : ces PNG ne sont pas
+  dans le dépôt (seuls les WebP et `manifest.json` le sont). Les images sont d'abord toutes encodées dans un dossier d'attente ;
+  `site/img/` n'est remplacé (WebP, manifeste, `og.png` et `og-en.png`, les accueils français et anglais pour le partage) qu'ensuite.
+  Une capture plus étroite que la plus grande largeur prévue (1120 px pour le launcher, 854 px pour le client) est refusée avec
+  « capture trop étroite » et rien n'est modifié. La capture « Compte » est coupée à 618 px de haut : le compte factice affiche
+  en bas un message d'erreur de renouvellement.
+- **Sortie** : `node scripts/build-site.js --out <dossier>` vide ce dossier avant de générer. Il n'est accepté que s'il n'existe pas,
+  est vide, s'appelle `_site` ou porte le fichier `.attack-site` écrit par le script : `--out docs` ou `--out src` sont refusés.
+- **Release lue** : la page montre le Setup de la dernière release GitHub. Avec `--strict` (workflow), la génération échoue si l'API ne
+  répond pas, si la release est inutilisable (fichiers pas encore joints, version du Setup différente du tag) ou plus ancienne
+  que la `version` de `package.json` ; `--offline` utilise `test/fixtures/site-release.json` (sans réseau, sans cette comparaison).
+- **Publication** : le workflow `.github/workflows/pages.yml` publie le site sur GitHub Pages ; à la publication d'une release, il
+  redéploie le site (voir [Publier une version](Publier-une-version.md), qui donne l'ordre à respecter : release complète d'abord).
+- Les liens du README et du wiki vers le site (`7shiki3.github.io/attack-launcher`) ne répondent qu'une fois GitHub Pages activé pour le dépôt.
 
 ## Autres variables d'environnement
 

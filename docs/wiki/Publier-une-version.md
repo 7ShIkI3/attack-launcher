@@ -4,15 +4,16 @@
 
 Les releases de [7ShIkI3/attack-launcher](https://github.com/7ShIkI3/attack-launcher/releases) contiennent à la fois le
 **launcher** et le **jar du mod ATTACK Client**. Cette page décrit la procédure actuelle (faite à la main : aucune
-publication n'est automatisée, `npm run dist` ne publie rien) et la création de l'application Azure.
+publication de release n'est automatisée, `npm run dist` ne publie rien ; seul le redéploiement du site se fait tout seul) et la création de l'application Azure.
 
 ```mermaid
 flowchart TD
   A["Monter version dans package.json<br>et ajouter l'entrée dans data.js"] --> B["npm test"]
   B --> C["npm run dist"]
   C --> D["dist : Setup.exe, .blockmap,<br>latest.yml, Portable.exe"]
-  D --> E["Créer la release GitHub publiée<br>au tag vX.Y.Z"]
-  E --> F["Joindre les fichiers :<br>Setup, blockmap, latest.yml, Portable,<br>jar du mod, SHA256SUMS"]
+  D --> E["Créer la release GitHub au tag vX.Y.Z<br>avec tous les fichiers joints :<br>Setup, blockmap, latest.yml, Portable,<br>jar du mod, SHA256SUMS"]
+  E --> F["Publier la release<br>(ni brouillon, ni préversion)"]
+  F --> S["Le workflow Pages relit la release<br>et redéploie le site"]
   F --> G["Les launchers installés lisent latest.yml<br>de la dernière release"]
   G --> H["Téléchargement, SHA-512 vérifié,<br>bannière Redémarrer"]
 ```
@@ -23,8 +24,10 @@ flowchart TD
    `CHANGELOG` dans `src/renderer/data.js` : c'est l'historique affiché sur la page d'accueil.
 2. Lance `npm test`, puis **`npm run dist`**. Les fichiers sont créés dans `dist/` :
    `ATTACK-Launcher-Setup-<version>.exe`, son `.blockmap`, `latest.yml` et `ATTACK-Launcher-Portable-<version>.exe`.
-3. Crée une release GitHub **publiée** (ni brouillon, ni préversion) au tag `v<version>` (par exemple `v0.5.1`) et joins-y,
-   depuis `dist/` :
+3. Crée la release GitHub au tag `v<version>` (par exemple `v0.5.1`) **avec tous ses fichiers déjà joints**, puis publie-la
+   (ni brouillon, ni préversion) : soit `gh release create v<version> <fichiers>` en une commande, soit un **brouillon** auquel
+   tu joins les fichiers avant de cliquer sur « Publier ». La publication lance le workflow du site (étape 6), qui lit la
+   release à ce moment-là : des fichiers joints après coup peuvent arriver trop tard. Joins-y, depuis `dist/` :
    - `ATTACK-Launcher-Setup-<version>.exe` ;
    - `ATTACK-Launcher-Setup-<version>.exe.blockmap` : permet aux versions suivantes de ne télécharger que ce qui a changé ;
    - `latest.yml` : version, nom et SHA-512 de l'installateur, lus par les launchers déjà installés ;
@@ -34,14 +37,28 @@ flowchart TD
 4. **Chaque** release doit contenir `latest.yml` et le `Setup.exe` qu'il désigne (avec son `.blockmap`), **même une release
    qui ne change que le mod** (joins alors à nouveau ceux de la version actuelle du launcher) : les launchers lisent la
    **dernière** release. Sans eux, ils notent une erreur dans `updater.log` et ne proposent rien, sans autre conséquence.
+   Le site est plus strict : il lit lui aussi la dernière release et exige un seul `Setup` et un seul `Portable` dont la version est
+   celle du tag. Une release « mod seul » dont le tag n'est pas la version du `Setup` joint fait donc échouer la génération du
+   site (voir l'étape 6) : la page déjà en ligne ne change pas, jusqu'à la prochaine release du launcher.
 5. Le `.exe` n'est pas signé : SmartScreen avertira au premier lancement (voir [Dépannage](Depannage.md#windows-smartscreen)).
    Tu peux publier le SHA-256 de chaque fichier (`SHA256SUMS`) pour que les joueurs le comparent. Le fichier `SHA256SUMS`
    n'est pas produit par `npm run dist` : il se prépare à part. Quand la release porte plusieurs jars, `SHA256SUMS` doit
    avoir **une ligne par fichier** (`<sha256>  <nom exact>`) : le launcher y cherche la ligne portant le nom du jar de son
    profil et refuse de prendre le hash d'un autre fichier.
+6. **Le site** : à la publication de la release, le workflow Pages (`.github/workflows/pages.yml`, voir
+   [Développement](Developpement.md#site-web)) redéploie le site, [7shiki3.github.io/attack-launcher](https://7shiki3.github.io/attack-launcher/)
+   et sa version anglaise (`/en/`). Il n'y a rien à faire à la main, mais il faut contrôler le résultat (ci-dessous).
+   **Publie la release avant d'activer GitHub Pages**, et avant de fusionner une page qui décrit la nouvelle version : le site
+   montre le Setup de la dernière release, et décrit (nouveautés, fonctions) la version du dépôt. La génération (`--strict`)
+   échoue, sans déployer, si la dernière release est plus ancienne que la `version` de `package.json` (par exemple le site de
+   la 0.6.0 face à une dernière release 0.5.16), si ses fichiers manquent ou si la version du `Setup` n'est pas celle du tag :
+   elle relit alors la release 6 fois, à 20 secondes d'intervalle, puis s'arrête. La page en ligne reste telle quelle ;
+   une fois la release complète, relance le workflow (onglet Actions, « Site », « Run workflow »).
 
 À vérifier après publication :
 
+- ouvre le site (en français et sous `/en/`) et clique sur le bouton **Télécharger** : il doit mener au fichier de la release que tu
+  viens de publier. Si le site ne semble pas à jour, regarde le workflow Pages dans l'onglet Actions de GitHub ;
 - `npm run update-test -- <dossier>` valide la chaîne de mise à jour sur une version de test (sans GitHub) ;
 - `npm run install-test -- <dossier> --release` installe avec le vrai jar de la dernière release et recontrôle tous les hash
   ; ajoute `--profile fabric-1.21.1` ou `--profile fabric-26.3` pour les profils Fabric ([Développement](Developpement.md)) ;
