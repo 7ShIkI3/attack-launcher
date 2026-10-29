@@ -298,6 +298,7 @@ test('accueil : copie d’origine disparue, option coupée = ni gardé ni compt�
   const off = optifineParts(await render(dirs, { optifine: false }));
   assert.deepEqual([off.row.detail, off.row.bad], ['à retirer', true]);
   assert.equal(off.cardOff, true);
+  assert.equal(off.rail, 'Coupé', 'rail « Profil actuel » : OptiFine est un seul mod (pas « Coupés »)');
   const bare = installed189();
   fs.rmSync(bare.source);
   const none = optifineParts(await render(bare, {}));

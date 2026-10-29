@@ -290,7 +290,7 @@
       [t('pc.pack'), el('dd', { text: status || !profile.hasOptifine ? modsText(modCount(profile)) : '…' })],
     ];
     if (isFabric(profile)) cells.push([t('pc.pvp'), el('dd', { text: settings.pvpMods !== false ? t('pc.on') : t('pc.off') })]);
-    else cells.push(['OptiFine', el('dd', { text: !status || !status.optifine ? '…' : optifineInGame() ? (status.optifine.version ? status.optifine.version.replace(/_/g, ' ') : t('pc.on')) : status.optifine.enabled ? t('optifine.stateMissing') : t('pc.off') })]);
+    else cells.push(['OptiFine', el('dd', { text: !status || !status.optifine ? '…' : optifineInGame() ? (status.optifine.version ? status.optifine.version.replace(/_/g, ' ') : t('pc.onOne')) : status.optifine.enabled ? t('optifine.stateMissing') : t('pc.offOne') })]);
     $('pc-grid').replaceChildren(...cells.map(([label, value]) => el('div', {}, [el('dt', { text: label }), value])));
   }
 
