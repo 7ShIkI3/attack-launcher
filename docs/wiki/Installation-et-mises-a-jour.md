@@ -154,7 +154,27 @@ SHA-512, SHA-1 et taille. Le launcher **n'appelle jamais l'API Modrinth** : il t
 | FerriteCore | 7.0.3 | 9.0.0 |
 | ImmediatelyFast | 1.6.15+1.21.1 | 1.17.1+26.3 |
 | Mod Menu | 11.0.5 | 21.0.0 |
+| Entity Culling | 1.11.3 | 1.11.3 |
+| More Culling (+ Cloth Config 15.0.140 / 26.3.159) | 1.0.10 | 1.9.0 |
+| BadOptimizations | 2.4.1 | 2.4.1 |
+| ModernFix | 5.25.1 | — (pas de version 26.3) |
+| Krypton | 0.2.8 | 0.3.2 |
+| Fast IP Ping | 1.0.12 | 1.0.12 |
+| Server Pinger Fixer | 1.0.6 | 1.1.1 |
+| Reflex AntiLag | 1.1.3 | 1.1.3 |
+| Crystal Optimizer (Marlow, groupe PvP) | 2.0.0 | 2.0.0 |
+| Anchor Optimizer (Walksy, + WalksyLib 2.0.4, groupe PvP) | 1.3.0 | 1.3.0 |
 | Iris Shaders (optionnel, réglage **Shaders**) | 1.8.14-beta.1 | 1.11.7 |
+
+- **Mods PvP (latence)** : Crystal Optimizer, Anchor Optimizer et WalksyLib forment le groupe `pvp` du pack, installé
+  par défaut ; le réglage **Mods PvP (latence)** du profil les retire (à couper sur un serveur qui les interdit). Ils ne
+  changent que l'affichage côté client (cristal retiré dès le coup, explosion d'ancre prévue), jamais le combat lui-même.
+- **Pas de Dynamic FPS** : par défaut il descend à 1 FPS dès que la fenêtre perd le focus (60 FPS au survol), gênant
+  avec un second écran, et il ne fait gagner aucun FPS en jeu.
+- **Réglages vidéo de départ** (`src/main/gameoptions.js`) : un dossier de jeu neuf reçoit un `options.txt` sans VSync,
+  sans limite de FPS (`maxFps:260`), sans ombres d'entités, distance 10. Dans un dossier existant, seules les valeurs
+  par défaut de Minecraft `enableVsync:true` et `maxFps:120` sont remplacées, une seule fois (drapeau `gameOptions`
+  de `attack-launcher.json`) : un choix du joueur n'est jamais modifié.
 
 - **Iris et Sodium vont ensemble** : en 1.21.1, Sodium 0.8.13 (dernière release, nouveau moteur de rendu) demande
   Iris 1.8.14-beta.1, seule version d'Iris pour Sodium 0.8 en 1.21.1 (publiée en juin 2026, pas de release stable

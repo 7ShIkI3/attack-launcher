@@ -38,7 +38,9 @@ Elle suit le profil choisi sur l'accueil :
   Performance, Utilitaire). C'est une liste d'information (`src/renderer/data.js`) : on active et règle chaque module
   **en jeu**, depuis le menu ATTACK, pas dans le launcher.
 - **1.21.1 et 26.3** : le mod ATTACK (avec sa version installée, ou « à installer ») et les mods du **pack figé** avec leur
-  version (Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast, Mod Menu, Iris en option). Pas d'icônes venant de
+  version (Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast, Entity Culling, More Culling, BadOptimizations,
+  ModernFix en 1.21.1, Krypton, Reflex AntiLag, Mod Menu, Iris en option, et les mods PvP désactivables : Crystal
+  Optimizer, Anchor Optimizer). Pas d'icônes venant de
   Modrinth : la page n'a le droit de charger aucune image distante.
 
 ## Réglages

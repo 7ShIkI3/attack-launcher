@@ -263,7 +263,6 @@
     moreculling: { icon: 'MC', cat: 'perf', fr: 'Évite de dessiner d’autres éléments invisibles (faces cachées, objets hors de vue).', en: 'Avoids drawing more things you cannot see (hidden faces, off-screen objects).' },
     'cloth-config': { icon: 'CC', cat: 'utility', fr: 'Bibliothèque des écrans de réglages, requise par More Culling et Reflex AntiLag.', en: 'Settings-screen library, required by More Culling and Reflex AntiLag.' },
     badoptimizations: { icon: 'BO', cat: 'perf', fr: 'Optimisations diverses qui ne touchent pas au rendu.', en: 'Assorted optimizations that leave rendering alone.' },
-    'dynamic-fps': { icon: 'DF', cat: 'perf', fr: 'Réduit les ressources utilisées quand le jeu est en arrière-plan ou inactif.', en: 'Cuts resource use while the game is in the background or idle.' },
     modernfix: { icon: 'MF', cat: 'perf', fr: 'Démarrage plus rapide, moins de mémoire utilisée et de nombreux bugs corrigés.', en: 'Faster startup, less memory used and many bugs fixed.' },
     krypton: { icon: 'KR', cat: 'perf', fr: 'Optimise la pile réseau du jeu, utile en multijoueur.', en: 'Optimizes the game’s networking stack, useful in multiplayer.' },
     'fast-ip-ping': { icon: 'FI', cat: 'utility', fr: 'Supprime une lenteur de la liste des serveurs quand on utilise une adresse IP.', en: 'Removes a slowdown in the server list when using an IP address.' },

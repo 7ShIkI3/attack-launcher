@@ -126,17 +126,6 @@
       "size": 283566
     },
     {
-      "slug": "dynamic-fps",
-      "name": "Dynamic FPS",
-      "version": "3.11.4",
-      "versionNumber": "3.11.4",
-      "filename": "dynamic-fps-3.11.4+minecraft-1.21.0-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/LQ3K71Q1/versions/GBH14HiF/dynamic-fps-3.11.4%2Bminecraft-1.21.0-fabric.jar",
-      "sha512": "42c7043517889274f2932f257a78d0a67c22f2bebb1385ab4d0ba7936da2163e907d63f22bfeed5126342b568ddf4d7bc576ab6e76401a07d20a4978ba61bf20",
-      "sha1": "c0ee92c6d8a48e077aa9b02f3470619eab17d59c",
-      "size": 217532
-    },
-    {
       "slug": "modernfix",
       "name": "ModernFix",
       "version": "5.25.1",

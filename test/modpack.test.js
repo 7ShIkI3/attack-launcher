@@ -96,14 +96,14 @@ test('versions figées demandées (1.21.1 et 26.3)', () => {
 
 test('packs figés : mods de performance communs, ModernFix en 1.21.1 seulement, groupe PvP désactivable', () => {
   const version = (id, slug) => modpack.loadPack(catalog.get(id)).mods.find((m) => m.slug === slug)?.version;
-  const common = ['entityculling', 'moreculling', 'cloth-config', 'badoptimizations', 'dynamic-fps', 'krypton', 'fast-ip-ping', 'serverpingerfixer', 'reflex-antilag'];
+  const common = ['entityculling', 'moreculling', 'cloth-config', 'badoptimizations', 'krypton', 'fast-ip-ping', 'serverpingerfixer', 'reflex-antilag'];
   assert.deepEqual(
     common.map((s) => version('fabric-1.21.1', s)),
-    ['1.11.3', '1.0.10', '15.0.140', '2.4.1', '3.11.4', '0.2.8', '1.0.12', '1.0.6', '1.1.3'],
+    ['1.11.3', '1.0.10', '15.0.140', '2.4.1', '0.2.8', '1.0.12', '1.0.6', '1.1.3'],
   );
   assert.deepEqual(
     common.map((s) => version('fabric-26.3', s)),
-    ['1.11.3', '1.9.0', '26.3.159', '2.4.1', '3.11.10', '0.3.2', '1.0.12', '1.1.1', '1.1.3'],
+    ['1.11.3', '1.9.0', '26.3.159', '2.4.1', '0.3.2', '1.0.12', '1.1.1', '1.1.3'],
   );
   assert.equal(version('fabric-1.21.1', 'modernfix'), '5.25.1');
   assert.equal(version('fabric-26.3', 'modernfix'), undefined, 'pas de ModernFix pour 26.3');
@@ -118,9 +118,9 @@ test('packs figés : mods de performance communs, ModernFix en 1.21.1 seulement,
 
 test('packs figés : nombre de mods installés selon les réglages shaders et PvP', () => {
   const count = (id, options) => modpack.selectedMods(modpack.loadPack(catalog.get(id)), options).length;
-  // 1.21.1 : 20 mods dont Iris (optionnel) et 3 mods PvP ; 26.3 : 19 (pas de ModernFix)
-  assert.deepEqual([{}, { shaders: true }, { pvp: false }, { shaders: true, pvp: false }].map((o) => count('fabric-1.21.1', o)), [19, 20, 16, 17]);
-  assert.deepEqual([{}, { shaders: true }, { pvp: false }, { shaders: true, pvp: false }].map((o) => count('fabric-26.3', o)), [18, 19, 15, 16]);
+  // 1.21.1 : 19 mods dont Iris (optionnel) et 3 mods PvP ; 26.3 : 18 (pas de ModernFix)
+  assert.deepEqual([{}, { shaders: true }, { pvp: false }, { shaders: true, pvp: false }].map((o) => count('fabric-1.21.1', o)), [18, 19, 15, 16]);
+  assert.deepEqual([{}, { shaders: true }, { pvp: false }, { shaders: true, pvp: false }].map((o) => count('fabric-26.3', o)), [17, 18, 14, 15]);
 });
 
 function checked(change) {

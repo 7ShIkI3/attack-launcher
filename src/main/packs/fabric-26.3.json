@@ -126,17 +126,6 @@
       "size": 60760
     },
     {
-      "slug": "dynamic-fps",
-      "name": "Dynamic FPS",
-      "version": "3.11.10",
-      "versionNumber": "3.11.10",
-      "filename": "dynamic-fps-3.11.10+minecraft-26.3.0-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/LQ3K71Q1/versions/Jwq069rR/dynamic-fps-3.11.10%2Bminecraft-26.3.0-fabric.jar",
-      "sha512": "7976d11411babfa3ac0c38898f26ee6192f22a4f595b637eeae3cc5185f326c0e4b9fd7d00b3d7e8d020dd861295f0df52f9a9d7c67e88946d0ba9fff4a9f894",
-      "sha1": "a4860c9480f0ce1a468e1e4c254214b1f97e19b3",
-      "size": 189474
-    },
-    {
       "slug": "krypton",
       "name": "Krypton",
       "version": "0.3.2",
