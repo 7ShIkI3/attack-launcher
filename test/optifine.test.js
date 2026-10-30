@@ -388,6 +388,67 @@ test('réglages OptiFine du profil 1.8.9 : interrupteur par défaut vrai, fichie
   assert.equal('optifine' in fabric.profiles['fabric-26.3'], false, 'réglage propre au profil 1.8.9');
 });
 
+test('suffixe « (n) » du navigateur : versionOf et destName l’ignorent, un nom étranger reste ramené à OptiFine-1.8.9_<variante>.jar', () => {
+  assert.equal(optifine.versionOf('OptiFine_1.8.9_HD_U_M5 (1).jar'), 'HD_U_M5');
+  assert.equal(optifine.versionOf('OptiFine_1.8.9_HD_U_M5 (12).jar'), 'HD_U_M5');
+  assert.equal(optifine.versionOf('preview_OptiFine_1.8.9_HD_U_M6_pre2.jar'), 'HD_U_M6_pre2');
+  assert.equal(optifine.stripCopySuffix('OptiFine_1.8.9_HD_U_M5 (1).jar'), 'OptiFine_1.8.9_HD_U_M5.jar');
+  assert.equal(optifine.stripCopySuffix('mon OptiFine (copie).jar'), 'mon OptiFine (copie).jar', 'seul un nombre entre parenthèses est retiré');
+  assert.equal(optifine.destName({ name: 'OptiFine_1.8.9_HD_U_M5 (1).jar', version: 'HD_U_M5' }), 'OptiFine_1.8.9_HD_U_M5.jar');
+  assert.equal(optifine.destName({ name: 'OptiFine_1.8.9_HD_U_M5 (3).jar', version: 'HD_U_M5' }), 'OptiFine_1.8.9_HD_U_M5.jar');
+  assert.equal(optifine.destName({ name: 'OptiFine_1.8.9_HD_U_M5.jar', version: 'HD_U_M5' }), 'OptiFine_1.8.9_HD_U_M5.jar');
+  assert.equal(optifine.destName({ name: 'mon OptiFine 1.8.9 (copie).jar', version: null }), 'OptiFine-1.8.9_custom.jar');
+});
+
+test('importCopy : copie privée dans <userData>/optifine (SHA-256, .part renommé), nom propre, deuxième import = rien à recopier', async () => {
+  const s = sandbox();
+  const source = s.put('Telechargements/OptiFine_1.8.9_HD_U_M5 (1).jar', optifineJar('dl'));
+  const userData = path.join(s.root, 'userData');
+  const first = await optifine.importCopy(source, userData);
+  const dest = path.join(userData, 'optifine', 'OptiFine_1.8.9_HD_U_M5.jar');
+  assert.deepEqual([first.file, first.name, first.version, first.reused], [dest, 'OptiFine_1.8.9_HD_U_M5.jar', 'HD_U_M5', false]);
+  assert.ok(fs.readFileSync(dest).equals(fs.readFileSync(source)), 'copie identique');
+  assert.equal(first.sha256, sha256(fs.readFileSync(source)));
+  assert.equal(first.size, fs.statSync(source).size);
+  assert.deepEqual(fs.readdirSync(path.join(userData, 'optifine')), ['OptiFine_1.8.9_HD_U_M5.jar'], 'aucun .part');
+  assert.ok(fs.existsSync(source), 'le fichier téléchargé n’est pas touché');
+  // la copie est elle-même un OptiFine valide, utilisable comme « fichier choisi »
+  assert.equal((await optifine.detect({ chosen: dest })).found, true);
+  const again = await optifine.importCopy(source, userData);
+  assert.equal(again.reused, true);
+  assert.equal((await optifine.importCopy(dest, userData)).reused, true, 'la copie elle-même');
+  // autre contenu sous le même nom : la copie est remplacée
+  const other = s.put('Telechargements/2/OptiFine_1.8.9_HD_U_M5.jar', optifineJar('autre'));
+  const replaced = await optifine.importCopy(other, userData);
+  assert.equal(replaced.reused, false);
+  assert.ok(fs.readFileSync(dest).equals(fs.readFileSync(other)));
+  s.clean();
+});
+
+test('importCopy : un jar refusé lève OPTIFINE_<raison> et ne laisse rien dans le dossier de données', async () => {
+  const s = sandbox();
+  const userData = path.join(s.root, 'userData');
+  const notTweak = s.put('t/OptiFine_1.8.9_HD_U_M5.jar', makeZip({ 'a.txt': 'x' }));
+  await assert.rejects(optifine.importCopy(notTweak, userData), (error) => error.code === 'OPTIFINE_NO_TWEAK' && error.reason === 'NO_TWEAK');
+  const wrong = s.put('t/OptiFine_1.8.8_HD_U_I7.jar', optifineJar());
+  await assert.rejects(optifine.importCopy(wrong, userData), (error) => error.code === 'OPTIFINE_WRONG_NAME');
+  await assert.rejects(optifine.importCopy(path.join(s.root, 'absent-1.8.9.jar'), userData), (error) => error.code === 'OPTIFINE_UNREADABLE');
+  const left = fs.existsSync(path.join(userData, 'optifine')) ? fs.readdirSync(path.join(userData, 'optifine')) : [];
+  assert.deepEqual(left, []);
+  s.clean();
+});
+
+test('assistant : l’import règle optifineJar du profil 1.8.9 même quand un autre profil est affiché', () => {
+  const base = settings.defaults({ APPDATA: 'C:\\Users\\x\\AppData\\Roaming' });
+  const onFabric = settings.sanitize({ profileId: 'fabric-26.3' }, base);
+  const jar = 'C:\\Users\\x\\AppData\\Roaming\\ATTACK Launcher\\optifine\\OptiFine_1.8.9_HD_U_M5.jar';
+  const next = settings.sanitize({ profiles: { 'forge-1.8.9': { optifineJar: jar, optifine: true } } }, onFabric);
+  assert.equal(next.profileId, 'fabric-26.3', 'le profil affiché ne change pas');
+  assert.equal(settings.forProfile(next, 'forge-1.8.9').optifineJar, jar);
+  assert.equal(settings.forProfile(next, 'forge-1.8.9').optifine, true);
+  assert.equal('optifineJar' in next.profiles['fabric-26.3'], false);
+});
+
 // Jar OptiFine réel du joueur : lance ATTACK_TEST_OPTIFINE_JAR=<chemin d'une copie> pour le vérifier (sinon ignoré).
 test('jar OptiFine réel (ATTACK_TEST_OPTIFINE_JAR) : accepté par la validation', { skip: !process.env.ATTACK_TEST_OPTIFINE_JAR }, async () => {
   const result = await optifine.validate(process.env.ATTACK_TEST_OPTIFINE_JAR);

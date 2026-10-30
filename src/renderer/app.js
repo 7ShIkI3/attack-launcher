@@ -16,7 +16,20 @@
   let playing = false; // lancement du jeu en cours
   let statusToken = 0; // ignore une lecture d'état arrivée après un changement de profil
   let modFilter = 'all';
+  let modState = 'all'; // filtre Activés / Désactivés
   let modQuery = '';
+  const DENSITIES = ['comfortable', 'compact', 'list'];
+  const DENSITY_KEY = 'attack.modsDensity';
+  /** Densité des cartes de la page Mods, retenue d'une session à l'autre quand le stockage de la page le permet. */
+  function readDensity() {
+    try {
+      const value = window.localStorage.getItem(DENSITY_KEY);
+      return DENSITIES.includes(value) ? value : 'comfortable';
+    } catch {
+      return 'comfortable';
+    }
+  }
+  let modDensity = readDensity();
   let historyKind = 'all';
   let progress = { percent: 0, step: '', done: 0, total: 0 };
   let accountsView = { accounts: [], hasClientId: false, devMode: false };
@@ -44,13 +57,69 @@
 
   const nb = (text) => String(text).replace(/ /g, NBSP);
 
+  /**
+   * Groupe à choix unique (profils, onglets, boutons segmentés, filtres) : UN SEUL arrêt de tabulation (l'élément choisi ; le premier si
+   * aucun ne l'est), les autres sont atteints aux flèches. `radio` : pose aussi role="radio" et aria-checked (les onglets ont déjà leur
+   * aria-selected dans le HTML).
+   */
+  function syncRoving(container, isCurrent, { radio = false } = {}) {
+    const items = [...container.querySelectorAll('button')];
+    const current = items.find(isCurrent) || items[0];
+    for (const item of items) {
+      item.tabIndex = item === current ? 0 : -1;
+      if (radio) {
+        item.setAttribute('role', 'radio');
+        item.setAttribute('aria-checked', String(isCurrent(item)));
+      }
+    }
+  }
+  /**
+   * Flèches (et Début / Fin) dans un groupe à choix unique : le focus et le choix passent à l'élément voisin, comme avec des boutons
+   * radio. Le clic est celui de l'élément, donc il refait le rendu comme une souris le ferait (le focus est repris par data-focus-key).
+   */
+  function enableArrows(container) {
+    container.addEventListener('keydown', (event) => {
+      const items = [...container.querySelectorAll('button')].filter((button) => !button.disabled);
+      const index = items.indexOf(document.activeElement);
+      if (index === -1 || event.altKey || event.ctrlKey || event.metaKey) return;
+      let next = null;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = items[(index + 1) % items.length];
+      else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = items[(index - 1 + items.length) % items.length];
+      else if (event.key === 'Home') next = items[0];
+      else if (event.key === 'End') next = items[items.length - 1];
+      if (!next) return;
+      event.preventDefault();
+      next.focus();
+      next.click();
+    });
+  }
+  const isActive = (button) => button.classList.contains('active');
+
+  /**
+   * Remplace le contenu d'un conteneur en gardant le focus clavier : si l'élément qui l'a (un bouton, un interrupteur) est recréé, le
+   * nouvel élément de même `data-focus-key` le reprend. Sans cela le focus retombait sur <body> après chaque interrupteur ou puce.
+   */
+  function replaceKeepingFocus(container, nodes) {
+    const active = document.activeElement;
+    const key = active && active.dataset && container.contains(active) ? active.dataset.focusKey : '';
+    container.replaceChildren(...nodes);
+    if (!key) return;
+    const next = [...container.querySelectorAll('[data-focus-key]')].find((node) => node.dataset.focusKey === key);
+    if (next && !next.disabled) next.focus({ preventScroll: true });
+  }
+
   // --- navigation ---
   function closeReady() {
     $('ready-pop').hidden = true;
     $('ready-btn').setAttribute('aria-expanded', 'false');
   }
   function showPage(page) {
-    document.querySelectorAll('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.page === page));
+    document.querySelectorAll('.nav-item').forEach((b) => {
+      const on = b.dataset.page === page;
+      b.classList.toggle('active', on);
+      if (on) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
     document.querySelectorAll('.page').forEach((p) => p.classList.toggle('active', p.id === `page-${page}`));
     closeReady();
     // la vue 3D du skin ne dessine que sur la page Compte (sinon WebGL tourne en continu, même pendant une partie)
@@ -81,16 +150,68 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove('show'), 3600);
   }
-  /** Réussite : notification ; erreur : texte sous JOUER (il peut être long) ; vide : efface tout. */
-  function setMessage(text, kind = '') {
-    const node = $('message');
+  /**
+   * Erreurs de l'accueil : action proposée selon le code (le texte dit déjà quoi faire, le bouton le fait).
+   * Les autres erreurs n'ont que « Copier » (pour un rapport de bug) et la croix.
+   */
+  const toAccount = { label: 'home.connect', run: () => showPage('account') };
+  const toSettings = { label: 'alert.settings', run: () => { showPage('settings'); selectTab('profile'); } };
+  const toRepair = { label: 'home.repairShort', run: () => !busy && !playing && runInstall() };
+  const ALERT_ACTIONS = {
+    LAUNCHER_NOT_FOUND: toAccount, NO_ACCOUNT: toAccount, SESSION_EXPIRED: toAccount,
+    JAVA_NOT_FOUND: toSettings, JAVA_UNAVAILABLE: toSettings, HEAP_TOO_BIG: toSettings, GAMEDIR_IN_USE: toSettings,
+    FILES_MISSING: toRepair, PACK_CLEANUP: toRepair,
+  };
+  let alertAction = null;
+
+  /** Copie un texte dans le presse-papiers (API moderne, sinon sélection d'un champ caché). */
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      try {
+        const area = el('textarea', { class: 'offscreen', readonly: '', 'aria-hidden': 'true', tabindex: '-1' });
+        area.value = text;
+        document.body.append(area);
+        area.select();
+        const ok = document.execCommand('copy');
+        area.remove();
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+  }
+
+  /**
+   * Réussite : notification ; erreur : bloc d'alerte posé sur la ligne « prêt » et les outils (il ne décale plus la page) ; vide : efface
+   * tout. `code` : code d'erreur du processus principal, qui décide du bouton d'action.
+   */
+  function setMessage(text, kind = '', code = '') {
     const inline = Boolean(text) && kind !== 'ok';
-    node.textContent = inline ? text : '';
-    node.className = `message ${kind}`;
-    node.classList.toggle('hidden', !inline);
+    $('message').textContent = inline ? text : '';
+    $('alert').classList.toggle('hidden', !inline);
+    $('lower').inert = inline; // les commandes recouvertes par l'alerte ne sont plus atteignables au clavier
+    alertAction = inline ? ALERT_ACTIONS[code] || null : null;
+    $('alert-action').classList.toggle('hidden', !alertAction);
+    if (alertAction) $('alert-action').textContent = t(alertAction.label);
     if (text && kind === 'ok') showToast(text);
     if (!text) $('toast').classList.remove('show');
   }
+  $('alert-action').addEventListener('click', () => {
+    const action = alertAction;
+    setMessage('');
+    if (action) action.run();
+  });
+  $('alert-close').addEventListener('click', () => setMessage(''));
+  $('alert-copy').addEventListener('click', async () => {
+    const copied = await copyText($('message').textContent);
+    $('alert-copy').textContent = t(copied ? 'alert.copied' : 'alert.copyFailed');
+    setTimeout(() => {
+      $('alert-copy').textContent = t('alert.copy');
+    }, 1500);
+  });
 
   // --- profils (version de Minecraft + chargeur de mods) ---
   const profileList = () => (info && info.profiles) || [];
@@ -103,8 +224,8 @@
     const profile = currentProfile();
     if (!profile) return;
     $('hero-sub').textContent = `Minecraft ${profile.mc} · ${loaderName(profile)} ${profile.loaderVersion}`;
-    $('profile-select').replaceChildren(...profileList().map((p) => {
-      const button = el('button', { type: 'button', class: `profile${p.id === profile.id ? ' active' : ''}`, role: 'radio', 'aria-checked': String(p.id === profile.id), 'data-profile': p.id }, [
+    replaceKeepingFocus($('profile-select'), profileList().map((p) => {
+      const button = el('button', { type: 'button', class: `profile${p.id === profile.id ? ' active' : ''}`, role: 'radio', 'aria-checked': String(p.id === profile.id), 'data-profile': p.id, 'data-focus-key': `profile:${p.id}` }, [
         el('span', { class: 'pv' }, [el('b', { text: p.label }), el('em', { text: loaderName(p) })]),
         el('span', { class: 'ps', text: t(`home.tag.${p.id}`) }),
       ]);
@@ -112,7 +233,9 @@
       button.addEventListener('click', () => switchProfile(p.id));
       return button;
     }));
+    syncRoving($('profile-select'), isActive, { radio: true });
   }
+  enableArrows($('profile-select'));
 
   async function switchProfile(id) {
     if (busy || playing || !settings || id === settings.profileId) return;
@@ -203,10 +326,9 @@
     return rows;
   }
 
-  /** « Ressources du jeu 358/5147 · 19 % » : l'étape en cours et l'avancement global. */
+  /** « Ressources du jeu 358/5147 » : l'étape en cours (le pourcentage global est déjà dans le bouton JOUER). */
   function progressSummary(profile) {
-    const step = progress.step ? t(`step.${progress.step}`, { mc: profile.mc }) + (progress.total > 1 ? ` ${progress.done}/${progress.total}` : '') : '';
-    return [step, `${Math.floor(progress.percent)} %`].filter(Boolean).join(' · ');
+    return progress.step ? t(`step.${progress.step}`, { mc: profile.mc }) + (progress.total > 1 ? ` ${progress.done}/${progress.total}` : '') : '';
   }
 
   /** Chaque évènement de progression ne met à jour que le bouton et la ligne « prêt » (pas toute la page : il y en a des milliers). */
@@ -243,7 +365,7 @@
     if (busy || playing) summary = progressSummary(profile);
     else if (!checking && !needs) summary = [profile.hasPack || profile.hasOptifine ? modsText(modCount(profile)) : null, status.modVersion ? t('home.clientVersion', { version: status.modVersion }) : 'ATTACK Client'].filter(Boolean).join(' · ');
     $('ready-sum').textContent = summary;
-    $('ready-pop').replaceChildren(...rows.map((r) => el('div', { class: `pop-row${r.state === 'bad' ? ' bad' : ''}` }, [
+    $('ready-pop').replaceChildren(...rows.map((r) => el('div', { class: `pop-row${r.state === 'bad' ? ' bad' : r.state === 'info' ? ' info' : ''}` }, [
       el('span', { class: 'r-ico' }, [icon(r.state === 'ok' ? 'check' : 'info')]),
       el('span', {}, [el('b', { text: r.label }), el('small', { text: r.detail })]),
     ])));
@@ -355,7 +477,7 @@
       progress.percent = 100;
       setMessage(t('home.done'), 'ok');
     } else {
-      setMessage(errorText(result), 'error');
+      setMessage(errorText(result), 'error', result.code);
     }
     await refreshStatus();
     return result.ok;
@@ -383,7 +505,7 @@
     if (result.ok && result.mode === 'direct') setMessage(t('home.launchedDirect', { name: result.name }), 'ok');
     else if (result.ok) setMessage(t('home.launched', { name: profile.name }), 'ok');
     else if (result.code === 'NOT_INSTALLED') await refreshStatus();
-    else setMessage(errorText(result), 'error');
+    else setMessage(errorText(result), 'error', result.code);
   });
   $('repair-button').addEventListener('click', () => !busy && !playing && runInstall());
   $('open-dir-button').addEventListener('click', () => guarded(() => api.openGameDir()));
@@ -420,11 +542,12 @@
   const parseDate = (text) => (/^\d{4}-\d{2}-\d{2}$/.test(text || '') ? new Date(`${text}T12:00:00`) : null);
   const sameDay = (a, b) => a.toDateString() === b.toDateString();
 
-  function dateLabel(text, long = false) {
+  /** « 30 oct. » ; « Aujourd'hui » le jour même, sauf dans le rail des Nouveautés (today: false) où la date courte garde la place du titre. */
+  function dateLabel(text, long = false, { today = true } = {}) {
     const date = parseDate(text);
     if (!date) return '';
     const now = new Date();
-    if (sameDay(date, now)) return t('home.today');
+    if (today && sameDay(date, now)) return t('home.today');
     return new Intl.DateTimeFormat(window.I18n.lang === 'en' ? 'en-GB' : 'fr-FR', {
       day: 'numeric', month: long ? 'long' : 'short', ...(date.getFullYear() !== now.getFullYear() || long ? { year: 'numeric' } : {}),
     }).format(date);
@@ -434,7 +557,7 @@
   function renderNews() {
     $('changelog').replaceChildren(...CHANGELOG.slice(0, NEWS_ON_HOME).map((entry) => {
       const tag = entryTag(entry);
-      const date = dateLabel(entry.date);
+      const date = dateLabel(entry.date, false, { today: false });
       const { title, lines } = entryParts(entry);
       return el('li', { class: 'news-item' }, [
         el('div', { class: 'n-top' }, [
@@ -451,8 +574,8 @@
   const changelogDialog = $('changelog-dialog');
   function renderHistory() {
     const kinds = [['all', t('history.all')], ['launcher', 'Launcher'], ['client', 'ATTACK Client']];
-    $('changelog-filters').replaceChildren(...kinds.map(([id, label]) => {
-      const chip = el('button', { class: `chip${historyKind === id ? ' active' : ''}`, type: 'button', text: label });
+    replaceKeepingFocus($('changelog-filters'), kinds.map(([id, label]) => {
+      const chip = el('button', { class: `chip${historyKind === id ? ' active' : ''}`, type: 'button', text: label, 'data-focus-key': `history:${id}` });
       chip.addEventListener('click', () => {
         historyKind = id;
         renderHistory();
@@ -460,6 +583,7 @@
       });
       return chip;
     }));
+    syncRoving($('changelog-filters'), isActive, { radio: true });
     const list = $('changelog-full');
     list.replaceChildren();
     let month = null;
@@ -487,6 +611,7 @@
       ]));
     }
   }
+  enableArrows($('changelog-filters'));
   $('changelog-all').addEventListener('click', () => {
     historyKind = 'all';
     renderHistory();
@@ -508,36 +633,56 @@
 
   /**
    * Cartes de la page Mods : le mod ATTACK (avec sa version installée), l'OptiFine du joueur en 1.8.9, les mods du pack figé avec leur
-   * version et, pour chaque mod d'un groupe réglable, son interrupteur ; en 1.8.9, les modules d'ATTACK Client.
+   * version et, pour chaque mod d'un groupe réglable, son interrupteur ; en 1.8.9, les modules d'ATTACK Client (réglés en jeu).
+   * `on` : true (actif), false (coupé ou absent), null (le launcher ne le sait pas : un module se règle en jeu).
    */
   function modItems(profile, lang) {
-    const attackVersion = status && status.mod && status.modVersion ? t('mods.attackVersion', { version: status.modVersion }) : t('mods.attackMissing');
+    const attackInstalled = Boolean(status && status.mod && status.modVersion);
     const items = [{
-      name: 'ATTACK Client', icon: 'AT', cat: 'attack', text: t(isFabric(profile) ? 'mods.attackDesc' : 'mods.attackDescForge', { mc: profile.mc }), meta: attackVersion,
+      key: 'attack',
+      name: 'ATTACK Client',
+      icon: 'AT',
+      cat: 'attack',
+      text: t(isFabric(profile) ? 'mods.attackDesc' : 'mods.attackDescForge', { mc: profile.mc }),
+      meta: attackInstalled ? t('mods.attackVersion', { version: status.modVersion }) : t('mods.attackMissing'),
+      on: attackInstalled ? true : null,
     }];
     if (profile.hasOptifine) {
       const of = status && status.optifine;
+      const usable = Boolean(of && (of.found || of.own || of.kept));
       items.push({
-        name: 'OptiFine', icon: 'OF', cat: 'visual', text: t('mods.optifineDesc'), off: !optifineInGame(),
-        meta: of ? (of.own ? t('optifine.stateOwn') : of.kept ? t('optifine.stateKept') : of.found ? optifineLabel(of) : t('optifine.stateMissing')) : '…',
-        option: { label: t('mods.optifineOption'), checked: !of || of.enabled, change: (value) => save({ optifine: value }), hint: t('mods.optifineHint') },
+        key: 'optifine',
+        optifine: true,
+        name: 'OptiFine',
+        icon: 'OF',
+        cat: 'visual',
+        text: t('mods.optifineDesc'),
+        meta: of ? (of.own ? t('optifine.stateOwn') : of.kept ? t('optifine.stateKept') : of.found ? optifineLabel(of) : '') : '…',
+        on: of ? optifineInGame() : null,
+        wide: Boolean(of && !usable), // sans copie : la carte porte l'action (assistant) et prend deux colonnes
+        stateText: of && !optifineInGame() ? (usable ? t('state.disabled') : t('optifine.badgeMissing')) : '',
+        // pas d'interrupteur tant qu'aucune copie n'est utilisable : le bouton de l'assistant prend sa place
+        option: usable ? { label: t('mods.optifineOption'), checked: of.enabled, change: (value) => save({ optifine: value }), hint: t('mods.optifineHint') } : null,
       });
     }
     for (const mod of profile.pack) {
       const known = PACK_INFO[mod.slug] || { icon: mod.name.slice(0, 2).toUpperCase(), cat: 'utility', fr: '', en: '' };
       const group = groupOf(mod);
+      const on = group ? group.on() : true;
       items.push({
+        key: mod.slug,
         name: mod.name,
         icon: known.icon,
         cat: known.cat,
         text: known[lang] || known.fr,
         meta: t('mods.version', { version: mod.version }),
-        off: group ? !group.on() : false,
-        option: group ? { label: t(group.tag), checked: group.on(), change: (value) => save({ [group.setting]: value }), hint: t('mods.linked', { name: t(group.title) }) } : null,
+        on,
+        stateText: on ? '' : t('state.disabled'),
+        option: group ? { label: t(group.tag), checked: on, change: (value) => save({ [group.setting]: value }), hint: t('mods.linked', { name: t(group.title) }) } : null,
       });
     }
     if (!isFabric(profile)) {
-      for (const m of MODS) items.push({ name: (lang === 'en' && m.en_name) || m.name, icon: m.icon, cat: m.cat, text: m[lang] || m.fr, meta: '', module: true });
+      for (const m of MODS) items.push({ key: `module:${m.name}`, name: (lang === 'en' && m.en_name) || m.name, icon: m.icon, cat: m.cat, text: m[lang] || m.fr, meta: '', module: true, on: null });
     }
     return items;
   }
@@ -558,6 +703,12 @@
     }
   }
 
+  /** Les boutons d'un groupe segmenté : celui de `value` est actif (classe et aria-pressed). */
+  function syncSegmented(group, value) {
+    for (const button of group.querySelectorAll('button')) button.classList.toggle('active', button.dataset.value === value);
+    syncRoving(group, isActive, { radio: true });
+  }
+
   function renderMods() {
     const lang = window.I18n.lang;
     const profile = currentProfile();
@@ -570,42 +721,90 @@
       ? `${t('mods.subtitleFabric', { n: installed })}${off > 0 ? ` · ${t(off === 1 ? 'mods.off1' : 'mods.off', { n: off })}` : ''}`
       : `${t('mods.subtitleForge', { modules: MODS.length, n: installed })}${off > 0 ? ` · ${t(off === 1 ? 'mods.off1' : 'mods.off', { n: off })}` : ''}`;
     const items = modItems(profile, lang);
+    const query = modQuery.trim().toLowerCase();
+    // état et recherche d'abord : les compteurs des catégories disent combien de cartes restent dans chacune
+    const base = items.filter((m) => (!query || `${m.name} ${m.text}`.toLowerCase().includes(query)) && (modState === 'all' || (modState === 'on' ? m.on === true : m.on === false)));
     const used = CATEGORIES.filter((c) => items.some((item) => item.cat === c.id));
     if (modFilter !== 'all' && !used.some((c) => c.id === modFilter)) modFilter = 'all';
-    const countOf = (id) => (id === 'all' ? items.length : items.filter((i) => i.cat === id).length);
-    $('mods-filters').replaceChildren(...[{ id: 'all', fr: t('mods.all'), en: t('mods.all') }, ...used].map((c) => {
-      const chip = el('button', { class: `chip${modFilter === c.id ? ' active' : ''}`, type: 'button' }, [c[lang] || c.fr, el('i', { text: String(countOf(c.id)) })]);
+    const countOf = (id) => (id === 'all' ? base.length : base.filter((i) => i.cat === id).length);
+    replaceKeepingFocus($('mods-filters'), [{ id: 'all', fr: t('mods.all'), en: t('mods.all') }, ...used].map((c) => {
+      const chip = el('button', { class: `chip${modFilter === c.id ? ' active' : ''}`, type: 'button', 'data-focus-key': `chip:${c.id}` }, [c[lang] || c.fr, el('i', { text: String(countOf(c.id)) })]);
       chip.addEventListener('click', () => {
         modFilter = c.id;
         renderMods();
       });
       return chip;
     }));
-    const query = modQuery.trim().toLowerCase();
-    const visible = items.filter((m) => (modFilter === 'all' || m.cat === modFilter) && (!query || `${m.name} ${m.text}`.toLowerCase().includes(query)));
-    const category = (id) => CATEGORIES.find((c) => c.id === id)[lang];
+    syncRoving($('mods-filters'), isActive, { radio: true });
+    syncSegmented($('mods-state'), modState);
+    syncSegmented($('mods-density'), modDensity);
     const grid = $('mods-grid');
+    grid.dataset.density = modDensity;
+    const visible = base.filter((m) => modFilter === 'all' || m.cat === modFilter);
+    // compteurs séparés : les mods (ATTACK Client, OptiFine, pack) et les modules d'ATTACK Client réglés en jeu
+    const moduleCount = items.filter((m) => m.module).length;
+    $('mods-count').textContent = [
+      t('mods.countMods', { n: items.length - moduleCount }),
+      moduleCount > 0 ? t('mods.countModules', { n: moduleCount }) : '',
+      visible.length !== items.length ? t('mods.shown', { n: visible.length }) : '',
+    ].filter(Boolean).join(' · ');
+    const category = (id) => CATEGORIES.find((c) => c.id === id)[lang];
     if (visible.length === 0) {
-      grid.replaceChildren(el('div', { class: 'mods-empty', text: t('mods.none', { q: modQuery.trim() }) }));
+      const clear = el('button', { class: 'btn small', type: 'button', text: t('mods.clear') });
+      clear.addEventListener('click', () => {
+        modQuery = '';
+        modFilter = 'all';
+        modState = 'all';
+        $('mods-q').value = '';
+        renderMods();
+      });
+      grid.replaceChildren(el('div', { class: 'mods-empty' }, [el('p', { text: modQuery.trim() ? t('mods.none', { q: modQuery.trim() }) : t('mods.noneFilters') }), clear]));
       return;
     }
-    grid.replaceChildren(...visible.map((m) => {
-      const children = [
-        el('div', { class: 'mod-top' }, [el('div', { class: 'mod-icon', text: m.icon }), el('h3', { text: m.name })]),
-        el('p', { text: m.text }),
-        el('div', { class: 'mod-foot' }, [el('span', { class: 'meta', text: [category(m.cat), m.meta].filter(Boolean).join(' · ') })]),
-      ];
+    replaceKeepingFocus(grid, visible.map((m) => {
+      const top = [el('div', { class: `mod-icon cat-${m.cat}`, 'aria-hidden': 'true', text: m.icon }), el('h3', { text: m.name, title: m.name })];
+      const foot = [el('span', { class: 'meta', text: [category(m.cat), m.meta].filter(Boolean).join(' · ') })];
+      if (m.stateText) foot.push(el('span', { class: 'badge', text: m.stateText }));
+      const children = [];
       if (m.option) {
-        const input = el('input', { type: 'checkbox', 'aria-label': m.option.label });
+        const input = el('input', { type: 'checkbox', 'aria-label': `${m.name} : ${m.option.label}`, 'data-focus-key': `mod:${m.key}` });
         input.checked = m.option.checked;
         input.addEventListener('change', () => m.option.change(input.checked));
-        children.push(el('div', { class: 'mod-opt', title: m.option.hint || '' }, [el('span', { text: m.option.label }), el('label', { class: 'switch' }, [input, el('span')])]));
+        top.push(el('label', { class: 'switch', title: m.option.hint || '' }, [input, el('span')]));
+      } else if (m.optifine && status && status.optifine) {
+        // OptiFine introuvable : pas d'interrupteur actif sur une carte sans copie, l'assistant à la place
+        children.push(assistNode('mods'));
       }
-      return el('article', { class: `card mod${m.off ? ' off' : ''}` }, children);
+      return el('article', { class: `card mod${m.on === false ? ' off' : ''}${m.wide ? ' wide' : ''}` }, [
+        el('div', { class: 'mod-top' }, top),
+        el('p', { text: m.text, title: m.text }),
+        ...children,
+        el('div', { class: 'mod-foot' }, foot),
+      ]);
     }));
   }
   $('mods-q').addEventListener('input', (event) => {
     modQuery = event.target.value;
+    renderMods();
+  });
+  enableArrows($('mods-filters'));
+  enableArrows($('mods-state'));
+  enableArrows($('mods-density'));
+  $('mods-state').addEventListener('click', (event) => {
+    const value = event.target.dataset && event.target.dataset.value;
+    if (!['all', 'on', 'off'].includes(value)) return;
+    modState = value;
+    renderMods();
+  });
+  $('mods-density').addEventListener('click', (event) => {
+    const value = event.target.dataset && event.target.dataset.value;
+    if (!DENSITIES.includes(value)) return;
+    modDensity = value;
+    try {
+      window.localStorage.setItem(DENSITY_KEY, value);
+    } catch {
+      // stockage indisponible : la densité vaut pour cette session
+    }
     renderMods();
   });
 
@@ -636,12 +835,20 @@
     return failure;
   }
 
-  /** « Enregistré », ou l'erreur au même endroit : sur la page Réglages, pas sur l'accueil. */
+  /**
+   * « Enregistré » en notification (visible partout, même quand l'interrupteur est tout en bas de la page) ; l'erreur, elle, reste en haut de
+   * la page Réglages, au même endroit qu'avant.
+   */
   function flashSaved(failure, showError = true) {
     const saved = $('saved');
     clearTimeout(savedTimer);
     saved.classList.toggle('error', Boolean(failure));
-    if (failure && !showError) {
+    if (!failure) {
+      saved.classList.remove('show');
+      showToast(t('settings.saved'));
+      return;
+    }
+    if (!showError) {
       saved.classList.remove('show');
       return;
     }
@@ -661,10 +868,12 @@
     document.querySelectorAll('.tab').forEach((tab) => {
       tab.classList.toggle('active', tab.dataset.tab === name);
       tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
+      tab.tabIndex = tab.dataset.tab === name ? 0 : -1; // un seul arrêt de tabulation : l'onglet choisi
     });
     document.querySelectorAll('.tabpanel').forEach((panel) => panel.classList.toggle('active', panel.id === `tab-${name}`));
   }
   document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => selectTab(tab.dataset.tab)));
+  enableArrows($('settings-tabs'));
   window.selectSettingsTab = selectTab;
 
   // Mémoire : curseur avec zone recommandée, graduations en Go et raccourcis
@@ -698,14 +907,14 @@
       tick.style.left = `calc(9px + (100% - 18px) * ${ratio(g * 1024)})`;
       return tick;
     }));
-    $('ram-presets').replaceChildren(
+    replaceKeepingFocus($('ram-presets'), [
       ...[2, 3, 4, 6].filter((g) => g <= maxGb).map((g) => {
-        const chip = el('button', { class: `chip${settings.ramMb === g * 1024 ? ' active' : ''}`, type: 'button', text: `${g} ${unit}` });
+        const chip = el('button', { class: `chip${settings.ramMb === g * 1024 ? ' active' : ''}`, type: 'button', text: `${g} ${unit}`, 'aria-pressed': String(settings.ramMb === g * 1024), 'data-focus-key': `ram:${g}` });
         chip.addEventListener('click', () => save({ ramMb: g * 1024 }));
         return chip;
       }),
       el('span', { class: 'note', text: info ? t('settings.pcRam', { n: Math.round(info.totalRamMb / 1024) }) : '' }),
-    );
+    ]);
     $('ram-warn').classList.toggle('hidden', !info || settings.ramMb <= info.totalRamMb / 2);
   }
 
@@ -719,9 +928,9 @@
   }
 
   function renderPackRows(profile) {
-    $('pack-rows').replaceChildren(...groupsOf(profile).map((group) => {
+    replaceKeepingFocus($('pack-rows'), groupsOf(profile).map((group) => {
       const badge = groupBadge(group);
-      const input = el('input', { type: 'checkbox', id: `group-${group.id}`, 'aria-label': t(group.title) });
+      const input = el('input', { type: 'checkbox', id: `group-${group.id}`, 'aria-label': t(group.title), 'data-focus-key': `group:${group.id}` });
       input.checked = group.on();
       input.addEventListener('change', () => save({ [group.setting]: input.checked }));
       return el('div', { class: 'pack-row' }, [
@@ -730,6 +939,144 @@
       ]);
     }));
   }
+
+  // --- assistant OptiFine : le joueur télécharge lui-même, le launcher repère le fichier, le vérifie et le range ---
+  // (la licence d'OptiFine interdit au launcher de le récupérer à la place du joueur : il ouvre seulement optifine.net)
+  let assist = { state: 'idle', downloadsDir: '' };
+  const ASSIST_ACTIVE = ['waiting', 'seen', 'checking'];
+
+  /** Les trois raisons, en puces (rien d'autre : ni les autres launchers, ni les capes). */
+  function whyNode() {
+    return el('details', { class: 'why' }, [
+      el('summary', { text: t('optifine.why') }),
+      el('ul', {}, [el('li', { text: t('optifine.why1') }), el('li', { text: t('optifine.why2') }), el('li', { text: t('optifine.why3') })]),
+    ]);
+  }
+
+  async function assistStart(openBrowser = true) {
+    const result = await call(() => api.optifineAssist.start({ browser: openBrowser }));
+    if (result.ok === false) {
+      flashSaved(errorText(result));
+      return;
+    }
+    assist = result;
+    renderAssists();
+    announceAssist();
+  }
+  async function assistUse() {
+    const result = await call(() => api.optifineAssist.use());
+    if (result.ok === false && result.code && result.code !== 'NO_FILE') flashSaved(errorText(result));
+  }
+  async function assistCancel() {
+    await call(() => api.optifineAssist.cancel());
+  }
+
+  /** Titre, texte (ou étapes) et boutons de l'assistant pour son état courant ; null quand il n'y a rien à dire. */
+  function assistModel() {
+    const a = assist;
+    const dir = a.downloadsDir || '';
+    const file = a.file || '';
+    const button = (label, run, kind = '') => ({ label, run, kind });
+    const pick = button(t('optifine.pick'), pickOptifine);
+    switch (a.state) {
+      case 'waiting':
+        return {
+          title: t('optifine.assist.waitingTitle'), busy: true,
+          steps: [t('optifine.assist.step1'), t('optifine.assist.step2'), t('optifine.assist.step3', { dir })],
+          actions: [button(t('optifine.assist.cancel'), assistCancel, 'ghost')],
+        };
+      case 'seen':
+        return {
+          title: t('optifine.assist.seenTitle'), text: t('optifine.assist.seenText', { file, dir }),
+          actions: [button(t('optifine.assist.use'), assistUse, 'accent'), button(t('optifine.assist.cancel'), assistCancel, 'ghost')],
+        };
+      case 'checking':
+        return { title: t('optifine.assist.checkingTitle'), text: t('optifine.assist.checkingText', { file }), busy: true, actions: [] };
+      case 'imported':
+        return {
+          title: t(a.version ? 'optifine.assist.importedTitle' : 'optifine.assist.importedTitleNoVersion', { version: String(a.version || '').replace(/_/g, ' ') }),
+          text: t('optifine.assist.importedText'), good: true,
+          actions: busy || playing ? [] : [button(t('pending.install'), () => !busy && !playing && runInstall(), 'accent')],
+        };
+      case 'refused':
+        return {
+          title: t('optifine.assist.refusedTitle'), warn: true,
+          text: t('optifine.assist.refusedText', { file, reason: t(`error.OPTIFINE_${a.reason}`) }),
+          actions: [button(t('optifine.assist.retry'), () => assistStart(true), 'accent'), pick],
+        };
+      case 'timeout':
+        return {
+          title: t('optifine.assist.timeoutTitle'), text: t('optifine.assist.timeoutText', { dir }),
+          actions: [button(t('optifine.assist.waitMore'), () => assistStart(false), 'accent'), pick],
+        };
+      case 'cancelled':
+        return {
+          title: t('optifine.assist.cancelledTitle'), text: t('optifine.assist.cancelledText'),
+          actions: [button(t('optifine.assist.restart'), () => assistStart(true), 'accent'), pick],
+        };
+      case 'error':
+        return {
+          title: t('optifine.assist.errorTitle'), warn: true,
+          text: a.reason === 'DIR_UNREADABLE' ? t('optifine.assist.dirUnreadable', { dir }) : errorText({ code: a.reason, message: a.message }),
+          actions: [button(t('optifine.assist.retry'), () => assistStart(true), 'accent'), pick],
+        };
+      default:
+        return null;
+    }
+  }
+
+  const assistTone = (model) => (model.warn ? 'warn' : model.good ? 'good' : model.busy ? 'busy' : 'info');
+
+  /**
+   * Bloc de l'assistant. variant : 'settings' (rien tant qu'il est au repos : les boutons sont dans la carte) ou 'mods' (au repos, il
+   * propose de l'obtenir). Les changements d'état sont annoncés par la zone aria-live (announceAssist), pas par ce bloc, qui est refait
+   * à chaque rendu de la page.
+   */
+  function assistNode(variant) {
+    const model = assistModel();
+    if (!model && variant === 'settings') return null;
+    const children = [];
+    if (model) {
+      children.push(el('div', { class: 'assist-head' }, [el('span', { class: 'assist-dot', 'aria-hidden': 'true' }), el('b', { text: model.title })]));
+      if (model.steps) children.push(el('ol', { class: 'assist-steps' }, model.steps.map((step) => el('li', { text: step }))));
+      if (model.text) children.push(el('p', { class: 'assist-text', text: model.text }));
+    } else {
+      children.push(el('p', { class: 'assist-text', text: t('optifine.assist.idle') }));
+    }
+    const actions = (model ? model.actions : [
+      { label: t('optifine.get'), run: () => assistStart(true), kind: 'accent' },
+      { label: t('optifine.pick'), run: pickOptifine, kind: '' },
+    ]).map((a) => {
+      const node = el('button', { type: 'button', class: `btn small${a.kind ? ` ${a.kind}` : ''}`, text: a.label, 'data-focus-key': `assist:${variant}:${a.label}` });
+      node.addEventListener('click', a.run);
+      return node;
+    });
+    if (actions.length > 0) children.push(el('div', { class: 'assist-actions' }, actions));
+    if (variant === 'mods') children.push(whyNode());
+    return el('div', { class: `assist-box tone-${model ? assistTone(model) : 'info'}` }, children);
+  }
+
+  /** Annonce le nouvel état aux lecteurs d'écran (une seule zone aria-live, hors de tout rendu). */
+  function announceAssist() {
+    const model = assistModel();
+    $('optifine-live').textContent = model ? [model.title.replace(/[….]+$/, ''), model.text || (model.steps || []).join(' ')].filter(Boolean).join('. ') : '';
+  }
+  function renderAssists() {
+    const profile = currentProfile();
+    if (profile) renderOptifine(profile);
+    renderMods();
+  }
+
+  api.onOptifineAssist(async (state) => {
+    assist = state;
+    renderAssists();
+    announceAssist();
+    if (state.state === 'imported') {
+      // le processus principal a rangé la copie et réglé le fichier choisi : la page relit les réglages et l'état
+      settings = await api.getSettings();
+      await refreshStatus();
+    }
+  });
 
   const OPTIFINE_REASONS = ['NOT_JAR', 'WRONG_NAME', 'BAD_ZIP', 'NO_TWEAK', 'TOO_BIG', 'UNREADABLE'];
   /** Carte OptiFine du profil 1.8.9 : copie trouvée ou non, interrupteur, choix du fichier, lien officiel. */
@@ -768,6 +1115,11 @@
     $('optifine-enabled').checked = settings.optifine !== false;
     $('optifine-use-help').textContent = t('optifine.useHelp');
     $('optifine-clear').classList.toggle('hidden', !settings.optifineJar);
+    // assistant : son bloc (états), et le bouton qui le lance (en rouge quand rien n'est trouvé, grisé pendant qu'il surveille)
+    replaceKeepingFocus($('optifine-assist'), [assistNode('settings')].filter(Boolean));
+    const running = ASSIST_ACTIVE.includes(assist.state);
+    $('optifine-download').disabled = running;
+    $('optifine-download').classList.toggle('accent', Boolean(of) && !of.found && !of.own && !of.kept && !running);
   }
 
   function renderSettings() {
@@ -782,10 +1134,13 @@
     renderPackRows(profile);
     renderOptifine(profile);
     $('game-dir').value = settings.gameDir;
+    $('game-dir').title = settings.gameDir;
     const custom = settings.javaPath !== '' || $('java-mode').dataset.forceCustom === '1';
     $('java-mode').querySelectorAll('button').forEach((b) => b.classList.toggle('active', (b.dataset.value === 'custom') === custom));
+    syncRoving($('java-mode'), isActive, { radio: true });
     $('java-custom').classList.toggle('hidden', !custom);
     $('java-path').value = settings.javaPath;
+    $('java-path').title = settings.javaPath;
     // texte en cours de saisie gardé, sauf si le profil a changé : on affiche alors celui du nouveau profil
     const jvmField = $('jvm-args');
     const otherProfile = jvmField.dataset.profile !== settings.profileId;
@@ -793,13 +1148,16 @@
     if (otherProfile) $('jvm-args-warn').classList.add('hidden');
     jvmField.dataset.profile = settings.profileId;
     $('lang').querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.value === settings.lang));
+    syncRoving($('lang'), isActive, { radio: true });
     $('dev-mode').checked = settings.devMode;
     $('dev-dir-row').classList.toggle('hidden', !settings.devMode);
     $('dev-dir').value = settings.devJarDir;
+    $('dev-dir').title = settings.devJarDir;
     $('client-id').value = settings.msClientId;
     $('client-id').placeholder = settings.msClientId ? '00000000-0000-0000-0000-000000000000'
       : accountsView.clientIdFromEnv ? t('settings.clientIdEnv') : t('settings.clientIdDefault');
     if (info) $('about').textContent = t('settings.about', { version: info.version, dir: info.minecraftDir });
+    renderUpdateCard();
     renderPending();
   }
 
@@ -811,6 +1169,8 @@
     if (dir) save({ gameDir: dir });
   });
   $('game-dir-reset').addEventListener('click', () => save({ gameDir: '' }));
+  enableArrows($('java-mode'));
+  enableArrows($('lang'));
   $('java-mode').addEventListener('click', (event) => {
     const value = event.target.dataset?.value;
     if (!value) return;
@@ -843,7 +1203,8 @@
   });
   $('dev-mode').addEventListener('change', (event) => save({ devMode: event.target.checked }));
   $('optifine-enabled').addEventListener('change', (event) => save({ optifine: event.target.checked }));
-  $('optifine-pick').addEventListener('click', async () => {
+  /** « Choisir le fichier… » : le joueur désigne lui-même son OptiFine 1.8.9 (validé par le processus principal). */
+  async function pickOptifine() {
     const result = await call(() => api.pickOptifine());
     if (result.ok) {
       settings = await api.getSettings();
@@ -853,9 +1214,10 @@
     } else if (result.code !== 'CANCELLED') {
       flashSaved(errorText(result));
     }
-  });
+  }
+  $('optifine-pick').addEventListener('click', pickOptifine);
   $('optifine-clear').addEventListener('click', () => save({ optifineJar: '' }));
-  $('optifine-download').addEventListener('click', () => api.openOptifine());
+  $('optifine-download').addEventListener('click', () => assistStart(true));
   $('dev-dir-change').addEventListener('click', async () => {
     const dir = await api.pickFolder(settings.devJarDir);
     if (dir) save({ devJarDir: dir });
@@ -928,6 +1290,10 @@
     const active = accountsView.accounts.find((a) => a.active);
     $('nav-account').dataset.account = !active ? 'none' : active.type === 'msa' ? 'msa' : 'offline';
     $('nav-avatar').replaceChildren(...(active ? [avatarCanvas(active, 28)] : []));
+    // la pastille rouge n'a pas de texte : le bouton dit lui-même s'il y a un compte
+    const label = active ? t('nav.accountOf', { name: active.name }) : t('nav.accountNone');
+    $('nav-account').setAttribute('aria-label', label);
+    $('nav-account').title = label;
   }
 
   function renderAccounts() {
@@ -940,10 +1306,10 @@
     $('offline-card').classList.toggle('hidden', !view.devMode);
     const active = view.accounts.find((a) => a.active);
     $('skin-offline-actions').classList.toggle('hidden', !active || active.type === 'msa');
-    $('accounts-list').replaceChildren(...view.accounts.map((account) => {
+    replaceKeepingFocus($('accounts-list'), view.accounts.map((account) => {
       const actions = [];
       if (!account.active) {
-        const use = el('button', { class: 'btn', text: t('account.use') });
+        const use = el('button', { class: 'btn', text: t('account.use'), 'data-focus-key': `account:${account.id}:use` });
         use.addEventListener('click', async () => {
           const next = await guarded(() => api.accounts.select(account.id), (text) => accountMessage(text, 'error'));
           if (next) accountsView = next;
@@ -952,7 +1318,7 @@
         });
         actions.push(use);
       }
-      const remove = el('button', { class: 'btn ghost danger', text: t('account.remove') });
+      const remove = el('button', { class: 'btn ghost danger', text: t('account.remove'), 'data-focus-key': `account:${account.id}:remove` });
       remove.addEventListener('click', async () => {
         const next = await guarded(() => api.accounts.remove(account.id), (text) => accountMessage(text, 'error'));
         if (next) accountsView = next;
@@ -978,7 +1344,12 @@
   }
 
   // skin.js (vue 3D du skin) suit le compte actif et réutilise la traduction des erreurs
-  window.AttackUI = { errorText, view: () => accountsView };
+  // showError : montre l'alerte de l'accueil pour un code d'erreur (essais et captures d'écran : scripts/screenshot.js, ATTACK_SCREENSHOT_ERROR)
+  window.AttackUI = {
+    errorText,
+    view: () => accountsView,
+    showError: (code, message = '') => setMessage(errorText({ code, message }), 'error', code),
+  };
 
   async function refreshAccounts() {
     accountsView = await api.accounts.list();
@@ -1077,11 +1448,23 @@
     $('update-action').textContent = t(ready ? 'update.restart' : 'update.releases');
   }
 
+  /** Onglet Launcher : où en sont les mises à jour du launcher (la bannière, elle, n'apparaît que pour une version prête ou à télécharger). */
+  function renderUpdateCard() {
+    const version = info ? info.version : '';
+    const key = ['off', 'none', 'checking', 'downloading', 'ready', 'available', 'error'].includes(update.phase) ? update.phase : 'idle';
+    const text = t(`update.help.${key}`, { version: update.version || version, percent: Math.floor(update.percent || 0) });
+    $('update-help').textContent = `${t('update.current', { version })} ${text}`;
+  }
+
   api.onUpdateState((state) => {
     if (state.phase !== update.phase || state.version !== update.version) updateNote = '';
     update = state;
     renderUpdate();
+    renderUpdateCard();
   });
+  $('update-releases').addEventListener('click', () => api.update.openReleases());
+  $('folders-game').addEventListener('click', () => guarded(() => api.openGameDir(), (text) => flashSaved(text)));
+  $('folders-logs').addEventListener('click', () => guarded(() => api.openLogs(), (text) => flashSaved(text)));
   $('update-action').addEventListener('click', async () => {
     if (update.phase === 'available') {
       api.update.openReleases();
@@ -1108,6 +1491,7 @@
 
   function applyLanguage() {
     window.I18n.setLang(settings.lang);
+    if (alertAction) $('alert-action').textContent = t(alertAction.label);
     renderProfiles();
     renderStatus();
     renderNews();

@@ -8,6 +8,7 @@ const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
 const { ALLOWED_HOSTS } = require('./constants');
+const { renameRetry } = require('./fsretry'); // réexporté plus bas : installer.js l'appelle via http
 
 const USER_AGENT = 'ATTACK-Launcher (+https://github.com/7ShIkI3/attack-launcher)';
 
@@ -105,18 +106,6 @@ async function requestAndReceive(url, options, receive) {
 
 function verificationError(message) {
   return Object.assign(new Error(message), { verification: true });
-}
-
-/** Renommage qui réessaie quelques fois : sous Windows, l'antivirus ou OneDrive ouvrent souvent un fichier tout juste écrit. */
-async function renameRetry(from, to, attempts = 6) {
-  for (let attempt = 1; ; attempt++) {
-    try {
-      return await fsp.rename(from, to);
-    } catch (error) {
-      if (attempt >= attempts || !['EPERM', 'EBUSY', 'EACCES'].includes(error.code)) throw error;
-      await wait(50 * 2 ** Math.min(attempt, 3));
-    }
-  }
 }
 
 /** Écriture atomique : fichier temporaire puis renommage ; une coupure pendant l'écriture ne laisse jamais un fichier tronqué. */

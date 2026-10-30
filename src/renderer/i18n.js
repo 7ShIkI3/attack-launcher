@@ -7,10 +7,18 @@
       'nav.mods': 'Mods',
       'nav.settings': 'Réglages',
       'nav.account': 'Compte',
+      'nav.accountNone': 'Compte : aucun compte connecté',
+      'nav.accountOf': 'Compte : {name}',
+      'settings.tabs': 'Réglages',
       'common.soon': 'Bientôt',
       'common.change': 'Changer',
       'common.reset': 'Par défaut',
       'common.browse': 'Parcourir',
+      'alert.copy': 'Copier',
+      'alert.copied': 'Copié',
+      'alert.copyFailed': 'Copie impossible',
+      'alert.close': 'Fermer le message',
+      'alert.settings': 'Ouvrir les réglages',
       'window.minimize': 'Réduire',
       'window.maximize': 'Agrandir',
       'window.close': 'Fermer',
@@ -85,6 +93,23 @@
       'mods.version': 'version {version}',
       'mods.count': '{n} mods',
       'mods.all': 'Tous',
+      'mods.filterCategory': 'Catégorie',
+      'mods.filterState': 'État',
+      'mods.density': 'Densité d’affichage',
+      'mods.stateAll': 'Tous',
+      'mods.stateOn': 'Activés',
+      'mods.stateOffFilter': 'Désactivés',
+      'mods.densityComfortable': 'Détaillé',
+      'mods.densityCompact': 'Compact',
+      'mods.densityList': 'Liste',
+      'mods.countMods': '{n} mods',
+      'mods.countMods.one': '{n} mod',
+      'mods.countModules': '{n} modules en jeu',
+      'mods.countModules.one': '{n} module en jeu',
+      'mods.shown': '{n} affichés',
+      'mods.shown.one': '{n} affiché',
+      'mods.clear': 'Tout afficher',
+      'mods.noneFilters': 'Aucun mod ne correspond à ces filtres.',
       'settings.title': 'Réglages',
       'settings.subtitle': 'Enregistrés automatiquement, appliqués au prochain clic sur JOUER.',
       'settings.saved': 'Enregistré',
@@ -120,7 +145,7 @@
       'settings.clientIdHelp': "Laisse vide pour utiliser l'app officielle d'ATTACK Launcher. Sinon, colle l'ID de ta propre app Azure (ce n'est pas un secret).",
       'settings.clientIdInvalid': 'Format attendu : 8-4-4-4-12 caractères hexadécimaux.',
       'settings.clientIdEnv': 'Fourni par la variable ATTACK_MS_CLIENT_ID',
-      'settings.clientIdDefault': "Vide = app officielle d'ATTACK Launcher (recommandé)",
+      'settings.clientIdDefault': 'Vide = app officielle (recommandé)',
       'account.title': 'Compte',
       'account.subtitle': 'Avec un compte connecté, JOUER lance directement ATTACK Client, sans le launcher officiel.',
       'account.none': 'Aucun compte : JOUER ouvre le launcher officiel avec le profil ATTACK choisi.',
@@ -207,6 +232,7 @@
       'home.connect': 'Connecter un compte',
       'home.clientVersion': 'ATTACK Client v{version}',
       'home.mods': '{n} mods',
+      'home.mods.one': '{n} mod',
       'home.today': "Aujourd'hui",
       'pc.sub': 'Profil du launcher officiel : « {name} »',
       'pc.ram': 'Mémoire',
@@ -216,7 +242,7 @@
       'pc.off': 'Coupés',
       'pc.onOne': 'Activé',
       'pc.offOne': 'Coupé',
-      'pc.minecraft': '· Minecraft',
+      'pc.minecraft': '· fourni',
       'pc.custom': '· personnalisé',
       'tag.perf': 'Perf',
       'tag.new': 'Ajout',
@@ -229,6 +255,8 @@
       'mods.attackDescForge': 'Le mod ATTACK pour Minecraft {mc} : tous ses modules se règlent en jeu, depuis le menu ATTACK.',
       'mods.subtitleFabric': 'Pack figé, jars vérifiés par SHA-512 · ATTACK Client + {n} mods installés',
       'mods.subtitleForge': 'ATTACK Client ({modules} modules à régler en jeu) + {n} mods installés',
+      'mods.subtitleForge.one': 'ATTACK Client ({modules} modules à régler en jeu) + {n} mod installé',
+      'mods.subtitleFabric.one': 'Pack figé, jars vérifiés par SHA-512 · ATTACK Client + {n} mod installé',
       'mods.off': '{n} désactivés',
       'mods.off1': '1 désactivé',
       'mods.none': 'Aucun mod ne correspond à « {q} ».',
@@ -256,6 +284,18 @@
       'settings.langHelp': "S'applique tout de suite à l'interface du launcher.",
       'settings.aboutTitle': 'À propos',
       'settings.launcherNote': "Ces réglages valent pour tous les profils. La mémoire, Java, le dossier de jeu et les mods se règlent dans l'onglet « Ce profil ».",
+      'settings.updatesTitle': 'Mises à jour',
+      'settings.foldersTitle': 'Dossiers et journaux',
+      'settings.foldersHelp': 'Le dossier de jeu du profil choisi et les journaux de sa dernière partie, utiles pour un rapport de bug.',
+      'update.current': 'Version installée : {version}.',
+      'update.help.off': 'Les mises à jour automatiques sont coupées dans cette copie (lancée depuis les sources).',
+      'update.help.idle': 'Elles sont vérifiées en arrière-plan, jamais pendant une partie.',
+      'update.help.none': 'C’est la dernière version.',
+      'update.help.checking': 'Recherche d’une nouvelle version…',
+      'update.help.downloading': 'Téléchargement de la version {version} : {percent} %.',
+      'update.help.ready': 'La version {version} est prête : redémarre le launcher pour l’installer.',
+      'update.help.available': 'La version {version} est disponible. Cette copie ne se met pas à jour toute seule : télécharge-la sur la page Releases.',
+      'update.help.error': 'La dernière vérification a échoué : elle sera retentée plus tard.',
       'settings.optifinePacks': 'Packs OptiFine',
       'settings.optifinePacksHelp': 'Continuity, Entity Texture Features et Entity Model Features : textures connectées, mobs et ciel des packs de ressources OptiFine, sans OptiFine.',
       'settings.replay': 'Replay Mod',
@@ -265,6 +305,36 @@
       'optifine.pick': 'Choisir le fichier…',
       'optifine.clear': 'Recherche automatique',
       'optifine.download': 'optifine.net',
+      'optifine.get': 'Obtenir OptiFine',
+      'optifine.why': 'Pourquoi ?',
+      'optifine.why1': 'La licence d’OptiFine interdit de le redistribuer sans l’autorisation écrite de son auteur : le launcher ne peut ni l’embarquer ni le télécharger à ta place.',
+      'optifine.why2': 'Ta copie est vérifiée sur ton PC (archive lisible, bon fichier pour Forge 1.8.9), puis utilisée telle quelle.',
+      'optifine.why3': 'Les profils 1.21.1 et 26.3 n’en ont pas besoin : leur pack de mods gère déjà les packs de ressources OptiFine.',
+      'optifine.assist.idle': 'Le launcher peut t’aider : il ouvre optifine.net, repère le fichier que tu télécharges, le vérifie et le range.',
+      'optifine.assist.waitingTitle': 'En attente de ton téléchargement…',
+      'optifine.assist.step1': 'Sur optifine.net, clique sur « (Mirror) » à côté d’OptiFine 1.8.9, puis sur « Download » sur la page suivante.',
+      'optifine.assist.step2': 'Si ton navigateur ou Windows demande de confirmer, choisis « Conserver » : c’est normal pour un fichier .jar.',
+      'optifine.assist.step3': 'Le launcher surveille {dir} : dès que le fichier est complet, il le vérifie et le range.',
+      'optifine.assist.seenTitle': 'Fichier repéré',
+      'optifine.assist.seenText': '{file} était déjà dans {dir}. Veux-tu l’utiliser ?',
+      'optifine.assist.use': 'Utiliser ce fichier',
+      'optifine.assist.checkingTitle': 'Vérification…',
+      'optifine.assist.checkingText': '{file} : lecture de l’archive et du fichier OptiFine.',
+      'optifine.assist.importedTitle': 'OptiFine {version} est prêt',
+      'optifine.assist.importedTitleNoVersion': 'OptiFine est prêt',
+      'optifine.assist.importedText': 'Une copie est gardée dans le dossier du launcher. Elle est ajoutée à ton jeu à la prochaine installation.',
+      'optifine.assist.refusedTitle': 'Fichier refusé',
+      'optifine.assist.refusedText': '{file} : {reason}',
+      'optifine.assist.timeoutTitle': 'Rien reçu pour l’instant',
+      'optifine.assist.timeoutText': 'Aucun OptiFine 1.8.9 n’est arrivé dans {dir} en 10 minutes.',
+      'optifine.assist.waitMore': 'Attendre encore',
+      'optifine.assist.cancelledTitle': 'Surveillance arrêtée',
+      'optifine.assist.cancelledText': 'Tu peux la relancer quand tu veux, ou choisir le fichier toi-même.',
+      'optifine.assist.restart': 'Relancer',
+      'optifine.assist.errorTitle': 'Impossible de continuer',
+      'optifine.assist.dirUnreadable': 'Le dossier Téléchargements est illisible : {dir}. Choisis le fichier toi-même.',
+      'optifine.assist.cancel': 'Annuler',
+      'optifine.assist.retry': 'Réessayer',
       'optifine.checking': 'Recherche de ta copie d’OptiFine…',
       'optifine.badgeFound': 'Trouvé',
       'optifine.badgeOwn': 'Déjà dans mods',
@@ -285,6 +355,8 @@
       'optifine.stateToCopy': 'à copier',
       'optifine.stateToRemove': 'à retirer',
       'error.NO_OPTIFINE': 'OptiFine : profil 1.8.9 seulement.',
+      'error.NO_FILE': 'Aucun fichier OptiFine à utiliser pour le moment.',
+      'error.COPY_MISMATCH': 'La copie d’OptiFine ne correspond pas au fichier d’origine (il a peut-être changé pendant la copie) : réessaie.',
       'error.OPTIFINE_NOT_JAR': "Ce n'est pas un fichier .jar.",
       'error.OPTIFINE_WRONG_NAME': "le nom du fichier ne contient pas 1.8.9 (ce n'est pas OptiFine pour Minecraft 1.8.9).",
       'error.OPTIFINE_BAD_ZIP': "ce fichier n'est pas une archive .jar lisible.",
@@ -319,10 +391,18 @@
       'nav.mods': 'Mods',
       'nav.settings': 'Settings',
       'nav.account': 'Account',
+      'nav.accountNone': 'Account: no account signed in',
+      'nav.accountOf': 'Account: {name}',
+      'settings.tabs': 'Settings',
       'common.soon': 'Soon',
       'common.change': 'Change',
       'common.reset': 'Default',
       'common.browse': 'Browse',
+      'alert.copy': 'Copy',
+      'alert.copied': 'Copied',
+      'alert.copyFailed': 'Copy failed',
+      'alert.close': 'Close the message',
+      'alert.settings': 'Open settings',
       'window.minimize': 'Minimize',
       'window.maximize': 'Maximize',
       'window.close': 'Close',
@@ -397,6 +477,23 @@
       'mods.version': 'version {version}',
       'mods.count': '{n} mods',
       'mods.all': 'All',
+      'mods.filterCategory': 'Category',
+      'mods.filterState': 'State',
+      'mods.density': 'Display density',
+      'mods.stateAll': 'All',
+      'mods.stateOn': 'Enabled',
+      'mods.stateOffFilter': 'Disabled',
+      'mods.densityComfortable': 'Detailed',
+      'mods.densityCompact': 'Compact',
+      'mods.densityList': 'List',
+      'mods.countMods': '{n} mods',
+      'mods.countMods.one': '{n} mod',
+      'mods.countModules': '{n} in-game modules',
+      'mods.countModules.one': '{n} in-game module',
+      'mods.shown': '{n} shown',
+      'mods.shown.one': '{n} shown',
+      'mods.clear': 'Show all',
+      'mods.noneFilters': 'No mod matches these filters.',
       'settings.title': 'Settings',
       'settings.subtitle': 'Saved automatically, applied the next time you click PLAY.',
       'settings.saved': 'Saved',
@@ -470,7 +567,7 @@
       'settings.clientIdHelp': 'Leave empty to use the official ATTACK Launcher app. Otherwise paste the ID of your own Azure app (not a secret).',
       'settings.clientIdInvalid': 'Expected format: 8-4-4-4-12 hexadecimal characters.',
       'settings.clientIdEnv': 'Provided by the ATTACK_MS_CLIENT_ID variable',
-      'settings.clientIdDefault': 'Empty = official ATTACK Launcher app (recommended)',
+      'settings.clientIdDefault': 'Empty = official app (recommended)',
       'account.title': 'Account',
       'account.subtitle': 'With a signed-in account, PLAY launches ATTACK Client directly, without the official launcher.',
       'account.none': 'No account: PLAY opens the official launcher on the chosen ATTACK profile.',
@@ -562,6 +659,7 @@
       'home.connect': 'Sign in',
       'home.clientVersion': 'ATTACK Client v{version}',
       'home.mods': '{n} mods',
+      'home.mods.one': '{n} mod',
       'home.today': 'Today',
       'pc.sub': 'Official launcher profile: “{name}”',
       'pc.ram': 'Memory',
@@ -571,7 +669,7 @@
       'pc.off': 'Off',
       'pc.onOne': 'On',
       'pc.offOne': 'Off',
-      'pc.minecraft': '· Minecraft',
+      'pc.minecraft': '· bundled',
       'pc.custom': '· custom',
       'tag.perf': 'Perf',
       'tag.new': 'New',
@@ -584,6 +682,8 @@
       'mods.attackDescForge': 'The ATTACK mod for Minecraft {mc}: all of its modules are tuned in game, from the ATTACK menu.',
       'mods.subtitleFabric': 'Pinned pack, jars checked by SHA-512 · ATTACK Client + {n} mods installed',
       'mods.subtitleForge': 'ATTACK Client ({modules} modules to tune in game) + {n} mods installed',
+      'mods.subtitleForge.one': 'ATTACK Client ({modules} modules to tune in game) + {n} mod installed',
+      'mods.subtitleFabric.one': 'Pinned pack, jars checked by SHA-512 · ATTACK Client + {n} mod installed',
       'mods.off': '{n} turned off',
       'mods.off1': '1 turned off',
       'mods.none': 'No mod matches “{q}”.',
@@ -611,6 +711,18 @@
       'settings.langHelp': 'Applies immediately to the launcher interface.',
       'settings.aboutTitle': 'About',
       'settings.launcherNote': 'These settings apply to every profile. Memory, Java, game folder and mods are set in the “This profile” tab.',
+      'settings.updatesTitle': 'Updates',
+      'settings.foldersTitle': 'Folders and logs',
+      'settings.foldersHelp': 'The game folder of the chosen profile and the logs of its last game, useful for a bug report.',
+      'update.current': 'Installed version: {version}.',
+      'update.help.off': 'Automatic updates are off in this copy (run from the sources).',
+      'update.help.idle': 'They are checked in the background, never during a game.',
+      'update.help.none': 'This is the latest version.',
+      'update.help.checking': 'Looking for a new version…',
+      'update.help.downloading': 'Downloading version {version}: {percent}%.',
+      'update.help.ready': 'Version {version} is ready: restart the launcher to install it.',
+      'update.help.available': 'Version {version} is available. This copy does not update by itself: download it from the Releases page.',
+      'update.help.error': 'The last check failed: it will be retried later.',
       'settings.optifinePacks': 'OptiFine packs',
       'settings.optifinePacksHelp': 'Continuity, Entity Texture Features and Entity Model Features: connected textures, mobs and sky of OptiFine resource packs, without OptiFine.',
       'settings.replay': 'Replay Mod',
@@ -620,6 +732,36 @@
       'optifine.pick': 'Choose the file…',
       'optifine.clear': 'Automatic search',
       'optifine.download': 'optifine.net',
+      'optifine.get': 'Get OptiFine',
+      'optifine.why': 'Why?',
+      'optifine.why1': 'OptiFine’s license forbids redistributing it without its author’s written permission: the launcher can neither ship it nor download it for you.',
+      'optifine.why2': 'Your copy is checked on your PC (readable archive, the right file for Forge 1.8.9), then used as is.',
+      'optifine.why3': 'The 1.21.1 and 26.3 profiles do not need it: their mod pack already handles OptiFine resource packs.',
+      'optifine.assist.idle': 'The launcher can help: it opens optifine.net, spots the file you download, checks it and puts it away.',
+      'optifine.assist.waitingTitle': 'Waiting for your download…',
+      'optifine.assist.step1': 'On optifine.net, click “(Mirror)” next to OptiFine 1.8.9, then “Download” on the next page.',
+      'optifine.assist.step2': 'If your browser or Windows asks you to confirm, choose “Keep”: that is normal for a .jar file.',
+      'optifine.assist.step3': 'The launcher watches {dir}: as soon as the file is complete, it checks it and puts it away.',
+      'optifine.assist.seenTitle': 'File spotted',
+      'optifine.assist.seenText': '{file} was already in {dir}. Use it?',
+      'optifine.assist.use': 'Use this file',
+      'optifine.assist.checkingTitle': 'Checking…',
+      'optifine.assist.checkingText': '{file}: reading the archive and the OptiFine file.',
+      'optifine.assist.importedTitle': 'OptiFine {version} is ready',
+      'optifine.assist.importedTitleNoVersion': 'OptiFine is ready',
+      'optifine.assist.importedText': 'A copy is kept in the launcher folder. It is added to your game at the next installation.',
+      'optifine.assist.refusedTitle': 'File refused',
+      'optifine.assist.refusedText': '{file}: {reason}',
+      'optifine.assist.timeoutTitle': 'Nothing received yet',
+      'optifine.assist.timeoutText': 'No OptiFine 1.8.9 arrived in {dir} within 10 minutes.',
+      'optifine.assist.waitMore': 'Keep waiting',
+      'optifine.assist.cancelledTitle': 'Watching stopped',
+      'optifine.assist.cancelledText': 'You can start it again whenever you like, or choose the file yourself.',
+      'optifine.assist.restart': 'Start again',
+      'optifine.assist.errorTitle': 'Cannot continue',
+      'optifine.assist.dirUnreadable': 'The Downloads folder is unreadable: {dir}. Choose the file yourself.',
+      'optifine.assist.cancel': 'Cancel',
+      'optifine.assist.retry': 'Try again',
       'optifine.checking': 'Looking for your copy of OptiFine…',
       'optifine.badgeFound': 'Found',
       'optifine.badgeOwn': 'Already in mods',
@@ -640,6 +782,8 @@
       'optifine.stateToCopy': 'to copy',
       'optifine.stateToRemove': 'to remove',
       'error.NO_OPTIFINE': 'OptiFine: 1.8.9 profile only.',
+      'error.NO_FILE': 'No OptiFine file to use right now.',
+      'error.COPY_MISMATCH': 'The copy of OptiFine does not match the original file (it may have changed while copying): try again.',
       'error.OPTIFINE_NOT_JAR': 'This is not a .jar file.',
       'error.OPTIFINE_WRONG_NAME': 'the file name does not contain 1.8.9 (this is not OptiFine for Minecraft 1.8.9).',
       'error.OPTIFINE_BAD_ZIP': 'this file is not a readable .jar archive.',
@@ -673,8 +817,35 @@
 
   let lang = 'fr';
 
+  const NBSP = ' ';
+  /**
+   * Typographie du texte AVANT la substitution des variables (un chemin ou un pseudo n'est jamais touché) :
+   *  - apostrophe droite entre deux lettres -> ’ (français et anglais : une seule apostrophe dans toute l'interface) ;
+   *  - français : espace insécable avant « : ; ! ? » et « », et après « : plus de « » orphelin en bout de ligne.
+   */
+  function typeset(text, language) {
+    let out = text.replace(/(\p{L})'(\p{L})/gu, '$1’$2');
+    if (language === 'fr') out = out.replace(/ ([:;!?»])/g, `${NBSP}$1`).replace(/« /g, `«${NBSP}`);
+    return out;
+  }
+  const typesetCache = new Map();
+
+  /** Singulier : « 1 mod ». La clé « <clé>.one » sert quand {n} vaut 0 ou 1 (français) ou 1 (anglais) et qu'elle existe. */
+  function pickKey(key, vars) {
+    if (!vars || typeof vars.n !== 'number') return key;
+    const singular = lang === 'fr' ? vars.n === 0 || vars.n === 1 : vars.n === 1;
+    const one = `${key}.one`;
+    return singular && ((STRINGS[lang] && STRINGS[lang][one]) || STRINGS.fr[one]) ? one : key;
+  }
+
   function t(key, vars) {
-    const text = (STRINGS[lang] && STRINGS[lang][key]) || STRINGS.fr[key] || key;
+    const real = pickKey(key, vars);
+    const id = `${lang}|${real}`;
+    let text = typesetCache.get(id);
+    if (text === undefined) {
+      text = typeset((STRINGS[lang] && STRINGS[lang][real]) || STRINGS.fr[real] || real, lang);
+      typesetCache.set(id, text);
+    }
     return vars ? text.replace(/\{(\w+)\}/g, (_, name) => (name in vars ? String(vars[name]) : `{${name}}`)) : text;
   }
 
@@ -686,6 +857,10 @@
     root.querySelectorAll('[data-i18n-title]').forEach((el) => {
       el.title = t(el.dataset.i18nTitle);
       el.setAttribute('aria-label', el.title);
+    });
+    // nom accessible seulement (groupes de boutons, onglets) : pas d'info-bulle au survol
+    root.querySelectorAll('[data-i18n-label]').forEach((el) => {
+      el.setAttribute('aria-label', t(el.dataset.i18nLabel));
     });
     root.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
       el.placeholder = t(el.dataset.i18nPlaceholder);
