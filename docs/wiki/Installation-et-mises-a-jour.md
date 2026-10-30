@@ -258,8 +258,30 @@ la copie que le joueur a lui-même récupérée sur [optifine.net](https://optif
    (OptiFine désinstallé, fichier choisi effacé) alors que le réglage est actif, **le jar de `mods\` reste en place** :
    il marche, l'état est gardé et le profil reste prêt (JOUER, pas INSTALLER). Le launcher le compte (détail, nombre de mods,
    carte **Profil actuel**, page Mods) et l'affiche « déjà copié dans mods », pas « introuvable ».
-4. **Rien trouvé** : un texte explique pourquoi (licence) et un bouton ouvre optifine.net dans le navigateur ; le jeu marche
-   sans OptiFine. La page relit l'état au retour sur la fenêtre : un OptiFine installé entre-temps est trouvé tout seul.
+4. **Rien trouvé** : un texte explique pourquoi (licence), le lien **Pourquoi ?** le détaille en trois points, et **Obtenir
+   OptiFine** lance l'assistant ci-dessous ; le jeu marche sans OptiFine. La page relit l'état au retour sur la fenêtre : un
+   OptiFine installé entre-temps est trouvé tout seul.
+
+### L'assistant « Obtenir OptiFine » (`src/main/optifine-watch.js`)
+
+Dans la carte OptiFine des Réglages, et sur la carte OptiFine de la page Mods quand aucune copie n'est trouvée. Le launcher ne
+télécharge toujours rien : il ouvre [optifine.net](https://optifine.net/downloads) dans le navigateur du joueur (`shell.openExternal`,
+sauf avec `ATTACK_NO_BROWSER`) et surveille le dossier Téléchargements (`ATTACK_DOWNLOADS_DIR` le remplace pour les essais).
+
+- **Étapes montrées** : bouton **(Mirror)**, puis **Download**, puis **Conserver** si le navigateur ou Windows le demande.
+- **Sondage** chaque seconde, 10 minutes au plus (**Attendre encore** relance un tour), un seul guetteur à la fois. Noms
+  acceptés : `OptiFine_1.8.9_….jar` ou `preview_OptiFine_1.8.9_….jar` (`-` ou `_`, insensible à la casse), après retrait du
+  suffixe « (1) » du navigateur. Ignorés : `.crdownload`, `.part`, `.tmp`, fichiers vides, plus de 64 Mo, un jar qui a un
+  `<nom>.part` voisin, tout ce qui n'est pas un fichier ordinaire (liens).
+- **Un fichier nouveau** doit être **stable sur deux sondages**, puis passe la validation ci-dessus (états *vérification*, puis
+  *importé* ou *refusé* avec la raison). **Un fichier déjà présent au départ** est seulement **proposé** (« Utiliser ce
+  fichier ») : jamais importé sans clic.
+- **Import** (`optifine.importCopy`) : copie **privée** dans `%APPDATA%\ATTACK Launcher\optifine\` (fichier temporaire, SHA-256,
+  renommage) ; le réglage **fichier choisi** du profil 1.8.9 pointe dessus et l'interrupteur OptiFine est activé. Le jar est
+  ensuite copié dans `mods` à la prochaine installation (bouton **Installer maintenant**).
+- **États** annoncés aux lecteurs d'écran (`aria-live`) : attente, repéré, vérification, importé, refusé, délai dépassé,
+  annulé, erreur. Aucune minuterie ne reste après la fin, l'annulation ou la fermeture du launcher.
+- **Aucun accès réseau** dans `optifine.js`, `optifine-watch.js` et `fsretry.js` : un test statique le vérifie.
 
 Réglages par profil 1.8.9 : `optifine` (activé par défaut : la copie est utilisée si elle existe) et `optifineJar` (chemin
 absolu choisi, vide = recherche automatique). ATTACK Client 2.5.4 et OptiFine HD U M5 marchent ensemble (0 mixin en échec).

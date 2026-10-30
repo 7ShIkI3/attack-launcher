@@ -66,6 +66,7 @@ Les 167 tests tournent en quelques secondes et n'ont besoin ni du réseau ni d'E
 | `http.test.js` | Hôtes https autorisés seulement, téléchargement vérifié (SHA-1, SHA-256, SHA-512), hash faux rejeté (`.part` supprimé), redirection hors liste refusée, parallélisme |
 | `catalog.test.js` | Les 3 profils, règles exactes des jars ATTACK, dossiers de jeu et de jars par profil, alias de `constants.js`, hôtes autorisés |
 | `fabric.test.js` | Adresse du profil Fabric, validation stricte (vrais profils 1.21.1 et 26.3, profils piégés refusés), plan de téléchargement avec ou sans hash, JSON de version écrit |
+| `optifine-watch.test.js` | Assistant OptiFine dans un dossier temporaire avec de fausses minuteries : partiels, vides et `.part` ignorés, stabilité sur deux sondages, import d'un faux jar, refus, suffixe « (1) », fichier déjà présent seulement proposé, délai de 10 minutes sans minuterie restante, annulation, lien ignoré, aucun accès réseau |
 | `optifine.test.js` | OptiFine du joueur : détection (libraries, mods, fichier choisi), validation du manifeste, copie suivie dans l'état, retrait de la seule copie du launcher, copie d'origine disparue (le jar de `mods` reste), OptiFine du joueur jamais touché |
 | `renderer.test.js` | Interface : clés de traduction FR/EN complètes, identifiants du HTML, CSP stricte (ni script ni style en ligne, pas d'innerHTML), historique et fiches des mods du pack |
 | `renderer-dom.test.js` | Accueil : `app.js` tourne sur un faux DOM avec l'état d'installation réel de `installer.status()` ; phrase « prêt », lignes du détail (OptiFine « à retirer », « déjà copié dans mods », « Mise à jour à appliquer »), compteur, rail, cartes Mods et Réglages, en français et en anglais |
@@ -117,6 +118,8 @@ sans `--keep`, l'app de test est désinstallée ensuite. Détails dans l'en-têt
 | `ATTACK_SCREENSHOT_INSTALL=1` | Clique d'abord sur INSTALLER (installation réelle dans les dossiers donnés) |
 | `ATTACK_SCREENSHOT_PLAY=1` | Clique sur JOUER avec le compte actif |
 | `ATTACK_SCREENSHOT_SIZE=940x600` | Taille de fenêtre (bornée par la taille minimale) |
+| `ATTACK_SCREENSHOT_ERROR=<code>` | Ajoute `home-error.png` : l'alerte de l'accueil pour ce code d'erreur (par ex. `LAUNCHER_NOT_FOUND`) |
+| `ATTACK_SCREENSHOT_OPTIFINE=waiting\|refused\|imported` | Ajoute `optifine-<état>.png` et `optifine-<état>-mods.png` : l'assistant OptiFine avec un faux jar dans un dossier Téléchargements **temporaire** (`ATTACK_DOWNLOADS_DIR`) ; `ATTACK_NO_BROWSER` empêche d'ouvrir optifine.net |
 | `ATTACK_PROFILE=fabric-1.21.1` | Profil affiché (`forge-1.8.9` par défaut, `fabric-1.21.1`, `fabric-26.3`) |
 | `ATTACK_SETTINGS='{"replayMod":true}'` | Réglages à plat ajoutés au profil affiché |
 

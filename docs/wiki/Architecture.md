@@ -51,6 +51,8 @@ réseau ou du chiffrement reçoivent leur dépendance en paramètre (un « trans
 | `forge.js`, `zip.js` | Lecture de l'installateur Forge **comme une archive ZIP** (jamais exécuté) |
 | `fabric.js` | Profil de version de Fabric Loader : adresse de `meta.fabricmc.net`, validation stricte, plan de téléchargement, JSON de version écrit |
 | `modpack.js` | Packs de mods figés (`src/main/packs/*.json`, un par profil) : validation (groupes `pvp`, `optifine`, `replay`, licence, auteur), installation dans `mods/`, jars gérés supprimés quand ils sortent du pack |
+| `optifine-watch.js` | **Assistant OptiFine** (Node pur, sans accès réseau) : sonde le dossier Téléchargements, repère le jar de l'OptiFine 1.8.9 téléchargé par le joueur, le valide puis l'importe (`optifine.importCopy`) ; dossier, validation, import et minuteries injectables pour les tests |
+| `fsretry.js` | Renommage qui réessaie (antivirus, OneDrive), sans accès réseau ; réexporté par `http.js` |
 | `optifine.js` | **OptiFine du joueur** (profil 1.8.9) : détection de sa copie, validation (manifeste `TweakClass`), copie suivie dans l'état, retrait de la seule copie du launcher. Jamais de téléchargement |
 | `gameoptions.js` | Réglages de départ d'`options.txt` par étapes : vidéo (Fabric), langue du launcher (tous les profils, à la création du fichier seulement) |
 | `maven.js` | Coordonnées Maven vers chemins et URL ; `safeJoin` qui interdit de sortir d'un dossier |
