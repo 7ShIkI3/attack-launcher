@@ -5,7 +5,7 @@
 <h1 align="center">ATTACK Launcher</h1>
 
 <p align="center">
-  Le launcher Windows d'<strong>ATTACK Client</strong> : Minecraft PvP installé et lancé en un clic, en 1.8.9, 1.21.1 et 26.3.
+  Le launcher Windows d'<strong>ATTACK Client</strong> : Minecraft PvP installé et lancé en un clic, en 1.7.10, 1.8.9, 1.21.1 et 26.3.
 </p>
 
 <p align="center">
@@ -23,16 +23,17 @@
 
 ## Ce que fait le launcher
 
-ATTACK Client est un mod de PvP (Forge en 1.8.9, Fabric en 1.21.1 et 26.3). Pour le jouer, il faut normalement installer
+ATTACK Client est un mod de PvP (Forge en 1.7.10 et 1.8.9, Fabric en 1.21.1 et 26.3). Pour le jouer, il faut normalement installer
 Minecraft, le chargeur de mods et le bon jar au bon endroit, sans mélanger avec tes autres mods. Le launcher fait tout ça à
 ta place :
 
-- **Trois profils indépendants** : 1.8.9 (Forge), 1.21.1 et 26.3 (Fabric). Chacun a son dossier de jeu, son état
-  d'installation, son Java et ses réglages ; tu peux garder les trois.
+- **Quatre profils indépendants** : 1.8.9 et 1.7.10 (Forge), 1.21.1 et 26.3 (Fabric). Chacun a son dossier de jeu, son état
+  d'installation, son Java et ses réglages ; tu peux garder les quatre.
 - **Tout s'installe en un clic (INSTALLER)** : Minecraft, le chargeur de mods, le pack de mods du profil et le mod ATTACK
   Client, dans un dossier de jeu séparé de ton `.minecraft`. Chaque fichier téléchargé est vérifié par son empreinte (hash).
-- **Un pack de mods par profil, réglable** : les trois profils ont un pack figé (Phosphor Legacy et Client Side Sounds en
-  1.8.9 ; Fabric API, Sodium, Lithium et d'autres en 1.21.1 et 26.3). Des groupes s'activent ou se coupent dans les
+- **Un pack de mods par profil, réglable** : trois profils ont un pack figé (Phosphor Legacy et Client Side Sounds en
+  1.8.9 ; Fabric API, Sodium, Lithium et d'autres en 1.21.1 et 26.3) ; le profil 1.7.10 n'a ni pack ni OptiFine, seulement le
+  mod ATTACK 1.7.10 (une version « lite »). Des groupes s'activent ou se coupent dans les
   Réglages : **Mods PvP (latence)** et **Packs OptiFine** (activés par défaut, profils Fabric), **Replay Mod** (coupé, les
   trois profils) et **Shaders (Iris)** (coupé, profils Fabric). Ils s'appliquent à la prochaine installation.
 - **OptiFine en 1.8.9, avec ta propre copie** : le launcher repère l'OptiFine que tu as téléchargé (ou celui que tu
@@ -54,6 +55,7 @@ ta place :
 | **1.8.9** (profil « ATTACK Client », inchangé) | 1.8.9 | Forge 11.15.1.2318 | 8 | Phosphor Legacy, Client Side Sounds, et OptiFine (ta copie) | `%APPDATA%\.attack` |
 | **1.21.1** (profil « ATTACK 1.21.1 ») | 1.21.1 | Fabric Loader 0.19.5 | 21 | Fabric API, Sodium, Lithium… et les groupes réglables | `%APPDATA%\.attack\profiles\fabric-1.21.1` |
 | **26.3** (profil « ATTACK 26.3 ») | 26.3 | Fabric Loader 0.19.5 | 25 | Fabric API, Sodium, Lithium… et les groupes réglables | `%APPDATA%\.attack\profiles\fabric-26.3` |
+| **1.7.10** (profil « ATTACK 1.7.10 ») | 1.7.10 | Forge 10.13.4.1614 | 8 | aucun (le mod ATTACK 1.7.10 seul, sans OptiFine) | `%APPDATA%\.attack\profiles\forge-1.7.10` |
 
 Les profils sont indépendants : chacun a son dossier de jeu, son état d'installation et ses réglages (dossier de jeu,
 Java, arguments Java, groupes du pack, OptiFine en 1.8.9). Le profil 1.8.9 garde son identifiant officiel (« ATTACK
@@ -90,13 +92,13 @@ Les captures du launcher (0.7.0) montrent un compte factice (« Joueur ») avec 
    - ou `ATTACK-Launcher-Portable-x.y.z.exe` : version portable, sans installation.
 2. Lance le fichier. Tu dois posséder Minecraft Java Edition. Le launcher Minecraft officiel n'est nécessaire que pour le
    mode « sans compte » (JOUER l'ouvre alors sur le profil ATTACK choisi).
-3. Choisis ton profil (**1.8.9**, **1.21.1** ou **26.3**) au-dessus du bouton, puis clique sur **INSTALLER**. Chaque
+3. Choisis ton profil (**1.8.9**, **1.21.1**, **26.3** ou **1.7.10**) au-dessus du bouton, puis clique sur **INSTALLER**. Chaque
    profil s'installe séparément.
 4. Pour jouer :
    - **avec un compte connecté** (page **Compte**, bouton « Ajouter un compte Microsoft ») : **JOUER** lance
      directement ATTACK Client dans le profil choisi ;
    - **sans compte** : **JOUER** ouvre le launcher officiel avec le profil du même nom (« ATTACK Client »,
-     « ATTACK 1.21.1 » ou « ATTACK 26.3 ») en tête de liste.
+     « ATTACK 1.21.1 », « ATTACK 26.3 » ou « ATTACK 1.7.10 ») en tête de liste.
 5. Pour régler le pack de mods, va dans **Réglages**, onglet **Ce profil** (ou clique sur **Régler** sur l'accueil) :
    active ou coupe **Mods PvP (latence)**, **Packs OptiFine**, **Replay Mod** et **Shaders (Iris)**. Un réglage du pack
    s'applique à la prochaine installation : un bandeau « À appliquer » propose **Installer maintenant**.
@@ -160,11 +162,12 @@ flowchart LR
 - Le launcher est une application **Electron** : un processus principal (qui fait tout le travail : réseau,
   fichiers, comptes) et une page d'interface isolée qui ne fait que l'afficher.
 - **Installer** : il télécharge Minecraft, ses bibliothèques et ses ressources chez Mojang, puis le chargeur du profil :
-  Forge chez Maven Forge (l'installateur Forge est lu comme une archive, jamais exécuté) ou Fabric Loader 0.19.5
+  Forge chez Maven Forge (1.8.9 et 1.7.10 ; l'installateur Forge est lu comme une archive, jamais exécuté) ou Fabric Loader 0.19.5
   (profil publié par `meta.fabricmc.net`, validé strictement, bibliothèques de `maven.fabricmc.net`). Il ajoute ensuite le
-  **pack de mods figé** du profil, **pour les trois profils** (adresses `cdn.modrinth.com` écrites dans le dépôt,
+  **pack de mods figé** du profil, **pour les trois profils qui en ont un** (adresses `cdn.modrinth.com` écrites dans le dépôt,
   vérifiées par SHA-512 : le launcher n'appelle jamais l'API Modrinth), puis, en 1.8.9, la copie d'OptiFine du joueur, et enfin
-  le jar du mod dans la dernière release GitHub de ce dépôt. Chaque fichier téléchargé est vérifié par son hash.
+  le jar du mod dans la dernière release GitHub de ce dépôt (cherché **avant** le téléchargement de Minecraft : sans jar pour le
+  profil, l'installation s'arrête tout de suite). Chaque fichier téléchargé est vérifié par son hash.
 - **Groupes du pack** : Mods PvP, Packs OptiFine, Replay Mod et Shaders (Iris) s'activent par profil. Un jar posé par le
   launcher qui sort du pack (groupe coupé, version changée) est retiré à l'installation suivante ; les jars que tu ajoutes
   toi-même dans `mods` ne sont jamais touchés.
@@ -247,6 +250,7 @@ npm run site:serve
 | `npm start` | Lance le launcher depuis les sources |
 | `npm test` | Tests unitaires, sans réseau |
 | `npm run install-test -- [dossier] [--profile <id>]` | Installation **réelle** d'un profil dans un dossier temporaire, puis recontrôle de tous les hash |
+| `npm run check-release -- [tag]` | Contrôle une release (brouillon compris) avant de la publier : chaque profil y trouve son jar, `SHA256SUMS` a une ligne par jar |
 | `npm run launch-test -- <dossier> [--profile <id>]` | Lancement direct **réel** jusqu'à l'écran titre |
 | `npm run update-test -- <dossier>` | Mise à jour **réelle** de bout en bout, sans GitHub |
 | `npm run screenshot -- <dossier>` | Capture chaque page du launcher |

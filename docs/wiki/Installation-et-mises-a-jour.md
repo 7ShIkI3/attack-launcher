@@ -2,27 +2,33 @@
 
 [← Sommaire](Home.md)
 
-## Les trois profils
+## Les quatre profils
 
-Le launcher gère trois profils indépendants (catalogue dans `src/main/catalog.js`). Chacun a sa version de Minecraft,
+Le launcher gère quatre profils indépendants (catalogue dans `src/main/catalog.js`). Chacun a sa version de Minecraft,
 son chargeur de mods, son dossier de jeu, son état d'installation et son profil dans le launcher officiel.
 
-| | **1.8.9** | **1.21.1** | **26.3** |
-| --- | --- | --- | --- |
-| Identifiant | `forge-1.8.9` | `fabric-1.21.1` | `fabric-26.3` |
-| Minecraft | 1.8.9 | 1.21.1 | 26.3 |
-| Chargeur | Forge 11.15.1.2318 | Fabric Loader 0.19.5 | Fabric Loader 0.19.5 |
-| Version dans `versions\` | `1.8.9-forge1.8.9-11.15.1.2318-1.8.9` | `fabric-loader-0.19.5-1.21.1` | `fabric-loader-0.19.5-26.3` |
-| Java (composant Mojang) | 8 (`jre-legacy`) | 21 (`java-runtime-delta`) | 25 (`java-runtime-epsilon`) |
-| Dossier de jeu par défaut | `%APPDATA%\.attack` | `%APPDATA%\.attack\profiles\fabric-1.21.1` | `%APPDATA%\.attack\profiles\fabric-26.3` |
-| Jar du mod | `mods\attack-client.jar` | `mods\attack-fabric.jar` | `mods\attack-fabric.jar` |
-| Profil du launcher officiel | `attack-client`, « ATTACK Client » | `attack-fabric-1.21.1`, « ATTACK 1.21.1 » | `attack-fabric-26.3`, « ATTACK 26.3 » |
-| Pack de mods | `src/main/packs/forge-1.8.9.json` | `src/main/packs/fabric-1.21.1.json` | `src/main/packs/fabric-26.3.json` |
-| OptiFine | copie du joueur (jamais téléchargé) | — | — |
+| | **1.8.9** | **1.21.1** | **26.3** | **1.7.10** |
+| --- | --- | --- | --- | --- |
+| Identifiant | `forge-1.8.9` | `fabric-1.21.1` | `fabric-26.3` | `forge-1.7.10` |
+| Minecraft | 1.8.9 | 1.21.1 | 26.3 | 1.7.10 |
+| Chargeur | Forge 11.15.1.2318 | Fabric Loader 0.19.5 | Fabric Loader 0.19.5 | Forge 10.13.4.1614 |
+| Version dans `versions\` | `1.8.9-forge1.8.9-11.15.1.2318-1.8.9` | `fabric-loader-0.19.5-1.21.1` | `fabric-loader-0.19.5-26.3` | `1.7.10-Forge10.13.4.1614-1.7.10` |
+| Java (composant Mojang) | 8 (`jre-legacy`) | 21 (`java-runtime-delta`) | 25 (`java-runtime-epsilon`) | 8 (`jre-legacy`) |
+| Dossier de jeu par défaut | `%APPDATA%\.attack` | `%APPDATA%\.attack\profiles\fabric-1.21.1` | `%APPDATA%\.attack\profiles\fabric-26.3` | `%APPDATA%\.attack\profiles\forge-1.7.10` |
+| Jar du mod | `mods\attack-client.jar` | `mods\attack-fabric.jar` | `mods\attack-fabric.jar` | `mods\attack-forge.jar` |
+| Profil du launcher officiel | `attack-client`, « ATTACK Client » | `attack-fabric-1.21.1`, « ATTACK 1.21.1 » | `attack-fabric-26.3`, « ATTACK 26.3 » | `attack-forge-1.7.10`, « ATTACK 1.7.10 » |
+| Pack de mods | `src/main/packs/forge-1.8.9.json` | `src/main/packs/fabric-1.21.1.json` | `src/main/packs/fabric-26.3.json` | — (aucun) |
+| OptiFine | copie du joueur (jamais téléchargé) | — | — | — (pas dans cette version) |
 
 Le profil 1.8.9 garde **exactement** son identifiant officiel (`attack-client`) et son dossier de jeu : un joueur qui
 l'utilisait déjà ne perd rien. L'ancien réglage « dossier de jeu » (global) est repris tel quel pour ce profil lors de la
 première lecture de `settings.json` (migration automatique).
+
+Le profil **1.7.10** (étiquette « PvP 1.7 ») a le même installateur Forge « legacy » que la 1.8.9 (`install_profile.json` lu comme
+une archive, rien d'exécuté) et le même format de JSON de version : aucun code propre au chargeur. Il n'a **ni pack de mods ni
+OptiFine** : seul le mod ATTACK 1.7.10, une version « lite » (menu ATTACK, éditeur de HUD, cosmétiques et une partie des
+modules). Les modules interdits en classé (No Jump Delay, No Hit Delay, Snap Tap, Perspective) n'y sont pas. Sa page Mods a donc sa
+propre liste de modules, et la carte « Pack de mods » des Réglages est masquée pour lui.
 
 ## Ce qui est installé, et où
 
@@ -31,7 +37,7 @@ première lecture de `settings.json` (migration automatique).
 | Minecraft (JSON, jar, bibliothèques, ressources) | `%APPDATA%\.minecraft\versions\<version>`, `libraries`, `assets` (partagés entre les profils) |
 | Chargeur de mods du profil | `%APPDATA%\.minecraft\versions\<version du profil>` et ses bibliothèques dans `libraries` |
 | Dossier de jeu séparé (mods, réglages, captures, mondes) | un par profil, voir le tableau ci-dessus (modifiable dans Réglages, profil par profil) |
-| Mod ATTACK | `<dossier de jeu>\mods\attack-client.jar` (1.8.9) ou `attack-fabric.jar` (Fabric) |
+| Mod ATTACK | `<dossier de jeu>\mods\attack-client.jar` (1.8.9), `attack-forge.jar` (1.7.10) ou `attack-fabric.jar` (Fabric) |
 | Pack de mods | `<dossier de jeu>\mods\` : un jar par mod du pack |
 | OptiFine du joueur (1.8.9) | `<dossier de jeu>\mods\OptiFine-1.8.9_*.jar` : copie de la sienne, suivie dans l'état |
 | `options.txt` de départ (langue, et vidéo en Fabric) | `<dossier de jeu>\options.txt`, une fois par étape |
@@ -50,12 +56,18 @@ pendant l'installation : il peut réécrire `launcher_profiles.json`.
 Le bouton **INSTALLER** (et **Vérifier / réparer l'installation**) lance `installer.install()` pour le **profil choisi**
 sur l'accueil. La barre de progression est pondérée par étape (`STEPS_FORGE` et `STEPS_FABRIC`, `installer.js`).
 
+**Avant l'étape 1, hors mode développeur : échec rapide.** Le launcher lit la dernière release GitHub et y cherche le jar du
+profil (voir [Mod ATTACK : d'où vient le jar ?](#mod-attack--doù-vient-le-jar-)) **avant** de télécharger Minecraft (environ
+180 Mo). Sans jar pour ce profil, sans release publiée ou si GitHub limite les requêtes, l'installation s'arrête tout de suite
+avec un message clair (`NO_PROFILE_JAR`, `NO_RELEASE`, `GITHUB_RATE_LIMIT`), au lieu de le dire à la fin. Le jar trouvé est
+réutilisé à l'étape « Mod » : la release n'est lue qu'une fois. Le mode développeur n'en a pas besoin (son jar est local).
+
 ```mermaid
 flowchart TD
   A["1. Minecraft : poids 8 (Forge) ou 6 (Fabric)<br>manifeste, JSON de version, jar client, log4j"] --> B["2. Bibliothèques : poids 10<br>Mojang, avec les natives Windows"]
   B --> C["3. Assets : poids 57 (Forge) ou 55 (Fabric)<br>index puis chaque objet"]
   C --> D{"Profil ?"}
-  D -->|"1.8.9"| E["4. Forge : poids 12<br>installateur lu comme une archive"]
+  D -->|"1.8.9 / 1.7.10"| E["4. Forge : poids 12<br>installateur lu comme une archive"]
   D -->|"1.21.1 / 26.3"| F["4. Fabric Loader : poids 6<br>profil de meta.fabricmc.net validé,<br>bibliothèques de maven.fabricmc.net"]
   F --> P["5. Pack de mods : poids 10<br>jars figés de cdn.modrinth.com, SHA-512"]
   E --> G["Mod ATTACK : poids 8<br>release GitHub, ou jar local en mode dev"]
@@ -71,7 +83,7 @@ flowchart TD
    launcher à partir du nom Maven (sinon : « Chemin inattendu », `mojang.js:56-61`). Les natives Windows sont incluses.
 3. **Assets** : l'index d'assets est vérifié par SHA-1, puis chaque objet est téléchargé depuis
    `resources.download.minecraft.net` à l'adresse dérivée de son hash, sans doublon, 8 téléchargements en parallèle.
-4. **Forge** (profil 1.8.9) : l'installateur est téléchargé (SHA-1 lu dans le fichier `.sha1` publié à côté, sur Maven Forge), puis
+4. **Forge** (profils 1.8.9 et 1.7.10) : l'installateur est téléchargé (SHA-1 lu dans le fichier `.sha1` publié à côté, sur Maven Forge), puis
    **ouvert comme une archive ZIP** : on y lit `install_profile.json` et on en extrait le jar `universal`. Aucun code de
    l'installateur n'est exécuté. L'identifiant de version doit être exactement celui attendu, et le nom du jar
    universal est contrôlé. Les bibliothèques Forge viennent de Maven Forge ou de Mojang uniquement (toute autre adresse
@@ -89,7 +101,7 @@ flowchart TD
    `loader.pinnedSha1`), donc pas pris sur le serveur qui sert le jar ; à défaut, on prendrait le fichier `.sha1` publié à
    côté du jar sur le Maven de Fabric (`intermediary` n'existe pas pour 26.3). Un SHA-1 figé est **toujours** vérifié,
    même si le profil Fabric publie un hash pour cette bibliothèque : un hash du profil qui le contredit est refusé.
-5. **Pack de mods** (les trois profils, `src/main/modpack.js`) : voir [Le pack de mods](#le-pack-de-mods-les-trois-profils), puis **OptiFine du joueur** (1.8.9) : voir [OptiFine pour la 1.8.9](#optifine-pour-la-189-la-copie-du-joueur).
+5. **Pack de mods** (les trois profils qui en ont un, `src/main/modpack.js` ; le profil 1.7.10 n'en a pas : l'étape est sautée) : voir [Le pack de mods](#le-pack-de-mods-les-trois-profils), puis **OptiFine du joueur** (1.8.9) : voir [OptiFine pour la 1.8.9](#optifine-pour-la-189-la-copie-du-joueur).
 6. **Mod** : voir [Mod ATTACK : d'où vient le jar ?](#mod-attack--doù-vient-le-jar-).
 7. **Profil** : fusion dans `launcher_profiles.json` ([Fonctionnalités](Fonctionnalites.md#profil-du-launcher-officiel)).
 
@@ -145,8 +157,8 @@ de ce dépôt : `github.com` et ses serveurs de fichiers) ; elles ne passent pas
 
 ## Le pack de mods (les trois profils)
 
-Chaque profil a un pack **figé** dans le dépôt : `src/main/packs/forge-1.8.9.json`, `fabric-1.21.1.json` et
-`fabric-26.3.json`. Une entrée = un mod : nom, version, nom de fichier, adresse `cdn.modrinth.com`, SHA-512, SHA-1,
+Chaque profil sauf le 1.7.10 a un pack **figé** dans le dépôt : `src/main/packs/forge-1.8.9.json`, `fabric-1.21.1.json` et
+`fabric-26.3.json` (le profil 1.7.10 n'a pas de pack : `pack: null` dans le catalogue). Une entrée = un mod : nom, version, nom de fichier, adresse `cdn.modrinth.com`, SHA-512, SHA-1,
 taille, **licence** et **auteur** du projet (lus sur Modrinth au moment de figer le pack, pour l'écran « Mods et licences »).
 Le launcher **n'appelle jamais l'API Modrinth** : il télécharge seulement ces adresses.
 
@@ -305,6 +317,12 @@ premier jar qui ressemble ».
 | 1.8.9 | `attack-client*.jar` (sauf `-sources`, `-javadoc`, `-dev`, `-deobf`) | `mods/attack-client.jar` |
 | 1.21.1 | `^attack-fabric-[0-9.]+\+mc1\.21\.1\.jar$` | `mods/attack-fabric.jar` |
 | 26.3 | `^attack-fabric-[0-9.]+\+mc26\.3\.jar$` | `mods/attack-fabric.jar` |
+| 1.7.10 | `^attack-forge-[0-9.]+\+mc1\.7\.10\.jar$` | `mods/attack-forge.jar` |
+
+La règle de la 1.8.9 est large (`attack-client*.jar`, héritée des premières versions) : un jar `attack-client-1710-1.0.0.jar`
+(le nom que Gradle donnerait au mod 1.7.10) serait pris pour le mod 1.8.9. Le jar 1.7.10 porte donc un autre préfixe
+(`attack-forge-…`), et `npm run check-release` refuse une release qui contient un nom de ce genre
+([Publier une version](Publier-une-version.md)).
 
 ```mermaid
 flowchart TD
@@ -313,7 +331,7 @@ flowchart TD
   B -->|non| D["GET api.github.com/repos/7ShIkI3/attack-launcher/releases/latest<br>(launcher en préversion : releases?per_page=10, première non-brouillon)"]
   D --> E{"Release publiée ?"}
   E -->|"404"| X["Erreur : aucune release publiée"]
-  E -->|oui| F["Cherche le jar de la règle du profil<br>(un jar Fabric ambigu est une erreur)"]
+  E -->|oui| F["Cherche le jar de la règle du profil<br>(un jar Fabric ou 1.7.10 ambigu est une erreur)"]
   F --> J{"Jar trouvé ?"}
   J -->|non| W["Erreur : pas encore de jar pour ce profil"]
   J -->|oui| G{"SHA-256 publié ?"}
@@ -323,9 +341,10 @@ flowchart TD
   H --> Z
 ```
 
-Dossier des jars de développement : `Documents\pvp-essentials\build\libs` (1.8.9) et
-`Documents\attack-client-fabric\versions\<mc>\build\libs` (Fabric), réglable par profil dans Réglages. Variables
-d'environnement : `ATTACK_DEV_JAR_DIR` (1.8.9) et `ATTACK_DEV_JAR_DIR_FABRIC_1_21_1`, `ATTACK_DEV_JAR_DIR_FABRIC_26_3`.
+Dossier des jars de développement : `Documents\pvp-essentials\build\libs` (1.8.9),
+`Documents\attack-client-fabric\versions\<mc>\build\libs` (Fabric) et `Documents\attack-forge-1710\build\libs` (1.7.10),
+réglable par profil dans Réglages. Variables d'environnement : `ATTACK_DEV_JAR_DIR` (1.8.9),
+`ATTACK_DEV_JAR_DIR_FABRIC_1_21_1`, `ATTACK_DEV_JAR_DIR_FABRIC_26_3` et `ATTACK_DEV_JAR_DIR_FORGE_1_7_10`.
 
 Le mod est mis à jour à **chaque installation ou réparation** : il prend toujours la dernière release. Un launcher en
 **préversion** (version avec un `-`, par exemple `0.5.0-beta.1`) lit à la place les 10 dernières releases
@@ -336,7 +355,7 @@ ne propose jamais de préversion (`allowPrerelease` reste faux).
 ## Java pour le lancement direct
 
 Sans Java personnalisé, le launcher installe le runtime officiel que demande le JSON de version de Mojang
-(`javaVersion.component`) : `jre-legacy` (Java 8) pour la 1.8.9, `java-runtime-delta` (Java 21) pour la 1.21.1,
+(`javaVersion.component`) : `jre-legacy` (Java 8) pour la 1.8.9 et la 1.7.10, `java-runtime-delta` (Java 21) pour la 1.21.1,
 `java-runtime-epsilon` (Java 25) pour la 26.3. Il lit le manifeste officiel des runtimes, choisit la plateforme (avec
 repli de Windows ARM vers x64 si Mojang n'a pas publié le composant), télécharge chaque fichier avec son SHA-1, puis écrit
 un marqueur `.attack-runtime.json` pour ne pas tout refaire. Le manifeste est relu à chaque lancement direct

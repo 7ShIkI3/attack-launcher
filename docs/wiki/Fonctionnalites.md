@@ -11,8 +11,8 @@ anglais (Réglages → Langue).
 
 ![Accueil du launcher, profil 26.3 (Fabric)](../images/home-fabric.png)
 
-- **Choix du profil** : trois cartes au-dessus de JOUER, **1.8.9** (Forge, « PvP classique »), **1.21.1** (« PvP moderne ») et
-  **26.3** (Fabric, « Dernière version »). Chaque profil est indépendant : son dossier de jeu, son état d'installation, son
+- **Choix du profil** : quatre cartes au-dessus de JOUER, **1.8.9** (Forge, « PvP classique »), **1.21.1** (« PvP moderne »),
+  **26.3** (Fabric, « Dernière version ») et **1.7.10** (Forge, « PvP 1.7 »). Chaque profil est indépendant : son dossier de jeu, son état d'installation, son
   profil dans le launcher officiel, son Java (8, 21 ou 25) et ses réglages. Le choix est retenu d'un lancement à l'autre ; il
   est bloqué pendant une installation ou un lancement.
 - **INSTALLER** (puis **JOUER** une fois tout installé) : installe Minecraft, le chargeur de mods (Forge ou Fabric Loader),
@@ -48,6 +48,10 @@ Elle suit le profil choisi sur l'accueil :
   Side Sounds, Replay Mod en option) et la vitrine des **62 modules** d'ATTACK Client, filtrables par catégorie (Combat, HUD,
   Visuel, Performance, Utilitaire). Les modules sont une liste d'information (`src/renderer/data.js`) : on les active et on
   les règle **en jeu**, depuis le menu ATTACK, pas dans le launcher.
+- **1.7.10** : le mod ATTACK 1.7.10 (avec sa version installée, ou « à installer ») et **sa propre liste de modules** : une version
+  « lite » du mod (menu ATTACK, éditeur de HUD, cosmétiques et une vingtaine de fiches), sans les modules interdits en classé
+  (No Jump Delay, No Hit Delay, Snap Tap, Perspective). Ni OptiFine ni pack de mods : le sous-titre le dit (« sans pack de mods »)
+  au lieu d'afficher « 0 mod », la carte « Pack de mods » des Réglages est masquée et « Mods et licences » n'a pas de tableau de pack.
 - **1.21.1 et 26.3** : le mod ATTACK (avec sa version installée, ou « à installer ») et les mods du **pack figé** avec leur
   version (Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast, Entity Culling, More Culling, BadOptimizations,
   ModernFix en 1.21.1, Krypton, Reflex AntiLag, Mod Menu, Continuity, Entity Texture / Model Features, Iris et Replay Mod en
@@ -81,7 +85,7 @@ et son dossier de jars deviennent ceux du profil 1.8.9.
 | Réglage | Détail |
 | --- | --- |
 | Mémoire allouée | 1 Go minimum, par pas de 256 Mo, 2 Go par défaut. Le curseur monte jusqu'à la mémoire de ce PC (entre 4 et 16 Go). Un avertissement apparaît au-delà de la moitié de la mémoire du PC. Valeur transmise au jeu en `-Xmx`. |
-| Dossier de jeu | Par profil : `%APPDATA%\.attack` (1.8.9) ou `%APPDATA%\.attack\profiles\fabric-<version>` (Fabric) par défaut : mods, réglages, captures et mondes d'ATTACK Client, séparés de ton `.minecraft`. Deux profils ne peuvent pas partager le même dossier : le launcher garde l'ancien (et l'installation refuse un dossier déjà marqué par un autre profil). |
+| Dossier de jeu | Par profil : `%APPDATA%\.attack` (1.8.9) ou `%APPDATA%\.attack\profiles\<profil>` (`fabric-<version>`, `forge-1.7.10`) par défaut : mods, réglages, captures et mondes d'ATTACK Client, séparés de ton `.minecraft`. Deux profils ne peuvent pas partager le même dossier : le launcher garde l'ancien (et l'installation refuse un dossier déjà marqué par un autre profil). |
 | Java | Par profil : « Fourni par Minecraft » (runtime officiel du profil : Java 8, 21 ou 25, installé par le launcher) ou « Personnalisé » (chemin d'un `javaw.exe` ou `java.exe`). |
 | Arguments Java | Par profil, vide par défaut. Options ajoutées **après** les arguments par défaut (G1GC...) : pour la JVM, la dernière valeur d'une option l'emporte, donc tu peux aussi en remplacer une (`-XX:MaxGCPauseMillis=30`). Exception : un seul ramasse-miettes à la fois ; si tu en choisis un autre (`-XX:+UseZGC`, `-XX:+UseParallelGC`...), les options G1 par défaut sont retirées. Séparées par des espaces, 1000 caractères et 40 options au plus. **Liste d'autorisation** (`src/main/jvmargs.js`) : `-Xms`, `-Xss`, `-Xmn` ; `-XX:+Nom`, `-XX:-Nom`, `-XX:Nom=valeur` (valeur simple, sans chemin), sauf les options qui lancent une commande, lisent ou écrivent un fichier (`OnError`, `VMOptionsFile`, `ErrorFile`, `HeapDump...`, `StartFlightRecording`...) ou règlent la mémoire maximale (`-Xmx`, `MaxRAM`, `MaxHeapSize` : c'est le curseur Mémoire) ; et les propriétés `sun.java2d.*`, `file.encoding`, `sun.jnu.encoding`, `user.language`, `user.country`, `java.net.preferIPv4Stack`. Tout le reste est refusé, parce que beaucoup d'options chargent du code (`-javaagent`, `-Xbootclasspath`, `-Dfabric.addMods`) ou détournent la connexion (`-Dminecraft.api.session.host` enverrait ton jeton ailleurs). Un argument refusé est expliqué sous le champ, l'ancienne valeur est gardée. Une option que ta version de Java ne connaît pas empêche le jeu de démarrer : lis alors `game-*.log`. |
 | Shaders (Iris) | Profils Fabric seulement : ajoute Iris au pack de mods (version qui va avec Sodium). Appliqué à la prochaine installation (bouton INSTALLER) ; coupé, Iris est retiré à l'installation suivante. |
@@ -113,7 +117,7 @@ bouton vers la page Releases (version portable). Voir [Installation et mises à 
 
 | | Avec un compte connecté | Sans compte |
 | --- | --- | --- |
-| Ce que fait JOUER | Lance directement le jeu | Ouvre le launcher Minecraft officiel sur le profil du même nom que celui choisi (« ATTACK Client », « ATTACK 1.21.1 » ou « ATTACK 26.3 ») |
+| Ce que fait JOUER | Lance directement le jeu | Ouvre le launcher Minecraft officiel sur le profil du même nom que celui choisi (« ATTACK Client », « ATTACK 1.21.1 », « ATTACK 26.3 » ou « ATTACK 1.7.10 ») |
 | Java | Celui des Réglages, sinon le runtime officiel de Mojang (installé par le launcher) | Celui du launcher officiel (ou celui du profil, si tu en as choisi un dans Réglages) |
 | Connexion au jeu | Jeton Minecraft fourni par le launcher | Connexion gérée par le launcher officiel |
 | Journal | `<dossier de jeu>\logs\launcher\game-*.log` | Celui du launcher officiel |
@@ -123,16 +127,17 @@ chargeur + Minecraft, mémoire des Réglages, arguments Java par défaut du laun
 Mojang (qui corrige aussi la faille Log4Shell des anciennes versions). Marque envoyée au jeu :
 `-Dminecraft.launcher.brand=attack-launcher` (`src/main/game.js:97-130`).
 
-Sans compte, le launcher met le profil ATTACK choisi (« ATTACK Client », « ATTACK 1.21.1 » ou « ATTACK 26.3 ») en dernier utilisé (`markLastUsed`) : avec le tri « par dernière
+Sans compte, le launcher met le profil ATTACK choisi (« ATTACK Client », « ATTACK 1.21.1 », « ATTACK 26.3 » ou « ATTACK 1.7.10 ») en dernier utilisé (`markLastUsed`) : avec le tri « par dernière
 partie » du launcher officiel, il est présélectionné.
 
 ## Profil du launcher officiel
 
 À l'installation (et à chaque clic sur JOUER sans compte), le launcher fusionne le profil du profil choisi dans
 `%APPDATA%\.minecraft\launcher_profiles.json` (`src/main/profiles.js`) : **« ATTACK Client »** (identifiant
-`attack-client`, inchangé), **« ATTACK 1.21.1 »** (`attack-fabric-1.21.1`) ou **« ATTACK 26.3 »** (`attack-fabric-26.3`) :
+`attack-client`, inchangé), **« ATTACK 1.21.1 »** (`attack-fabric-1.21.1`), **« ATTACK 26.3 »** (`attack-fabric-26.3`) ou
+**« ATTACK 1.7.10 »** (`attack-forge-1.7.10`) :
 
-- version : Forge 1.8.9 (`1.8.9-forge1.8.9-11.15.1.2318-1.8.9`) ou Fabric Loader (`fabric-loader-0.19.5-1.21.1`,
+- version : Forge 1.8.9 (`1.8.9-forge1.8.9-11.15.1.2318-1.8.9`), Forge 1.7.10 (`1.7.10-Forge10.13.4.1614-1.7.10`) ou Fabric Loader (`fabric-loader-0.19.5-1.21.1`,
   `fabric-loader-0.19.5-26.3`), dossier de jeu séparé, `-Xmx` tiré des Réglages, Java personnalisé si choisi,
   icône ATTACK ;
 - arguments Java : si tu en as mis dans Réglages, ceux par défaut suivis des tiens ; sinon, ceux déjà dans le profil

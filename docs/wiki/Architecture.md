@@ -43,7 +43,7 @@ réseau ou du chiffrement reçoivent leur dépendance en paramètre (un « trans
 | --- | --- |
 | `main.js` | Fenêtre, canaux IPC, chiffrement des jetons (`safeStorage`), enchaînement installation / lancement / mises à jour |
 | `preload.js` | Pont `contextBridge` : expose `window.attack` avec des appels nommés, sans aucun accès à Node |
-| `catalog.js` | **Catalogue des 3 profils** (Forge 1.8.9, Fabric 1.21.1, Fabric 26.3) : version de Minecraft, chargeur, dossier de jeu, profil officiel, règle exacte du jar ATTACK, pack. Module pur |
+| `catalog.js` | **Catalogue des 4 profils** (Forge 1.8.9, Fabric 1.21.1, Fabric 26.3, Forge 1.7.10) : version de Minecraft, chargeur, dossier de jeu, profil officiel, règle exacte du jar ATTACK (et `suspect()`, qui repère un nom de jar à version douteuse), pack (`null` en 1.7.10). Module pur |
 | `constants.js` | Adresses officielles, **liste des hôtes autorisés** (`ALLOWED_HOSTS`, Fabric et CDN Modrinth compris), URL de connexion ; alias des anciennes constantes du profil 1.8.9 |
 | `http.js` | Téléchargements : hôtes autorisés, redirections vérifiées une à une, fichier `.part`, contrôle du hash |
 | `installer.js` | Installation complète d'un profil (Minecraft, bibliothèques, assets, Forge **ou** Fabric, pack de mods, OptiFine du joueur, réglages de départ d'`options.txt`, configuration de WalksyLib, mod, profil) et état d'installation (`packGroups`, `optifine`) |
