@@ -82,6 +82,15 @@ class FakeNode {
     if (this.isDisabled && fakeDocument && fakeDocument.activeElement === this) fakeDocument.activeElement = fakeDocument.body;
   }
 
+  get inert() {
+    return this.isInert === true;
+  }
+
+  set inert(value) {
+    this.isInert = Boolean(value);
+    if (this.isInert && fakeDocument && this.contains(fakeDocument.activeElement)) fakeDocument.activeElement = fakeDocument.body; // un élément inerte perd le focus
+  }
+
   setAttribute(name, value) {
     this.attributes[name] = String(value);
     if (name.startsWith('data-')) this.dataset[name.slice(5).replace(/-(\w)/g, (_, c) => c.toUpperCase())] = String(value);
@@ -103,15 +112,17 @@ class FakeNode {
     return node === this || this.children.some((child) => typeof child !== 'string' && child.contains(node));
   }
 
-  /** Seuls les sélecteurs de la reprise du focus : [data-focus-key] et [data-focus-key="…"] (le reste : aucun noeud, comme avant). */
+  /** Seuls les sélecteurs de la reprise du focus : [data-focus-key], [data-focus-key="…"] et des noms de balise (h1, button, « button, input ») ; le reste : aucun noeud. */
   querySelectorAll(selector) {
     const match = /^\[data-focus-key(?:="([^"]*)")?\]$/.exec(selector);
-    if (!match) return [];
+    const names = selector.split(',').map((name) => name.trim());
+    const tags = names.every((name) => /^[a-z][a-z0-9]*$/.test(name)) ? names : null;
+    if (!match && !tags) return [];
     const all = [];
     const walk = (node) => node.children.forEach((child) => {
       if (typeof child === 'string') return;
       const key = child.attributes['data-focus-key'];
-      if (key !== undefined && (match[1] === undefined || key === match[1])) all.push(child);
+      if (match ? key !== undefined && (match[1] === undefined || key === match[1]) : tags.includes(child.tagName)) all.push(child);
       walk(child);
     });
     walk(this);
@@ -127,8 +138,9 @@ class FakeNode {
  * Charge i18n.js, data.js, logo.js puis app.js dans un contexte isolé ; `attack` = la fausse API du processus principal.
  * Attend la fin du chargement (init + lecture de l'état) ; renvoie { byId } : les noeuds de la page par identifiant.
  */
-async function boot({ info, settings, status }) {
+async function boot({ info, settings, status, accounts }) {
   const nodes = new Map();
+  const accountsView = accounts || { accounts: [], hasClientId: false, devMode: false };
   const document = {
     documentElement: new FakeNode('html'),
     body: new FakeNode('body'),
@@ -140,7 +152,7 @@ async function boot({ info, settings, status }) {
     createElement: (tag) => new FakeNode(tag),
     createElementNS: (ns, tag) => new FakeNode(tag),
     importNode: (node) => node,
-    querySelectorAll: () => [],
+    querySelectorAll: (selector) => (selector.startsWith('.') ? [...nodes.values()].filter((node) => node.classList.contains(selector.slice(1))) : []), // .page, .nav-item… : les noeuds que le test a marqués
     addEventListener: () => {},
     dispatchEvent: () => {},
   };
@@ -150,16 +162,29 @@ async function boot({ info, settings, status }) {
   let statusRead = false;
   const assistCalls = [];
   const assistHandlers = [];
+  const accountHandlers = [];
   const attack = {
     info: async () => info,
     getSettings: async () => settings,
+    setSettings: async (patch) => Object.assign(settings, patch),
     status: async () => {
       statusRead = true;
       return status;
     },
-    accounts: { list: async () => ({ accounts: [], hasClientId: false, devMode: false }) },
+    accounts: {
+      list: async () => accountsView,
+      select: async (id) => { // « Utiliser » : ce compte devient l'actif
+        for (const account of accountsView.accounts) account.active = account.id === id;
+        return accountsView;
+      },
+      remove: async (id) => { // « Déconnecter » : le compte part, le premier restant devient l'actif
+        accountsView.accounts = accountsView.accounts.filter((account) => account.id !== id);
+        if (accountsView.accounts.length > 0 && !accountsView.accounts.some((account) => account.active)) accountsView.accounts[0].active = true;
+        return accountsView;
+      },
+    },
     update: { state: async () => ({ phase: 'off' }) },
-    onProgress: noop, onAuthEvent: noop, onAccountsChanged: noop, onUpdateState: noop, onWindowState: noop,
+    onProgress: noop, onAuthEvent: noop, onAccountsChanged: (callback) => { accountHandlers.push(callback); }, onUpdateState: noop, onWindowState: noop,
     onOptifineAssist: (callback) => { assistHandlers.push(callback); },
     optifineAssist: {
       start: async (options) => { assistCalls.push(['start', options]); return { ok: true, state: 'waiting', downloadsDir: 'D:\\Dl' }; },
@@ -187,7 +212,12 @@ async function boot({ info, settings, status }) {
     for (const handler of assistHandlers) await handler(state);
     for (let i = 0; i < 5; i++) await tick();
   };
-  return { byId, window, document, assistCalls, emitAssist, tick };
+  // liste de comptes changée côté processus principal ; attend la fin des rendus
+  const emitAccounts = async (view) => {
+    for (const handler of accountHandlers) await handler(view);
+    for (let i = 0; i < 5; i++) await tick();
+  };
+  return { byId, window, document, assistCalls, emitAssist, emitAccounts, tick };
 }
 
 // ---------- état d'installation réel ----------
@@ -222,8 +252,8 @@ function installed189() {
   return { root, source, minecraftDir: path.join(root, '.minecraft'), gameDir: path.join(root, 'game') };
 }
 
-/** Ce que la page affiche pour l'état réel du profil 1.8.9 avec ces réglages. */
-async function render(dirs, settings) {
+/** Ce que la page affiche pour l'état réel du profil 1.8.9 avec ces réglages ; `extra` : le reste de boot (comptes). */
+async function render(dirs, settings, extra = {}) {
   const status = await installer.status({ minecraftDir: dirs.minecraftDir, gameDir: dirs.gameDir, profile: FORGE, ...settings });
   const info = {
     version: '0.6.0', minecraftDir: dirs.minecraftDir, totalRamMb: 16384, launcherDetected: true,
@@ -232,6 +262,7 @@ async function render(dirs, settings) {
   const page = await boot({
     info, status,
     settings: { ramMb: 3072, gameDir: dirs.gameDir, lang: 'fr', profileId: 'forge-1.8.9', javaPath: '', jvmArgs: '', devMode: false, devJarDir: '', msClientId: '', ...settings },
+    ...extra,
   });
   const rows = page.byId('ready-pop').children.map((row) => ({
     label: row.children[1].children[0].textContent,
@@ -556,4 +587,273 @@ test('assistant OptiFine en anglais : « (Mirror) », « Download », « Keep »
   assert.match(text, /“Keep”/);
   assert.deepEqual(labelsOf(page.byId('optifine-assist')), ['Cancel']);
   fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+// ---------- focus clavier : l'élément focalisé disparaît ou sa page est masquée ----------
+
+/** Entrée sur un bouton ou un interrupteur : focus, puis son gestionnaire, puis les rendus qui suivent. */
+async function pressKey(page, node, event = 'click', ...args) {
+  node.focus();
+  await node.listeners[event][0](...args);
+  for (let i = 0; i < 5; i++) await page.tick();
+}
+const dataKey = (node) => node && node.attributes && node.attributes['data-focus-key'];
+
+test('alerte de l’accueil au clavier : fermée ou activée, le focus va à une commande visible, jamais <body>', async (t) => {
+  const dirs = installed189();
+  t.after(() => fs.rmSync(dirs.root, { recursive: true, force: true }));
+  const { page } = await render(dirs, {});
+  const { byId, document } = page;
+  // le faux DOM n'a pas la page HTML : on lui donne la hiérarchie dont showPage et l'alerte ont besoin
+  const titles = {};
+  for (const name of ['home', 'mods', 'settings', 'account']) {
+    const section = byId(`page-${name}`);
+    section.id = `page-${name}`;
+    section.classList.add('page');
+    section.classList.toggle('active', name === 'home');
+    titles[name] = new FakeNode('h1');
+    section.append(titles[name]);
+  }
+  byId('lower').append(byId('ready-btn'), byId('repair-button'), byId('open-dir-button'), byId('logs-button')); // la ligne « prêt » et les outils, que l'alerte recouvre
+  byId('page-home').append(byId('play-button'), byId('lower'), byId('alert'));
+  byId('alert').append(byId('alert-close'), byId('alert-action'), byId('alert-copy'));
+  byId('page-mods').append(byId('mods-q'));
+  const body = document.body;
+
+  // la croix masque le bouton qui a le focus : la ligne « prêt » de l'accueil le reprend
+  page.window.AttackUI.showError('SOMETHING_ELSE', 'disque plein');
+  await pressKey(page, byId('alert-close'));
+  assert.equal(byId('alert').classList.contains('hidden'), true);
+  assert.equal(byId('lower').inert, false);
+  assert.notEqual(document.activeElement, body);
+  assert.equal(document.activeElement, byId('ready-btn'));
+
+  // l'alerte s'ouvre pendant qu'une commande qu'elle recouvre a le focus (« Dossier de jeu », « Journaux »… en échec) : elle le prend, jamais <body>
+  for (const id of ['repair-button', 'open-dir-button', 'logs-button', 'ready-btn']) {
+    byId(id).focus();
+    page.window.AttackUI.showError('SOMETHING_ELSE', 'disque plein');
+    assert.equal(byId('lower').inert, true, `${id} : commandes recouvertes inertes`);
+    assert.notEqual(document.activeElement, body, `${id} : pas sur <body>`);
+    assert.equal(document.activeElement, byId('alert-copy'), `${id} : « Copier » (ce code n’a pas d’action)`);
+    byId('alert-close').listeners.click[0]();
+    assert.equal(document.activeElement, byId('ready-btn'), `${id} : la croix rend le focus à l’accueil`);
+  }
+  byId('logs-button').focus();
+  page.window.AttackUI.showError('NO_ACCOUNT'); // un code qui propose une action : le bouton d'action prend le focus
+  assert.equal(document.activeElement, byId('alert-action'));
+  byId('alert-close').listeners.click[0]();
+
+  // une action coûteuse (« Vérifier / réparer » relance une installation) ne prend jamais le focus : une Entrée répétée l'activerait
+  for (const code of ['PACK_CLEANUP', 'FILES_MISSING']) {
+    byId('repair-button').focus();
+    page.window.AttackUI.showError(code);
+    assert.equal(byId('alert-action').classList.contains('hidden'), false, `${code} : bouton d’action affiché`);
+    assert.equal(document.activeElement, byId('alert-copy'), `${code} : « Copier », pas « Vérifier / réparer »`);
+    byId('alert-close').listeners.click[0]();
+  }
+  // une nouvelle erreur arrive pendant que le bouton d'action a le focus : sans action, ou avec une action coûteuse, « Copier » le reprend
+  for (const code of ['SOMETHING_ELSE', 'PACK_CLEANUP']) {
+    byId('logs-button').focus();
+    page.window.AttackUI.showError('NO_ACCOUNT');
+    assert.equal(document.activeElement, byId('alert-action'));
+    page.window.AttackUI.showError(code, 'autre erreur');
+    assert.equal(document.activeElement, byId('alert-copy'), `${code} : le focus quitte le bouton d’action`);
+    byId('alert-close').listeners.click[0]();
+  }
+  // une nouvelle erreur à action sans coût : le bouton d'action garde le focus
+  byId('logs-button').focus();
+  page.window.AttackUI.showError('NO_ACCOUNT');
+  page.window.AttackUI.showError('JAVA_NOT_FOUND');
+  assert.equal(document.activeElement, byId('alert-action'));
+  byId('alert-close').listeners.click[0]();
+
+  // le bouton d'action masque l'alerte puis la page d'accueil entière : le titre de la page affichée reprend le focus
+  for (const [code, name] of [['NO_ACCOUNT', 'account'], ['JAVA_NOT_FOUND', 'settings']]) {
+    page.window.AttackUI.showError(code);
+    assert.equal(byId('alert-action').classList.contains('hidden'), false, `${code} : bouton d’action`);
+    await pressKey(page, byId('alert-action'));
+    assert.equal(byId(`page-${name}`).classList.contains('active'), true, `${code} : page ${name} affichée`);
+    assert.equal(byId('page-home').classList.contains('active'), false);
+    assert.equal(document.activeElement, titles[name], `${code} : focus sur le titre de la page ${name}`);
+    assert.equal(titles[name].tabIndex, -1, 'titre focalisable par programme, hors de l’ordre de tabulation');
+    page.window.showPage('home'); // retour à l'accueil depuis la page (le focus y était) : le titre de l'accueil
+    assert.equal(document.activeElement, titles.home);
+  }
+
+  // le focus était ailleurs : rien n'est volé (champ de la page Mods, onglet de la barre latérale)
+  byId('mods-q').focus();
+  page.window.AttackUI.showError('SOMETHING_ELSE', 'disque plein');
+  assert.equal(document.activeElement, byId('mods-q'), 'ouvrir l’alerte sans avoir le focus dans les commandes recouvertes ne le déplace pas');
+  byId('alert-close').listeners.click[0]();
+  assert.equal(document.activeElement, byId('mods-q'), 'fermer l’alerte sans y avoir le focus ne le déplace pas');
+  const sidebar = new FakeNode('button'); // hors de toute page
+  sidebar.focus();
+  page.window.showPage('account');
+  assert.equal(document.activeElement, sidebar, 'un onglet de la barre latérale garde le focus');
+  byId('mods-q').focus();
+  page.window.showPage('mods'); // la page affichée est celle qui a déjà le focus
+  assert.equal(document.activeElement, byId('mods-q'));
+});
+
+test('page Compte au clavier : « Utiliser » ou « Déconnecter » met le focus sur le nom d’un compte, jamais sur un bouton ni sur <body>', async (t) => {
+  const dirs = installed189();
+  t.after(() => fs.rmSync(dirs.root, { recursive: true, force: true }));
+  const accounts = {
+    hasClientId: false, devMode: true,
+    accounts: [
+      { id: 'a', name: 'Alpha', type: 'offline', active: true },
+      { id: 'b', name: 'Bravo', type: 'offline', active: false },
+      { id: 'c', name: 'Charlie', type: 'offline', active: false },
+    ],
+  };
+  const { page } = await render(dirs, {}, { accounts });
+  const { byId, document } = page;
+  const title = new FakeNode('h1');
+  const section = byId('page-account'); // le faux DOM n'a pas la page HTML : son titre et la liste des comptes
+  section.classList.add('page');
+  section.append(title, byId('accounts-list'));
+  const keys = () => nodesOf(byId('accounts-list')).filter((n) => n.tagName === 'button').map(dataKey);
+  const button = (key) => nodesOf(byId('accounts-list')).find((n) => dataKey(n) === key);
+  assert.deepEqual(keys(), ['account:a:remove', 'account:b:use', 'account:b:remove', 'account:c:use', 'account:c:remove']);
+
+  // la touche Entrée maintenue répète l'activation sur l'élément focalisé : il ne doit jamais être un bouton (surtout pas « Déconnecter »)
+  const inert = () => {
+    assert.notEqual(document.activeElement, document.body);
+    assert.notEqual(document.activeElement.tagName, 'button');
+    assert.equal(document.activeElement.listeners.click, undefined, 'Entrée répétée sur la cible du focus ne déclenche rien');
+    assert.equal(document.activeElement.attributes.tabindex, '-1', 'focalisable par programme, hors de l’ordre de tabulation');
+  };
+
+  // « Utiliser » : ce compte devient actif, son bouton disparaît ; le nom du même compte prend le focus
+  await pressKey(page, button('account:b:use'));
+  assert.deepEqual(keys(), ['account:a:use', 'account:a:remove', 'account:b:remove', 'account:c:use', 'account:c:remove']);
+  assert.equal(dataKey(document.activeElement), 'account:b:name', 'le compte Bravo garde le focus, sur son nom');
+  inert();
+
+  // « Déconnecter » : la carte part ; le nom du premier compte restant prend le focus
+  await pressKey(page, button('account:b:remove'));
+  assert.deepEqual(keys(), ['account:a:remove', 'account:c:use', 'account:c:remove']);
+  assert.equal(dataKey(document.activeElement), 'account:a:name');
+  inert();
+
+  // dernier compte retiré : plus aucune commande dans la liste, le titre de la page Compte prend le focus
+  await pressKey(page, button('account:c:remove'));
+  await pressKey(page, button('account:a:remove'));
+  assert.deepEqual(keys(), []);
+  assert.equal(document.activeElement, title);
+  assert.equal(title.tabIndex, -1);
+
+  // le focus n'est jamais volé quand il n'était pas dans la liste (liste mise à jour par le processus principal)
+  byId('wc-min').focus();
+  accounts.accounts = [{ id: 'd', name: 'Delta', type: 'offline', active: true }];
+  await page.emitAccounts(accounts);
+  assert.deepEqual(keys(), ['account:d:remove']);
+  assert.equal(document.activeElement, byId('wc-min'));
+});
+
+test('page Mods au clavier : une carte qui sort du filtre ou « Tout afficher » rend le focus au filtre d’état actif, jamais <body>', async (t) => {
+  const dirs = installed189();
+  t.after(() => fs.rmSync(dirs.root, { recursive: true, force: true }));
+  const { page } = await render(dirs, {});
+  const { byId, document } = page;
+  const grid = () => byId('mods-grid');
+  const switches = () => nodesOf(grid()).filter((n) => n.tagName === 'input' && /^mod:/.test(dataKey(n) || ''));
+  const cardOf = (key) => grid().children.find((card) => nodesOf(card).some((n) => dataKey(n) === key));
+  const nameOf = (card) => card.children[0].children[1].textContent;
+  /** Coche ou décoche l'interrupteur de la clé donnée, au clavier (focus puis changement), et attend l'enregistrement. */
+  const flip = async (key, checked) => {
+    const node = switches().find((n) => dataKey(n) === key);
+    node.checked = checked;
+    await pressKey(page, node, 'change');
+  };
+  // le faux DOM n'a pas la page HTML : les trois boutons du filtre d'état (Tous, Activés, Désactivés)
+  const stateButton = {};
+  for (const value of ['all', 'on', 'off']) {
+    stateButton[value] = new FakeNode('button');
+    stateButton[value].dataset.value = value;
+    byId('mods-state').append(stateButton[value]);
+  }
+  const setState = (value) => byId('mods-state').listeners.click[0]({ target: { dataset: { value } } });
+  const search = (value) => byId('mods-q').listeners.input[0]({ target: { value } });
+  // un mod du pack : son interrupteur règle un groupe (réglage enregistré), alors que celui d'OptiFine suit l'état lu par le processus principal
+  const first = switches().map(dataKey).find((key) => key !== 'mod:optifine');
+  assert.ok(first, 'le pack 1.8.9 a au moins un mod à interrupteur');
+
+  // témoin, filtre « Tous » : la carte reste, son interrupteur garde le focus
+  await flip(first, false);
+  assert.equal(dataKey(document.activeElement), first);
+  assert.notEqual(document.activeElement, document.body);
+
+  // filtre « Activés » : la coupure fait sortir la carte de la grille
+  await flip(first, true);
+  setState('on');
+  const name = nameOf(cardOf(first));
+  await flip(first, false);
+  assert.equal(cardOf(first), undefined, `la carte « ${name} » a quitté la grille`);
+  assert.notEqual(document.activeElement, document.body);
+  assert.equal(document.activeElement, stateButton.on, 'le bouton « Activés », qui a retiré la carte et reste à sa place, reprend le focus');
+
+  // filtre « Désactivés » : la remise en marche fait sortir la carte, et la grille peut devenir vide
+  setState('off');
+  search(name);
+  assert.deepEqual(grid().children.map(nameOf), [name], 'la recherche ne garde que cette carte');
+  await flip(first, true);
+  assert.equal(cardOf(first), undefined);
+  assert.equal(nodesOf(grid()).some((n) => n.className === 'mods-empty'), true, 'plus aucune carte : message « aucun résultat »');
+  assert.equal(document.activeElement, stateButton.off);
+
+  // « Tout afficher » : le bouton disparaît avec la reconstruction de la grille
+  const clear = nodesOf(grid()).find((n) => n.tagName === 'button' && n.textContent === 'Tout afficher');
+  assert.ok(clear, 'bouton « Tout afficher » dans l’état vide');
+  // la grille est refaite sans changement (retour sur la fenêtre, état relu) : « Tout afficher » garde le focus, sur place
+  clear.focus();
+  search(name);
+  const clearAgain = nodesOf(grid()).find((n) => n.tagName === 'button' && n.textContent === 'Tout afficher');
+  assert.notEqual(clearAgain, clear, 'le bouton a bien été recréé');
+  assert.equal(document.activeElement, clearAgain, '« Tout afficher » recréé reprend le focus au lieu de sauter au filtre « Tous »');
+  await pressKey(page, clearAgain);
+  assert.ok(grid().children.length > 1, 'la grille est de nouveau pleine');
+  assert.equal(byId('mods-q').value, '');
+  assert.equal(document.activeElement, stateButton.all, 'les filtres sont remis à zéro : « Tous » reprend le focus');
+
+  // le focus n'est jamais volé quand il n'était pas dans la grille
+  byId('wc-min').focus();
+  search('');
+  setState('on');
+  assert.equal(document.activeElement, byId('wc-min'));
+});
+
+test('assistant OptiFine, import réussi sur la page Mods : le focus suit l’assistant jusqu’à l’interrupteur OptiFine', async (t) => {
+  const dirs = installed189();
+  const other = installed189(); // une installation avec la copie rangée : l'état que la page relira après l'import
+  t.after(() => {
+    fs.rmSync(dirs.root, { recursive: true, force: true });
+    fs.rmSync(other.root, { recursive: true, force: true });
+  });
+  await installer.installOptifine(other.gameDir, other.minecraftDir, {});
+  const withCopy = await installer.status({ minecraftDir: other.minecraftDir, gameDir: other.gameDir, profile: FORGE });
+  assert.equal(withCopy.optifine.found, true);
+  fs.rmSync(dirs.source); // aucune copie : la carte de la page Mods porte l'assistant
+  const { page, status } = await render(dirs, {});
+  assert.equal(status.optifine.found, false, 'départ : aucune copie utilisable');
+  const { byId, document } = page;
+  const modsCard = () => byId('mods-grid').children.find((card) => /OptiFine/.test(card.textContent) && /wide/.test(card.className));
+  const button = (label) => nodesOf(modsCard()).find((n) => n.tagName === 'button' && n.textContent === label);
+
+  await pressKey(page, button('Obtenir OptiFine'));
+  assert.equal(dataKey(document.activeElement), 'assist:mods:title');
+  await page.emitAssist({ state: 'seen', file: 'OptiFine_1.8.9_HD_U_M5.jar', version: 'HD_U_M5', downloadsDir: 'D:\\Dl' });
+  await pressKey(page, button('Utiliser ce fichier'));
+  await page.emitAssist({ state: 'checking', file: 'OptiFine_1.8.9_HD_U_M5.jar', downloadsDir: 'D:\\Dl' });
+  assert.equal(dataKey(document.activeElement), 'assist:mods:title', 'le titre garde le focus pendant la vérification');
+
+  // le processus principal a rangé la copie : la page relit l'état, la carte passe de l'assistant à l'interrupteur
+  status.optifine = withCopy.optifine;
+  await page.emitAssist({ state: 'imported', file: 'OptiFine_1.8.9_HD_U_M5.jar', version: 'HD_U_M5', downloadsDir: 'D:\\Dl' });
+  const card = byId('mods-grid').children.find((c) => /OptiFine/.test(c.textContent) && nodesOf(c).some((n) => dataKey(n) === 'mod:optifine'));
+  assert.ok(card, 'la carte OptiFine porte maintenant son interrupteur');
+  assert.notEqual(document.activeElement, document.body);
+  assert.equal(dataKey(document.activeElement), 'mod:optifine');
+  assert.equal(document.activeElement.tagName, 'input');
+  assert.ok(card.contains(document.activeElement));
 });

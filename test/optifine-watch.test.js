@@ -362,6 +362,54 @@ test('dossier Téléchargements introuvable : état « error » tout de suite, m
   s.clean();
 });
 
+/** readdir factice dont chaque appel reste en attente jusqu'à ce que le test le règle (resolve ou reject) : `calls` = les appels reçus. */
+function pendingReaddir() {
+  const calls = [];
+  return { calls, fsApi: { ...fsp, readdir: () => new Promise((resolve, reject) => calls.push({ resolve, reject })) } };
+}
+
+test('premier sondage en attente : annuler puis relancer, l’échec de l’ancien readdir ne coupe pas la nouvelle surveillance', async () => {
+  const dir = pendingReaddir();
+  const s = setup({ fsApi: dir.fsApi });
+  const first = s.watcher.start();
+  s.watcher.cancel();
+  const second = s.watcher.start();
+  assert.equal(dir.calls.length, 2, 'un readdir par surveillance, tous deux en attente');
+  dir.calls[0].reject(new Error('EPERM: dossier inaccessible')); // l'ancien sondage échoue alors que la nouvelle surveillance attend encore le sien
+  await first;
+  assert.deepEqual(s.states(), ['waiting', 'cancelled', 'waiting'], 'aucune erreur publiée par l’ancien sondage');
+  assert.equal(s.watcher.isActive(), true);
+  assert.equal(s.clock.pending(), 1, 'la limite de temps de la nouvelle surveillance tourne toujours');
+  dir.calls[1].resolve([]);
+  await second;
+  assert.equal(s.watcher.isActive(), true);
+  assert.equal(s.clock.pending(), 2, 'le sondage suivant est planifié');
+  assert.deepEqual(s.states(), ['waiting', 'cancelled', 'waiting']);
+  s.clean();
+});
+
+test('premier sondage en attente : annulation ou fermeture avant l’échec du readdir, aucune erreur n’est publiée', async () => {
+  const cancelled = pendingReaddir();
+  const a = setup({ fsApi: cancelled.fsApi });
+  const first = a.watcher.start();
+  a.watcher.cancel();
+  cancelled.calls[0].reject(new Error('EPERM: dossier inaccessible'));
+  await first;
+  assert.deepEqual(a.states(), ['waiting', 'cancelled'], 'l’annulation n’est pas écrasée par une erreur');
+  assert.equal(a.watcher.isActive(), false);
+  a.clean();
+
+  const closed = pendingReaddir();
+  const b = setup({ fsApi: closed.fsApi });
+  const second = b.watcher.start();
+  b.watcher.dispose();
+  closed.calls[0].reject(new Error('EPERM: dossier inaccessible'));
+  await second;
+  assert.deepEqual(b.states(), ['waiting'], 'dispose ne publie plus rien');
+  assert.equal(b.clock.pending(), 0);
+  b.clean();
+});
+
 test('import qui échoue (disque plein…) : état « error » avec le message, minuteries arrêtées', async () => {
   const s = setup({ importFile: async () => { throw Object.assign(new Error('Disque plein'), { code: 'ENOSPC' }); } });
   await s.watcher.start();
