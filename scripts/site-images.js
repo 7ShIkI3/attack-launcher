@@ -31,7 +31,7 @@ const KEYS = {
   'launcher-mods': { widths: LAUNCHER_WIDTHS },
   'launcher-mods-fabric': { widths: LAUNCHER_WIDTHS },
   'launcher-settings': { widths: LAUNCHER_WIDTHS },
-  // Compte factice : le launcher affiche en bas un message d'erreur (jeton de renouvellement absent). On garde le haut de la page.
+  // Compte factice : on garde le haut de la page (le bas est vide ; en mode capture, le compte n'est pas rafraîchi, donc pas d'erreur).
   'launcher-account': { widths: LAUNCHER_WIDTHS, cropHeight: 618 },
   'launcher-changelog': { widths: LAUNCHER_WIDTHS },
   'client-menu': { widths: CLIENT_WIDTHS },

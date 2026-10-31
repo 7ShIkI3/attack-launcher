@@ -55,4 +55,4 @@ adresses listées dans [Vie privée et sécurité](Vie-privee-et-securite.md) so
 | --- | --- |
 | ![Accueil](../images/home.png) | ![Compte](../images/account.png) |
 
-Les captures montrent un compte factice (« Raphael ») avec un skin de test.
+Les captures (0.7.0) montrent un compte factice (« Joueur ») avec un skin de test.

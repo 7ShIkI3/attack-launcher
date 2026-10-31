@@ -6,12 +6,12 @@
       "width": 560,
       "height": 350,
       "file": "launcher-home-en-560.webp",
-      "bytes": 17848,
+      "bytes": 19046,
       "quality": 0.86,
       "source": "sources/launcher-home-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "730842762fb161316cac274e03625fb89541275b224ecc844b2324ab1098a894"
+      "sourceSha256": "5ec7683c74613e11c4cf4ede493ea713f974201105cb9e0779bb1ed732222cbb"
     },
     {
       "key": "launcher-home",
@@ -19,12 +19,12 @@
       "width": 1120,
       "height": 700,
       "file": "launcher-home-en-1120.webp",
-      "bytes": 45754,
+      "bytes": 51694,
       "quality": 0.86,
       "source": "sources/launcher-home-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "730842762fb161316cac274e03625fb89541275b224ecc844b2324ab1098a894"
+      "sourceSha256": "5ec7683c74613e11c4cf4ede493ea713f974201105cb9e0779bb1ed732222cbb"
     },
     {
       "key": "launcher-home",
@@ -32,12 +32,12 @@
       "width": 560,
       "height": 350,
       "file": "launcher-home-fr-560.webp",
-      "bytes": 18118,
+      "bytes": 19848,
       "quality": 0.86,
       "source": "sources/launcher-home-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "2c6711977f514994336e2e657729698014b655a0fd68c01ad2d23235eb1412ae"
+      "sourceSha256": "9719ea7ee9fec827a57a4795d1200b5e08b9168a54b10b939dce19aa189b2611"
     },
     {
       "key": "launcher-home",
@@ -45,12 +45,12 @@
       "width": 1120,
       "height": 700,
       "file": "launcher-home-fr-1120.webp",
-      "bytes": 47394,
+      "bytes": 54134,
       "quality": 0.86,
       "source": "sources/launcher-home-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "2c6711977f514994336e2e657729698014b655a0fd68c01ad2d23235eb1412ae"
+      "sourceSha256": "9719ea7ee9fec827a57a4795d1200b5e08b9168a54b10b939dce19aa189b2611"
     },
     {
       "key": "launcher-home-fabric",
@@ -58,12 +58,12 @@
       "width": 560,
       "height": 350,
       "file": "launcher-home-fabric-en-560.webp",
-      "bytes": 17750,
+      "bytes": 18922,
       "quality": 0.86,
       "source": "sources/launcher-home-fabric-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "694b1741371d0453b62ce6b3e996336d0e35e2f57940fa1c99d390d94dd95e94"
+      "sourceSha256": "3fc5573dd74337dc52bb1439bb60cb7bfb2822c3614a09605a4e8c3301a92df5"
     },
     {
       "key": "launcher-home-fabric",
@@ -71,12 +71,12 @@
       "width": 1120,
       "height": 700,
       "file": "launcher-home-fabric-en-1120.webp",
-      "bytes": 45598,
+      "bytes": 51704,
       "quality": 0.86,
       "source": "sources/launcher-home-fabric-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "694b1741371d0453b62ce6b3e996336d0e35e2f57940fa1c99d390d94dd95e94"
+      "sourceSha256": "3fc5573dd74337dc52bb1439bb60cb7bfb2822c3614a09605a4e8c3301a92df5"
     },
     {
       "key": "launcher-home-fabric",
@@ -84,12 +84,12 @@
       "width": 560,
       "height": 350,
       "file": "launcher-home-fabric-fr-560.webp",
-      "bytes": 18140,
+      "bytes": 19824,
       "quality": 0.86,
       "source": "sources/launcher-home-fabric-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "ebc088455e789158376f575cd9b78eda16ef8d94662f94ee3d24ad0a8346dd56"
+      "sourceSha256": "323a42122288edeeb2265f17cad4c25627fd4fad07a1316c5baf260fc01172eb"
     },
     {
       "key": "launcher-home-fabric",
@@ -97,12 +97,12 @@
       "width": 1120,
       "height": 700,
       "file": "launcher-home-fabric-fr-1120.webp",
-      "bytes": 47550,
+      "bytes": 54438,
       "quality": 0.86,
       "source": "sources/launcher-home-fabric-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "ebc088455e789158376f575cd9b78eda16ef8d94662f94ee3d24ad0a8346dd56"
+      "sourceSha256": "323a42122288edeeb2265f17cad4c25627fd4fad07a1316c5baf260fc01172eb"
     },
     {
       "key": "launcher-mods",
@@ -110,12 +110,12 @@
       "width": 560,
       "height": 350,
       "file": "launcher-mods-en-560.webp",
-      "bytes": 18970,
+      "bytes": 23934,
       "quality": 0.86,
       "source": "sources/launcher-mods-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "fdee32e4abdaeb753c2259f6c799b9725b9d4bb6df3f63b45396eb68edccf408"
+      "sourceSha256": "1e68e502eabf91bde892774c7b4a5653fce53c2ec3613e0546f64ea9e8141837"
     },
     {
       "key": "launcher-mods",
@@ -123,12 +123,12 @@
       "width": 1120,
       "height": 700,
       "file": "launcher-mods-en-1120.webp",
-      "bytes": 53608,
+      "bytes": 69238,
       "quality": 0.86,
       "source": "sources/launcher-mods-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "fdee32e4abdaeb753c2259f6c799b9725b9d4bb6df3f63b45396eb68edccf408"
+      "sourceSha256": "1e68e502eabf91bde892774c7b4a5653fce53c2ec3613e0546f64ea9e8141837"
     },
     {
       "key": "launcher-mods",
@@ -136,12 +136,12 @@
       "width": 560,
       "height": 350,
       "file": "launcher-mods-fr-560.webp",
-      "bytes": 19544,
+      "bytes": 23478,
       "quality": 0.86,
       "source": "sources/launcher-mods-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "79da16923aac6c48cf9b28d6f10424990c775603c55823c41747400cb3db66a5"
+      "sourceSha256": "b5845b4e4218e6c825d687fa1127de6f11e45c156d3f9779e9ecd6068f01d943"
     },
     {
       "key": "launcher-mods",
@@ -149,12 +149,12 @@
       "width": 1120,
       "height": 700,
       "file": "launcher-mods-fr-1120.webp",
-      "bytes": 56396,
+      "bytes": 67680,
       "quality": 0.86,
       "source": "sources/launcher-mods-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "79da16923aac6c48cf9b28d6f10424990c775603c55823c41747400cb3db66a5"
+      "sourceSha256": "b5845b4e4218e6c825d687fa1127de6f11e45c156d3f9779e9ecd6068f01d943"
     },
     {
       "key": "launcher-mods-fabric",
@@ -162,12 +162,12 @@
       "width": 560,
       "height": 350,
       "file": "launcher-mods-fabric-en-560.webp",
-      "bytes": 23372,
+      "bytes": 26876,
       "quality": 0.86,
       "source": "sources/launcher-mods-fabric-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "ec70bd00fb8806c0aab21c5b41b0aaa42e5d79359b02a486ad043c88d2533445"
+      "sourceSha256": "27409ee250655f3e9f5170a7513ee930253a8c0b80f06503adaded24ced46c96"
     },
     {
       "key": "launcher-mods-fabric",
@@ -175,12 +175,12 @@
       "width": 1120,
       "height": 700,
       "file": "launcher-mods-fabric-en-1120.webp",
-      "bytes": 69762,
+      "bytes": 76916,
       "quality": 0.86,
       "source": "sources/launcher-mods-fabric-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "ec70bd00fb8806c0aab21c5b41b0aaa42e5d79359b02a486ad043c88d2533445"
+      "sourceSha256": "27409ee250655f3e9f5170a7513ee930253a8c0b80f06503adaded24ced46c96"
     },
     {
       "key": "launcher-mods-fabric",
@@ -188,12 +188,12 @@
       "width": 560,
       "height": 350,
       "file": "launcher-mods-fabric-fr-560.webp",
-      "bytes": 24338,
+      "bytes": 25158,
       "quality": 0.86,
       "source": "sources/launcher-mods-fabric-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "ebe33cd894da8dd4a11e1206c42ac483d5bbad132d136b6af95f46300ea55abb"
+      "sourceSha256": "224095b24d9fa919bd6712814227e9eb4baa16731e6d592ee0a120c8e9dbab3a"
     },
     {
       "key": "launcher-mods-fabric",
@@ -201,12 +201,12 @@
       "width": 1120,
       "height": 700,
       "file": "launcher-mods-fabric-fr-1120.webp",
-      "bytes": 73298,
+      "bytes": 72768,
       "quality": 0.86,
       "source": "sources/launcher-mods-fabric-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "ebe33cd894da8dd4a11e1206c42ac483d5bbad132d136b6af95f46300ea55abb"
+      "sourceSha256": "224095b24d9fa919bd6712814227e9eb4baa16731e6d592ee0a120c8e9dbab3a"
     },
     {
       "key": "launcher-settings",
@@ -214,12 +214,12 @@
       "width": 560,
       "height": 350,
       "file": "launcher-settings-en-560.webp",
-      "bytes": 18126,
+      "bytes": 18672,
       "quality": 0.86,
       "source": "sources/launcher-settings-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "d9d57ef4cd6a2cbf7fa1aa3ef7bfd6d19c265fe64ff408848a25939ddd3afe5a"
+      "sourceSha256": "abe8cded53a651f58c867720196bc6554195a8b25aac830da806ad6bce4b7d3c"
     },
     {
       "key": "launcher-settings",
@@ -227,12 +227,12 @@
       "width": 1120,
       "height": 700,
       "file": "launcher-settings-en-1120.webp",
-      "bytes": 54632,
+      "bytes": 54192,
       "quality": 0.86,
       "source": "sources/launcher-settings-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "d9d57ef4cd6a2cbf7fa1aa3ef7bfd6d19c265fe64ff408848a25939ddd3afe5a"
+      "sourceSha256": "abe8cded53a651f58c867720196bc6554195a8b25aac830da806ad6bce4b7d3c"
     },
     {
       "key": "launcher-settings",
@@ -240,12 +240,12 @@
       "width": 560,
       "height": 350,
       "file": "launcher-settings-fr-560.webp",
-      "bytes": 18722,
+      "bytes": 19156,
       "quality": 0.86,
       "source": "sources/launcher-settings-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "c601d6aed131437e727fc98fce2506838212df6f553da7e2e9f9d49e887b291e"
+      "sourceSha256": "306ebea1af946b9238d4480e6b5b62ec82abd1d0831ebcc91aa2b187e0084ba0"
     },
     {
       "key": "launcher-settings",
@@ -253,12 +253,12 @@
       "width": 1120,
       "height": 700,
       "file": "launcher-settings-fr-1120.webp",
-      "bytes": 57458,
+      "bytes": 57088,
       "quality": 0.86,
       "source": "sources/launcher-settings-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "c601d6aed131437e727fc98fce2506838212df6f553da7e2e9f9d49e887b291e"
+      "sourceSha256": "306ebea1af946b9238d4480e6b5b62ec82abd1d0831ebcc91aa2b187e0084ba0"
     },
     {
       "key": "launcher-account",
@@ -266,12 +266,12 @@
       "width": 560,
       "height": 309,
       "file": "launcher-account-en-560.webp",
-      "bytes": 10424,
+      "bytes": 11226,
       "quality": 0.86,
       "source": "sources/launcher-account-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "b42f641b52cd84030f13f35ea5fde55b8afdf93b6fc266f4f5b17855b48890e1",
+      "sourceSha256": "e1e10c8168bf34efd6c4d382c0a1b44a2a455f50a06fa3033be6d2f247263a8c",
       "cropHeight": 618
     },
     {
@@ -280,12 +280,12 @@
       "width": 1120,
       "height": 618,
       "file": "launcher-account-en-1120.webp",
-      "bytes": 27234,
+      "bytes": 31686,
       "quality": 0.86,
       "source": "sources/launcher-account-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "b42f641b52cd84030f13f35ea5fde55b8afdf93b6fc266f4f5b17855b48890e1",
+      "sourceSha256": "e1e10c8168bf34efd6c4d382c0a1b44a2a455f50a06fa3033be6d2f247263a8c",
       "cropHeight": 618
     },
     {
@@ -294,12 +294,12 @@
       "width": 560,
       "height": 309,
       "file": "launcher-account-fr-560.webp",
-      "bytes": 11076,
+      "bytes": 11806,
       "quality": 0.86,
       "source": "sources/launcher-account-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "e77edba8361893c7714943d89d6bd80112488ed943018df54d341f7a5efee50f",
+      "sourceSha256": "3ce43ab892ca14daf6b8efe04fdf1e11d5005c1f9f076f5281414cf156ee8bf2",
       "cropHeight": 618
     },
     {
@@ -308,12 +308,12 @@
       "width": 1120,
       "height": 618,
       "file": "launcher-account-fr-1120.webp",
-      "bytes": 29000,
+      "bytes": 33278,
       "quality": 0.86,
       "source": "sources/launcher-account-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "e77edba8361893c7714943d89d6bd80112488ed943018df54d341f7a5efee50f",
+      "sourceSha256": "3ce43ab892ca14daf6b8efe04fdf1e11d5005c1f9f076f5281414cf156ee8bf2",
       "cropHeight": 618
     },
     {
@@ -322,12 +322,12 @@
       "width": 560,
       "height": 350,
       "file": "launcher-changelog-en-560.webp",
-      "bytes": 19032,
+      "bytes": 18970,
       "quality": 0.86,
       "source": "sources/launcher-changelog-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "9bb9c5e1fc2cfa291aeac23144280d38ad7f449be729bcca3920405ab1e5dece"
+      "sourceSha256": "cbba5e8b268d9fb00ae9b9d27d093d055ed3aaafbf5d68376257089cef356da4"
     },
     {
       "key": "launcher-changelog",
@@ -335,12 +335,12 @@
       "width": 1120,
       "height": 700,
       "file": "launcher-changelog-en-1120.webp",
-      "bytes": 51378,
+      "bytes": 52146,
       "quality": 0.86,
       "source": "sources/launcher-changelog-en.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "9bb9c5e1fc2cfa291aeac23144280d38ad7f449be729bcca3920405ab1e5dece"
+      "sourceSha256": "cbba5e8b268d9fb00ae9b9d27d093d055ed3aaafbf5d68376257089cef356da4"
     },
     {
       "key": "launcher-changelog",
@@ -348,12 +348,12 @@
       "width": 560,
       "height": 350,
       "file": "launcher-changelog-fr-560.webp",
-      "bytes": 19526,
+      "bytes": 20232,
       "quality": 0.86,
       "source": "sources/launcher-changelog-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "67bde439a4449bb53cc9449f7f77a71bd4349496e44bf0d455b1ecf98c1023cd"
+      "sourceSha256": "01e11f2452e1e73666bf1fd06f3cadf9a67c956f3d4fe7e33f17b331080c377d"
     },
     {
       "key": "launcher-changelog",
@@ -361,12 +361,12 @@
       "width": 1120,
       "height": 700,
       "file": "launcher-changelog-fr-1120.webp",
-      "bytes": 53334,
+      "bytes": 56446,
       "quality": 0.86,
       "source": "sources/launcher-changelog-fr.png",
       "sourceWidth": 1120,
       "sourceHeight": 700,
-      "sourceSha256": "67bde439a4449bb53cc9449f7f77a71bd4349496e44bf0d455b1ecf98c1023cd"
+      "sourceSha256": "01e11f2452e1e73666bf1fd06f3cadf9a67c956f3d4fe7e33f17b331080c377d"
     },
     {
       "key": "client-menu",

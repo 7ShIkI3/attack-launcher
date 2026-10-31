@@ -123,11 +123,13 @@ sans `--keep`, l'app de test est désinstallée ensuite. Détails dans l'en-têt
 | `ATTACK_PROFILE=fabric-1.21.1` | Profil affiché (`forge-1.8.9` par défaut, `fabric-1.21.1`, `fabric-26.3`) |
 | `ATTACK_SETTINGS='{"replayMod":true}'` | Réglages à plat ajoutés au profil affiché |
 
-Les images de `docs/images/` sont de vraies captures du launcher (0.6.0), prises le 2026-10-29 sur des installations de test
-(`npm run install-test`) avec un compte factice (« Raphael ») et un skin de test, dans un dossier de jeu sans nom d'utilisateur
-(`C:\Users\Public\ATTACK`) et sans mode développeur. `account.png` est coupée à 618 px de haut : le compte factice, qui n'a pas de
-jeton de renouvellement, affiche en bas un message d'erreur. `ATTACK_SETTINGS='{"replayMod":true}'` ajoute des
-réglages à plat au profil affiché (pour photographier l'état « à appliquer »). Garde les PNG sous environ 1 Mo.
+Les images de `docs/images/` sont de vraies captures du launcher (0.7.0), prises le 2026-10-31 sur des installations de test
+(`npm run install-test`) avec un compte factice (« Joueur », « Player » en anglais) et un skin de test, dans un dossier de jeu
+sans nom d'utilisateur (`C:\Users\Public\ATTACK`, une jonction vers l'installation de test, retirée ensuite) et sans mode
+développeur. En mode capture, le compte actif n'est pas rafraîchi au démarrage : le compte factice n'a pas de jeton de
+renouvellement, et l'erreur s'afficherait en haut de la page Compte. `account.png` reste coupée à 618 px de haut, comme la capture
+« Compte » du site. `ATTACK_SETTINGS='{"replayMod":true}'` ajoute des réglages à plat au profil affiché (pour photographier
+l'état « à appliquer »). Garde les PNG sous environ 1 Mo.
 
 ## Site web
 
@@ -146,8 +148,7 @@ anglais ([/en/](https://7shiki3.github.io/attack-launcher/en/)). Son code est da
   dans le dépôt (seuls les WebP et `manifest.json` le sont). Les images sont d'abord toutes encodées dans un dossier d'attente ;
   `site/img/` n'est remplacé (WebP, manifeste, `og.png` et `og-en.png`, les accueils français et anglais pour le partage) qu'ensuite.
   Une capture plus étroite que la plus grande largeur prévue (1120 px pour le launcher, 854 px pour le client) est refusée avec
-  « capture trop étroite » et rien n'est modifié. La capture « Compte » est coupée à 618 px de haut : le compte factice affiche
-  en bas un message d'erreur de renouvellement.
+  « capture trop étroite » et rien n'est modifié. La capture « Compte » est coupée à 618 px de haut (le bas de la page est vide).
 - **Sortie** : `node scripts/build-site.js --out <dossier>` vide ce dossier avant de générer. Il n'est accepté que s'il n'existe pas,
   est vide, s'appelle `_site` ou porte le fichier `.attack-site` écrit par le script : `--out docs` ou `--out src` sont refusés.
 - **Release lue** : la page montre le Setup de la dernière release GitHub. Avec `--strict` (workflow), la génération échoue si l'API ne

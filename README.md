@@ -64,11 +64,11 @@ Client ») et son dossier de jeu : un joueur qui l'utilisait déjà ne perd rien
 <table>
   <tr>
     <td align="center"><img src="docs/images/home-fabric.png" alt="Accueil du launcher, profil 26.3 (Fabric)" width="410"><br><sub>Accueil, profil 26.3 (Fabric) : ligne « Tout est prêt », nouveautés et profil actuel</sub></td>
-    <td align="center"><img src="docs/images/mods.png" alt="Page Mods, profil 1.8.9" width="410"><br><sub>Page Mods, profil 1.8.9 : le mod ATTACK, OptiFine (ta copie) et le pack Forge</sub></td>
+    <td align="center"><img src="docs/images/mods.png" alt="Page Mods, profil 1.8.9" width="410"><br><sub>Page Mods, profil 1.8.9 : le mod ATTACK, OptiFine (ta copie) et le pack Forge, filtre Activés / Désactivés et trois densités</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/images/mods-fabric.png" alt="Page Mods, profil 26.3 (Fabric)" width="410"><br><sub>Page Mods, profil 26.3 : pack figé, jars vérifiés par SHA-512, Iris en option</sub></td>
-    <td align="center"><img src="docs/images/settings.png" alt="Page Réglages, onglet Ce profil" width="410"><br><sub>Réglages en trois onglets (ici « Ce profil » en 1.8.9) : mémoire, Java, OptiFine, pack de mods</sub></td>
+    <td align="center"><img src="docs/images/settings.png" alt="Page Réglages, onglet Ce profil" width="410"><br><sub>Réglages en trois onglets (ici « Ce profil » en 1.8.9) : mémoire, Java, OptiFine (avec « Obtenir OptiFine »), pack de mods</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/images/account.png" alt="Page Compte et skin en 3D" width="410"><br><sub>Compte Microsoft et skin en 3D</sub></td>
@@ -81,7 +81,7 @@ Client ») et son dossier de jeu : un joueur qui l'utilisait déjà ne perd rien
   <sub>Le nouveau menu ATTACK en jeu, en 1.8.9</sub>
 </p>
 
-Les captures du launcher montrent un compte factice (« Raphael ») avec un skin de test.
+Les captures du launcher (0.7.0) montrent un compte factice (« Joueur ») avec un skin de test.
 
 ## Démarrage rapide
 
