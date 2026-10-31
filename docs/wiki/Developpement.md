@@ -66,6 +66,7 @@ Les 167 tests tournent en quelques secondes et n'ont besoin ni du réseau ni d'E
 | `http.test.js` | Hôtes https autorisés seulement, téléchargement vérifié (SHA-1, SHA-256, SHA-512), hash faux rejeté (`.part` supprimé), redirection hors liste refusée, parallélisme |
 | `catalog.test.js` | Les 3 profils, règles exactes des jars ATTACK, dossiers de jeu et de jars par profil, alias de `constants.js`, hôtes autorisés |
 | `fabric.test.js` | Adresse du profil Fabric, validation stricte (vrais profils 1.21.1 et 26.3, profils piégés refusés), plan de téléchargement avec ou sans hash, JSON de version écrit |
+| `optifine-watch.test.js` | Assistant OptiFine dans un dossier temporaire avec de fausses minuteries : partiels, vides et `.part` ignorés, stabilité sur deux sondages, import d'un faux jar, refus, suffixe « (1) » espacé ou collé, verrou passager repris (validation et copie), fichier déjà présent seulement proposé, délai de 10 minutes sans minuterie restante, annulation, lien ignoré, aucun accès réseau |
 | `optifine.test.js` | OptiFine du joueur : détection (libraries, mods, fichier choisi), validation du manifeste, copie suivie dans l'état, retrait de la seule copie du launcher, copie d'origine disparue (le jar de `mods` reste), OptiFine du joueur jamais touché |
 | `renderer.test.js` | Interface : clés de traduction FR/EN complètes, identifiants du HTML, CSP stricte (ni script ni style en ligne, pas d'innerHTML), historique et fiches des mods du pack |
 | `renderer-dom.test.js` | Accueil : `app.js` tourne sur un faux DOM avec l'état d'installation réel de `installer.status()` ; phrase « prêt », lignes du détail (OptiFine « à retirer », « déjà copié dans mods », « Mise à jour à appliquer »), compteur, rail, cartes Mods et Réglages, en français et en anglais |
@@ -81,7 +82,7 @@ Les 167 tests tournent en quelques secondes et n'ont besoin ni du réseau ni d'E
 | `game.test.js` | Fusion Forge + 1.8.9 (ancien format), classpath, ligne de commande Java, masquage du jeton, natives, runtime Java |
 | `profiles.test.js` | `-Xmx`, fusion du profil, `.bak`, fichier illisible jamais écrasé |
 | `updates.test.js` | Versions semver, mode installé / portable / sources, vérifications, report pendant une partie ou une installation, fermeture, détection d'une partie |
-| `misc.test.js` | Release GitHub et SHA-256, jar de développement, réglages, launcher officiel, progression, état d'installation, version du mod |
+| `misc.test.js` | Release GitHub et SHA-256, jar de développement, réglages, launcher officiel, progression, état d'installation, version du mod, filet d'erreurs du processus principal (journal, pas de fermeture) |
 
 ## Tests réels (réseau, vrai jeu)
 
@@ -117,14 +118,18 @@ sans `--keep`, l'app de test est désinstallée ensuite. Détails dans l'en-têt
 | `ATTACK_SCREENSHOT_INSTALL=1` | Clique d'abord sur INSTALLER (installation réelle dans les dossiers donnés) |
 | `ATTACK_SCREENSHOT_PLAY=1` | Clique sur JOUER avec le compte actif |
 | `ATTACK_SCREENSHOT_SIZE=940x600` | Taille de fenêtre (bornée par la taille minimale) |
+| `ATTACK_SCREENSHOT_ERROR=<code>` | Ajoute `home-error.png` : l'alerte de l'accueil pour ce code d'erreur (par ex. `LAUNCHER_NOT_FOUND`) |
+| `ATTACK_SCREENSHOT_OPTIFINE=waiting\|refused\|imported` | Ajoute `optifine-<état>.png` et `optifine-<état>-mods.png` : l'assistant OptiFine avec un faux jar dans un dossier Téléchargements **temporaire** (`ATTACK_DOWNLOADS_DIR`) ; `ATTACK_NO_BROWSER` empêche d'ouvrir optifine.net |
 | `ATTACK_PROFILE=fabric-1.21.1` | Profil affiché (`forge-1.8.9` par défaut, `fabric-1.21.1`, `fabric-26.3`) |
 | `ATTACK_SETTINGS='{"replayMod":true}'` | Réglages à plat ajoutés au profil affiché |
 
-Les images de `docs/images/` sont de vraies captures du launcher (0.6.0), prises le 2026-10-29 sur des installations de test
-(`npm run install-test`) avec un compte factice (« Raphael ») et un skin de test, dans un dossier de jeu sans nom d'utilisateur
-(`C:\Users\Public\ATTACK`) et sans mode développeur. `account.png` est coupée à 618 px de haut : le compte factice, qui n'a pas de
-jeton de renouvellement, affiche en bas un message d'erreur. `ATTACK_SETTINGS='{"replayMod":true}'` ajoute des
-réglages à plat au profil affiché (pour photographier l'état « à appliquer »). Garde les PNG sous environ 1 Mo.
+Les images de `docs/images/` sont de vraies captures du launcher (0.7.0), prises le 2026-10-31 sur des installations de test
+(`npm run install-test`) avec un compte factice (« Joueur », « Player » en anglais) et un skin de test, dans un dossier de jeu
+sans nom d'utilisateur (`C:\Users\Public\ATTACK`, une jonction vers l'installation de test, retirée ensuite) et sans mode
+développeur. En mode capture, le compte actif n'est pas rafraîchi au démarrage : le compte factice n'a pas de jeton de
+renouvellement, et l'erreur s'afficherait en haut de la page Compte. `account.png` reste coupée à 618 px de haut, comme la capture
+« Compte » du site. `ATTACK_SETTINGS='{"replayMod":true}'` ajoute des réglages à plat au profil affiché (pour photographier
+l'état « à appliquer »). Garde les PNG sous environ 1 Mo.
 
 ## Site web
 
@@ -143,8 +148,7 @@ anglais ([/en/](https://7shiki3.github.io/attack-launcher/en/)). Son code est da
   dans le dépôt (seuls les WebP et `manifest.json` le sont). Les images sont d'abord toutes encodées dans un dossier d'attente ;
   `site/img/` n'est remplacé (WebP, manifeste, `og.png` et `og-en.png`, les accueils français et anglais pour le partage) qu'ensuite.
   Une capture plus étroite que la plus grande largeur prévue (1120 px pour le launcher, 854 px pour le client) est refusée avec
-  « capture trop étroite » et rien n'est modifié. La capture « Compte » est coupée à 618 px de haut : le compte factice affiche
-  en bas un message d'erreur de renouvellement.
+  « capture trop étroite » et rien n'est modifié. La capture « Compte » est coupée à 618 px de haut (le bas de la page est vide).
 - **Sortie** : `node scripts/build-site.js --out <dossier>` vide ce dossier avant de générer. Il n'est accepté que s'il n'existe pas,
   est vide, s'appelle `_site` ou porte le fichier `.attack-site` écrit par le script : `--out docs` ou `--out src` sont refusés.
 - **Release lue** : la page montre le Setup de la dernière release GitHub. Avec `--strict` (workflow), la génération échoue si l'API ne

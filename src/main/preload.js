@@ -24,6 +24,11 @@ contextBridge.exposeInMainWorld('attack', {
   openRepo: invoke('shell:openRepo'),
   pickOptifine: invoke('optifine:pick'),
   openOptifine: invoke('shell:openOptifine'),
+  optifineAssist: {
+    start: invoke('optifine:assistStart'),
+    use: invoke('optifine:assistUse'),
+    cancel: invoke('optifine:assistCancel'),
+  },
   openAzureHelp: invoke('shell:openAzureHelp'),
   accounts: {
     list: invoke('accounts:list'),
@@ -48,6 +53,7 @@ contextBridge.exposeInMainWorld('attack', {
     openReleases: invoke('update:openReleases'),
   },
   onProgress: subscribe('install:progress'),
+  onOptifineAssist: subscribe('optifine:assist'),
   onAuthEvent: subscribe('auth:event'),
   onAccountsChanged: subscribe('accounts:changed'),
   onUpdateState: subscribe('update:state'),

@@ -38,13 +38,13 @@
       <span class="brand-sub">LAUNCHER</span>
     </div>
     <div class="window-controls">
-      <button class="wc" id="wc-min" data-i18n-title="window.minimize" aria-label="Réduire">
+      <button class="wc" id="wc-min" tabindex="-1" data-i18n-title="window.minimize" aria-label="Réduire">
         <svg viewBox="0 0 12 12"><path d="M2 6.5h8"/></svg>
       </button>
-      <button class="wc" id="wc-max" data-i18n-title="window.maximize" aria-label="Agrandir">
+      <button class="wc" id="wc-max" tabindex="-1" data-i18n-title="window.maximize" aria-label="Agrandir">
         <svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" rx="1"/></svg>
       </button>
-      <button class="wc wc-close" id="wc-close" data-i18n-title="window.close" aria-label="Fermer">
+      <button class="wc wc-close" id="wc-close" tabindex="-1" data-i18n-title="window.close" aria-label="Fermer">
         <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg>
       </button>
     </div>
@@ -62,7 +62,7 @@
 
   <div class="shell">
     <nav class="sidebar">
-      <button class="nav-item active" data-page="home">
+      <button class="nav-item active" data-page="home" aria-current="page">
         <svg class="ic"><use href="#i-home"/></svg>
         <span data-i18n="nav.home">Accueil</span>
       </button>
@@ -77,9 +77,9 @@
       <div class="nav-spacer"></div>
       <!-- Compte : la tête du joueur et son état de connexion (point vert : Microsoft, orange : hors ligne, rouge : aucun compte) -->
       <button class="nav-item nav-account" data-page="account" id="nav-account" data-account="none">
-        <span class="nav-avatar-wrap"><span class="nav-avatar" id="nav-avatar"></span><i class="presence"></i></span>
+        <span class="nav-avatar-wrap"><span class="nav-avatar" id="nav-avatar"></span><i class="presence" aria-hidden="true"></i></span>
         <svg class="ic nav-user"><use href="#i-user"/></svg>
-        <i class="nav-dot"></i>
+        <i class="nav-dot" aria-hidden="true"></i>
         <span data-i18n="nav.account">Compte</span>
       </button>
     </nav>
@@ -102,7 +102,7 @@
                 <span class="play-inner"><svg class="ic fill p-ico"><use href="#i-play"/></svg><span class="play-label" id="play-label">…</span></span>
               </button>
               <p class="play-caption" id="play-caption"></p>
-              <p class="message hidden" id="message"></p>
+              <div class="lower" id="lower">
               <div class="ready" id="ready">
                 <button class="ready-btn" id="ready-btn" type="button" aria-expanded="false" aria-controls="ready-pop">
                   <span class="r-ico"><svg class="ic" id="ready-icon"><use href="#i-check"/></svg></span>
@@ -116,6 +116,21 @@
                 <button class="tool" type="button" id="repair-button"><svg class="ic"><use href="#i-shield"/></svg><span data-i18n="home.repairShort">Vérifier / réparer</span></button>
                 <button class="tool" type="button" id="open-dir-button"><svg class="ic"><use href="#i-folder"/></svg><span data-i18n="home.openDirShort">Dossier de jeu</span></button>
                 <button class="tool" type="button" id="logs-button"><svg class="ic"><use href="#i-file"/></svg><span data-i18n="home.logsShort">Journaux</span></button>
+              </div>
+              </div>
+              <!-- Erreur de l'accueil : annoncée aux lecteurs d'écran, texte sélectionnable, bouton Copier et action selon le code d'erreur -->
+              <div class="alert hidden" id="alert" role="alert">
+                <svg class="ic alert-ic" aria-hidden="true"><use href="#i-info"/></svg>
+                <div class="alert-main">
+                  <p class="alert-text" id="message"></p>
+                  <div class="alert-actions">
+                    <button class="btn small accent hidden" id="alert-action" type="button"></button>
+                    <button class="btn small ghost" id="alert-copy" type="button" data-i18n="alert.copy">Copier</button>
+                  </div>
+                </div>
+                <button class="alert-close" id="alert-close" type="button" data-i18n-title="alert.close" aria-label="Fermer le message">
+                  <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg>
+                </button>
               </div>
             </div>
           </div>
@@ -151,8 +166,23 @@
           <label class="search"><svg class="ic"><use href="#i-search"/></svg><input type="text" id="mods-q" autocomplete="off" spellcheck="false" data-i18n-placeholder="mods.search" placeholder="Rechercher un mod…"></label>
         </div>
         <div class="pending hidden" id="mods-pending"></div>
-        <div class="chips" id="mods-filters"></div>
-        <div class="mods-grid" id="mods-grid"></div>
+        <div class="chips" id="mods-filters" role="radiogroup" data-i18n-label="mods.filterCategory"></div>
+        <div class="mods-bar">
+          <p class="mods-count" id="mods-count"></p>
+          <div class="mods-tools">
+            <div class="segmented" id="mods-state" role="radiogroup" data-i18n-label="mods.filterState">
+              <button type="button" data-value="all" data-i18n="mods.stateAll">Tous</button>
+              <button type="button" data-value="on" data-i18n="mods.stateOn">Activés</button>
+              <button type="button" data-value="off" data-i18n="mods.stateOffFilter">Désactivés</button>
+            </div>
+            <div class="segmented" id="mods-density" role="radiogroup" data-i18n-label="mods.density">
+              <button type="button" data-value="comfortable" data-i18n="mods.densityComfortable">Détaillé</button>
+              <button type="button" data-value="compact" data-i18n="mods.densityCompact">Compact</button>
+              <button type="button" data-value="list" data-i18n="mods.densityList">Liste</button>
+            </div>
+          </div>
+        </div>
+        <div class="mods-grid" id="mods-grid" data-density="comfortable"></div>
       </section>
 
       <!-- ===================== Réglages ===================== -->
@@ -164,14 +194,14 @@
           </div>
           <div class="head-right"><span class="saved" id="saved"><svg class="ic"><use href="#i-check"/></svg><span id="saved-text" data-i18n="settings.saved">Enregistré</span></span></div>
         </div>
-        <div class="tabs" role="tablist">
-          <button class="tab active" role="tab" data-tab="profile" aria-selected="true"><span data-i18n="settings.tabProfile">Ce profil</span> <small id="settings-profile"></small></button>
-          <button class="tab" role="tab" data-tab="launcher" aria-selected="false" data-i18n="settings.tabLauncher">Launcher</button>
-          <button class="tab" role="tab" data-tab="advanced" aria-selected="false" data-i18n="settings.tabAdvanced">Avancé</button>
+        <div class="tabs" id="settings-tabs" role="tablist" data-i18n-label="settings.tabs">
+          <button class="tab active" role="tab" id="tabbtn-profile" data-tab="profile" aria-selected="true" aria-controls="tab-profile"><span data-i18n="settings.tabProfile">Ce profil</span> <small id="settings-profile"></small></button>
+          <button class="tab" role="tab" id="tabbtn-launcher" data-tab="launcher" aria-selected="false" aria-controls="tab-launcher" tabindex="-1" data-i18n="settings.tabLauncher">Launcher</button>
+          <button class="tab" role="tab" id="tabbtn-advanced" data-tab="advanced" aria-selected="false" aria-controls="tab-advanced" tabindex="-1" data-i18n="settings.tabAdvanced">Avancé</button>
         </div>
 
         <!-- Ce profil : mémoire, dossier, Java, pack de mods, OptiFine -->
-        <div class="tabpanel active" id="tab-profile">
+        <div class="tabpanel active" id="tab-profile" role="tabpanel" aria-labelledby="tabbtn-profile">
           <div class="set-grid">
             <div class="col">
               <section class="card setting">
@@ -191,9 +221,9 @@
                 <p class="warn hidden" id="ram-warn" data-i18n="settings.ramWarn">Plus de la moitié de la mémoire de ce PC : Windows risque de ralentir.</p>
               </section>
               <section class="card setting grow">
-                <h3 data-i18n="settings.gameDir">Dossier de jeu</h3>
+                <h3 id="game-dir-title" data-i18n="settings.gameDir">Dossier de jeu</h3>
                 <p class="help" data-i18n="settings.gameDirHelp">Mods, réglages, captures et mondes d'ATTACK Client, séparés de ton .minecraft.</p>
-                <div class="path-field"><input type="text" id="game-dir" readonly></div>
+                <div class="path-field"><input type="text" id="game-dir" readonly aria-labelledby="game-dir-title"></div>
                 <div class="s-row end">
                   <button class="btn small ghost" id="game-dir-open"><svg class="ic"><use href="#i-folder"/></svg><span data-i18n="common.open">Ouvrir</span></button>
                   <button class="btn small" id="game-dir-change" data-i18n="common.change">Changer</button>
@@ -206,7 +236,7 @@
                 <h3>Java</h3>
                 <p class="help" id="java-help">Le launcher officiel fournit Java 8 pour la 1.8.9 : garde ce choix sauf besoin précis.</p>
                 <div class="s-row">
-                  <div class="segmented" id="java-mode">
+                  <div class="segmented" id="java-mode" role="radiogroup" aria-label="Java">
                     <button data-value="bundled" data-i18n="settings.javaBundled">Fourni par Minecraft</button>
                     <button data-value="custom" data-i18n="settings.javaCustom">Personnalisé</button>
                   </div>
@@ -217,18 +247,28 @@
                 </div>
               </section>
               <!-- Profil 1.8.9 : l'OptiFine du joueur (jamais téléchargé par le launcher) -->
-              <section class="card setting hidden" id="optifine-card">
-                <div class="pack-head"><h3>OptiFine</h3><span class="badge" id="optifine-badge"></span></div>
+              <section class="card setting hidden" id="optifine-card" aria-labelledby="optifine-title">
+                <div class="pack-head"><h3 id="optifine-title">OptiFine</h3><span class="badge" id="optifine-badge"></span></div>
                 <p class="help" id="optifine-text"></p>
                 <p class="warn hidden" id="optifine-warn"></p>
+                <div class="assist" id="optifine-assist"></div>
+                <!-- Pourquoi le launcher ne le télécharge pas lui-même : trois raisons, rien d'autre -->
+                <details class="why" id="optifine-why">
+                  <summary data-i18n="optifine.why">Pourquoi ?</summary>
+                  <ul>
+                    <li data-i18n="optifine.why1">La licence d’OptiFine interdit de le redistribuer sans l’autorisation écrite de son auteur.</li>
+                    <li data-i18n="optifine.why2">Ta copie est vérifiée sur ton PC puis utilisée telle quelle.</li>
+                    <li data-i18n="optifine.why3">Les profils 1.21.1 et 26.3 n’en ont pas besoin.</li>
+                  </ul>
+                </details>
                 <div class="pack-row">
-                  <div><h4 data-i18n="optifine.use">Utiliser OptiFine</h4><p id="optifine-use-help"></p></div>
-                  <label class="switch"><input type="checkbox" id="optifine-enabled"><span></span></label>
+                  <div><h4 id="optifine-use-title" data-i18n="optifine.use">Utiliser OptiFine</h4><p id="optifine-use-help"></p></div>
+                  <label class="switch"><input type="checkbox" id="optifine-enabled" aria-labelledby="optifine-use-title"><span></span></label>
                 </div>
                 <div class="s-row">
                   <button class="btn small" id="optifine-pick"><svg class="ic"><use href="#i-file"/></svg><span data-i18n="optifine.pick">Choisir le fichier…</span></button>
                   <button class="btn small ghost hidden" id="optifine-clear" data-i18n="optifine.clear">Recherche automatique</button>
-                  <button class="btn small ghost" id="optifine-download"><svg class="ic"><use href="#i-external"/></svg><span data-i18n="optifine.download">optifine.net</span></button>
+                  <button class="btn small" id="optifine-download"><svg class="ic"><use href="#i-external"/></svg><span data-i18n="optifine.get">Obtenir OptiFine</span></button>
                 </div>
               </section>
               <section class="card setting grow" id="pack-card">
@@ -241,12 +281,12 @@
         </div>
 
         <!-- Launcher : langue, à propos et crédits -->
-        <div class="tabpanel" id="tab-launcher">
+        <div class="tabpanel" id="tab-launcher" role="tabpanel" aria-labelledby="tabbtn-launcher">
           <div class="grid-2">
             <section class="card setting">
               <div class="s-head">
                 <div><h3 data-i18n="settings.lang">Langue</h3><p class="help" data-i18n="settings.langHelp">S'applique tout de suite à l'interface du launcher.</p></div>
-                <div class="segmented" id="lang">
+                <div class="segmented" id="lang" role="radiogroup" data-i18n-label="settings.lang">
                   <button data-value="fr">Français</button>
                   <button data-value="en">English</button>
                 </div>
@@ -261,11 +301,28 @@
               </div>
             </section>
           </div>
+          <div class="grid-2">
+            <section class="card setting" id="update-card">
+              <h3 data-i18n="settings.updatesTitle">Mises à jour</h3>
+              <p class="help" id="update-help"></p>
+              <div class="s-row">
+                <button class="btn small ghost" id="update-releases" type="button"><svg class="ic"><use href="#i-external"/></svg><span data-i18n="update.releases">Page Releases</span></button>
+              </div>
+            </section>
+            <section class="card setting" id="folders-card">
+              <h3 data-i18n="settings.foldersTitle">Dossiers et journaux</h3>
+              <p class="help" data-i18n="settings.foldersHelp">Le dossier de jeu du profil choisi et les journaux de sa dernière partie, pour un rapport de bug.</p>
+              <div class="s-row">
+                <button class="btn small" id="folders-game" type="button"><svg class="ic"><use href="#i-folder"/></svg><span data-i18n="home.openDirShort">Dossier de jeu</span></button>
+                <button class="btn small ghost" id="folders-logs" type="button"><svg class="ic"><use href="#i-file"/></svg><span data-i18n="home.logsShort">Journaux</span></button>
+              </div>
+            </section>
+          </div>
           <p class="footnote" data-i18n="settings.launcherNote">Ces réglages valent pour tous les profils. La mémoire, Java, le dossier de jeu et les mods se règlent dans l'onglet « Ce profil ».</p>
         </div>
 
         <!-- Avancé : arguments Java, mode développeur, ID client Azure -->
-        <div class="tabpanel" id="tab-advanced">
+        <div class="tabpanel" id="tab-advanced" role="tabpanel" aria-labelledby="tabbtn-advanced">
           <div class="grid-2">
             <section class="card setting span-2">
               <div class="s-head"><div>
@@ -280,10 +337,10 @@
               <p class="warn hidden" id="jvm-args-warn"></p>
             </section>
             <section class="card setting toggle-card">
-              <div><h3 data-i18n="settings.dev">Mode développeur</h3><p class="help" id="dev-help">Installe le dernier jar compilé localement au lieu de la release GitHub.</p></div>
-              <label class="switch"><input type="checkbox" id="dev-mode"><span></span></label>
+              <div><h3 id="dev-title" data-i18n="settings.dev">Mode développeur</h3><p class="help" id="dev-help">Installe le dernier jar compilé localement au lieu de la release GitHub.</p></div>
+              <label class="switch"><input type="checkbox" id="dev-mode" aria-labelledby="dev-title"><span></span></label>
               <div class="path-field span-2 hidden" id="dev-dir-row">
-                <input type="text" id="dev-dir" readonly>
+                <input type="text" id="dev-dir" readonly aria-labelledby="dev-title">
                 <button class="btn" id="dev-dir-change" data-i18n="common.change">Changer</button>
               </div>
             </section>
@@ -309,6 +366,8 @@
           </div>
           <button class="btn add-top js-login hidden" id="login-button" type="button"><svg class="ic"><use href="#i-plus"/></svg><span data-i18n="login.add">Ajouter un compte Microsoft</span></button>
         </div>
+
+        <p class="message hidden" id="account-message" role="alert"></p>
 
         <!-- ID client Azure manquant : marche à suivre -->
         <div class="card setup hidden" id="azure-setup">
@@ -387,7 +446,7 @@
                 <button class="btn ghost" id="skin-cancel" data-i18n="skin.cancel">Annuler</button>
               </div>
             </div>
-            <p class="message hidden" id="skin-message"></p>
+            <p class="message hidden" id="skin-message" role="status"></p>
           </div>
         </div>
 
@@ -403,8 +462,6 @@
           </div>
           <p class="device-stage" id="device-stage"></p>
         </div>
-
-        <p class="message hidden" id="account-message"></p>
 
         <div class="card setting offline hidden" id="offline-card">
           <div class="setting-text">
@@ -428,7 +485,7 @@
         <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg>
       </button>
     </div>
-    <div class="dlg-filters" id="changelog-filters"></div>
+    <div class="dlg-filters" id="changelog-filters" role="radiogroup" data-i18n-label="home.changelogHistory"></div>
     <div class="dlg-list" id="changelog-full"></div>
   </dialog>
 
@@ -443,6 +500,9 @@
     <p class="credits-credit" id="credits-credit"></p>
     <div class="dlg-list" id="credits-list"></div>
   </dialog>
+
+  <!-- Annonces de l'assistant OptiFine aux lecteurs d'écran (une seule zone aria-live, jamais refaite par un rendu) -->
+  <div class="sr-only" id="optifine-live" role="status" aria-live="polite"></div>
 
   <div class="toast" id="toast" role="status"><svg class="ic"><use href="#i-check"/></svg><span id="toast-text"></span></div>
 

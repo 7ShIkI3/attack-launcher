@@ -16,6 +16,8 @@ const FORGE = catalog.get('forge-1.8.9');
 
 // ---------- faux DOM : juste ce que app.js touche au chargement et dans renderStatus ----------
 
+let fakeDocument = null; // document du dernier boot() : focus() et la perte du focus (élément retiré ou grisé) passent par lui
+
 class FakeNode {
   constructor(tag = 'div') {
     this.tagName = tag;
@@ -25,7 +27,7 @@ class FakeNode {
     this.style = { setProperty: (name, value) => { this.style[name] = value; } };
     this.listeners = {};
     this.hidden = false;
-    this.disabled = false;
+    this.isDisabled = false;
     this.value = '';
     this.checked = false;
     this.className = '';
@@ -65,11 +67,24 @@ class FakeNode {
   }
 
   replaceChildren(...nodes) {
+    const active = fakeDocument && fakeDocument.activeElement;
+    const lost = Boolean(active) && this.children.some((child) => typeof child !== 'string' && child.contains(active));
     this.children = [...nodes];
+    if (lost && !this.contains(active)) fakeDocument.activeElement = fakeDocument.body; // comme un navigateur : l'élément retiré perd le focus
+  }
+
+  get disabled() {
+    return this.isDisabled;
+  }
+
+  set disabled(value) {
+    this.isDisabled = Boolean(value);
+    if (this.isDisabled && fakeDocument && fakeDocument.activeElement === this) fakeDocument.activeElement = fakeDocument.body;
   }
 
   setAttribute(name, value) {
     this.attributes[name] = String(value);
+    if (name.startsWith('data-')) this.dataset[name.slice(5).replace(/-(\w)/g, (_, c) => c.toUpperCase())] = String(value);
   }
 
   getAttribute(name) {
@@ -80,14 +95,32 @@ class FakeNode {
     (this.listeners[type] ||= []).push(listener);
   }
 
-  contains() {
-    return false;
+  focus() {
+    if (fakeDocument) fakeDocument.activeElement = this;
   }
 
-  querySelectorAll() {
-    return [];
+  contains(node) {
+    return node === this || this.children.some((child) => typeof child !== 'string' && child.contains(node));
   }
 
+  /** Seuls les sélecteurs de la reprise du focus : [data-focus-key] et [data-focus-key="…"] (le reste : aucun noeud, comme avant). */
+  querySelectorAll(selector) {
+    const match = /^\[data-focus-key(?:="([^"]*)")?\]$/.exec(selector);
+    if (!match) return [];
+    const all = [];
+    const walk = (node) => node.children.forEach((child) => {
+      if (typeof child === 'string') return;
+      const key = child.attributes['data-focus-key'];
+      if (key !== undefined && (match[1] === undefined || key === match[1])) all.push(child);
+      walk(child);
+    });
+    walk(this);
+    return all;
+  }
+
+  querySelector(selector) {
+    return this.querySelectorAll(selector)[0] || null;
+  }
 }
 
 /**
@@ -111,9 +144,12 @@ async function boot({ info, settings, status }) {
     addEventListener: () => {},
     dispatchEvent: () => {},
   };
+  fakeDocument = document;
   const noop = () => {};
   const tick = () => new Promise((resolve) => setImmediate(resolve));
   let statusRead = false;
+  const assistCalls = [];
+  const assistHandlers = [];
   const attack = {
     info: async () => info,
     getSettings: async () => settings,
@@ -124,6 +160,12 @@ async function boot({ info, settings, status }) {
     accounts: { list: async () => ({ accounts: [], hasClientId: false, devMode: false }) },
     update: { state: async () => ({ phase: 'off' }) },
     onProgress: noop, onAuthEvent: noop, onAccountsChanged: noop, onUpdateState: noop, onWindowState: noop,
+    onOptifineAssist: (callback) => { assistHandlers.push(callback); },
+    optifineAssist: {
+      start: async (options) => { assistCalls.push(['start', options]); return { ok: true, state: 'waiting', downloadsDir: 'D:\\Dl' }; },
+      use: async () => { assistCalls.push(['use']); return { ok: true }; },
+      cancel: async () => { assistCalls.push(['cancel']); return { ok: true }; },
+    },
   };
   const window = { attack, addEventListener: noop };
   const sandbox = {
@@ -140,7 +182,12 @@ async function boot({ info, settings, status }) {
   for (let i = 0; i < 100 && !statusRead; i++) await tick();
   for (let i = 0; i < 5; i++) await tick();
   assert.equal(byId('message').textContent, '', 'la page n’a pas affiché d’erreur au chargement');
-  return { byId, window };
+  // événement de l'assistant OptiFine venu du processus principal ; attend la fin des rendus qu'il déclenche
+  const emitAssist = async (state) => {
+    for (const handler of assistHandlers) await handler(state);
+    for (let i = 0; i < 5; i++) await tick();
+  };
+  return { byId, window, document, assistCalls, emitAssist, tick };
 }
 
 // ---------- état d'installation réel ----------
@@ -225,7 +272,7 @@ test('accueil : retrait d’OptiFine + autre élément manquant = on ne nomme qu
   await installer.installOptifine(dirs.gameDir, dirs.minecraftDir, {});
   fs.rmSync(path.join(dirs.minecraftDir, 'versions', '1.8.9'), { recursive: true, force: true });
   const view = await render(dirs, { optifine: false });
-  assert.match(view.main, /^À installer : /);
+  assert.match(view.main, /^À installer\u00a0: /); // espace insécable avant « : » (typographie française de t())
   assert.doesNotMatch(view.main, /OptiFine/, 'le retrait n’est pas « à installer »');
   assert.equal(view.rows.find((r) => r.label === 'OptiFine').detail, 'à retirer');
   fs.rmSync(dirs.root, { recursive: true, force: true });
@@ -244,7 +291,7 @@ test('accueil : OptiFine du joueur arrivé dans mods alors que la copie du launc
 test('accueil : copie à poser = « À installer : OptiFine » comme avant ; copie d’origine disparue = tout est prêt', async () => {
   const dirs = installed189();
   const toCopy = await render(dirs, {});
-  assert.equal(toCopy.main, 'À installer : OptiFine');
+  assert.equal(toCopy.main, 'À installer\u00a0: OptiFine');
   assert.equal(toCopy.rows.find((r) => r.label === 'OptiFine').detail, 'à copier');
   await installer.installOptifine(dirs.gameDir, dirs.minecraftDir, {});
   fs.rmSync(dirs.source);
@@ -325,5 +372,188 @@ test('accueil en anglais : « Update to apply » et « to remove »', async () =
   const view = await render(dirs, { optifine: false, lang: 'en' });
   assert.equal(view.main, 'Update to apply');
   assert.equal(view.rows.find((r) => r.label === 'OptiFine').detail, 'to remove');
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+// ---------- alerte de l'accueil et assistant OptiFine (même faux DOM) ----------
+
+/** Tous les noeuds d'un arbre du faux DOM, dans l'ordre. */
+function nodesOf(node, out = []) {
+  if (!node || typeof node === 'string') return out;
+  out.push(node);
+  for (const child of node.children) nodesOf(child, out);
+  return out;
+}
+const labelsOf = (node) => nodesOf(node).filter((n) => n.tagName === 'button').map((n) => n.textContent);
+const plain = (value) => JSON.parse(JSON.stringify(value)); // sort l'objet du contexte isolé (prototypes différents)
+const clickLabel = (node, label) => nodesOf(node).find((n) => n.tagName === 'button' && n.textContent === label).listeners.click[0]();
+
+test('alerte de l’accueil : role=alert, texte copiable, action selon le code, croix ; une erreur sans action n’a que « Copier »', async () => {
+  const dirs = installed189();
+  const { page } = await render(dirs, {});
+  const { byId } = page;
+  assert.equal(byId('message').textContent, '', 'rien au chargement');
+  page.window.AttackUI.showError('LAUNCHER_NOT_FOUND');
+  assert.equal(byId('alert').classList.contains('hidden'), false);
+  assert.match(byId('message').textContent, /Pas de compte connecté/);
+  assert.equal(byId('lower').inert, true, 'la ligne « prêt » et les outils recouverts ne sont plus atteignables au clavier');
+  assert.equal(byId('alert-action').classList.contains('hidden'), false);
+  assert.equal(byId('alert-action').textContent, 'Connecter un compte');
+  byId('alert-close').listeners.click[0]();
+  assert.equal(byId('alert').classList.contains('hidden'), true);
+  assert.equal(byId('lower').inert, false);
+  assert.equal(byId('message').textContent, '');
+  page.window.AttackUI.showError('SOMETHING_ELSE', 'disque plein');
+  assert.equal(byId('alert').classList.contains('hidden'), false);
+  assert.equal(byId('alert-action').classList.contains('hidden'), true, 'pas d’action pour un code inconnu');
+  assert.match(byId('message').textContent, /disque plein/);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('assistant OptiFine : chaque état a son titre, son texte ou ses étapes et ses boutons, annoncés par la zone aria-live', async () => {
+  const dirs = installed189();
+  fs.rmSync(dirs.source); // aucune copie : la carte Réglages et la carte de la page Mods portent l'assistant
+  const { page } = await render(dirs, {});
+  const { byId } = page;
+  const live = () => byId('optifine-live').textContent;
+  const settingsCard = () => byId('optifine-assist');
+  const modsCard = () => byId('mods-grid').children.find((card) => /OptiFine/.test(card.textContent) && /wide/.test(card.className));
+
+  // au repos : rien dans la carte Réglages (le bouton « Obtenir OptiFine » y est), l'invitation sur la carte de la page Mods
+  assert.equal(settingsCard().children.length, 0);
+  assert.ok(modsCard(), 'carte OptiFine large sans copie');
+  assert.deepEqual(labelsOf(modsCard()), ['Obtenir OptiFine', 'Choisir le fichier…']);
+  assert.equal(nodesOf(modsCard()).some((n) => n.tagName === 'details'), true, '« Pourquoi ? » sur la carte de la page Mods');
+  assert.equal(nodesOf(modsCard()).some((n) => n.tagName === 'input'), false, 'pas d’interrupteur actif sans copie');
+
+  await page.emitAssist({ state: 'waiting', downloadsDir: 'D:\\Telechargements' });
+  const waiting = settingsCard().textContent;
+  assert.match(waiting, /En attente de ton téléchargement/);
+  assert.match(waiting, /\(Mirror\)/);
+  assert.match(waiting, /Download/);
+  assert.match(waiting, /Conserver/);
+  assert.match(waiting, /D:\\Telechargements/);
+  assert.deepEqual(labelsOf(settingsCard()), ['Annuler']);
+  assert.equal(byId('optifine-download').disabled, true, 'pas de second guetteur');
+  assert.match(live(), /En attente de ton téléchargement/);
+
+  await page.emitAssist({ state: 'seen', file: 'OptiFine_1.8.9_HD_U_M5.jar', version: 'HD_U_M5', downloadsDir: 'D:\\Dl' });
+  assert.match(settingsCard().textContent, /Fichier repéré/);
+  assert.match(settingsCard().textContent, /OptiFine_1\.8\.9_HD_U_M5\.jar était déjà dans D:\\Dl/);
+  assert.deepEqual(labelsOf(settingsCard()), ['Utiliser ce fichier', 'Annuler']);
+  await clickLabel(settingsCard(), 'Utiliser ce fichier');
+  assert.deepEqual(plain(page.assistCalls.at(-1)), ['use']);
+
+  await page.emitAssist({ state: 'checking', file: 'OptiFine_1.8.9_HD_U_M5.jar', downloadsDir: 'D:\\Dl' });
+  assert.match(settingsCard().textContent, /Vérification/);
+  assert.deepEqual(labelsOf(settingsCard()), []);
+
+  await page.emitAssist({ state: 'refused', file: 'OptiFine_1.8.9_HD_U_M5.jar', reason: 'NO_TWEAK', downloadsDir: 'D:\\Dl' });
+  assert.match(settingsCard().textContent, /Fichier refusé/);
+  assert.match(settingsCard().textContent, /pas OptiFine pour Forge 1\.8\.9/);
+  assert.deepEqual(labelsOf(settingsCard()), ['Réessayer', 'Choisir le fichier…']);
+  assert.match(live(), /Fichier refusé/);
+
+  await page.emitAssist({ state: 'timeout', downloadsDir: 'D:\\Dl' });
+  assert.match(settingsCard().textContent, /Rien reçu/);
+  assert.match(settingsCard().textContent, /10 minutes/);
+  assert.deepEqual(labelsOf(settingsCard()), ['Attendre encore', 'Choisir le fichier…']);
+  await clickLabel(settingsCard(), 'Attendre encore');
+  assert.deepEqual(plain(page.assistCalls.at(-1)), ['start', { browser: false }], '« Attendre encore » ne rouvre pas le navigateur');
+
+  await page.emitAssist({ state: 'cancelled', downloadsDir: 'D:\\Dl' });
+  assert.deepEqual(labelsOf(settingsCard()), ['Relancer', 'Choisir le fichier…']);
+  await clickLabel(settingsCard(), 'Relancer');
+  assert.deepEqual(plain(page.assistCalls.at(-1)), ['start', { browser: true }]);
+
+  await page.emitAssist({ state: 'error', reason: 'DIR_UNREADABLE', downloadsDir: 'D:\\Dl' });
+  assert.match(settingsCard().textContent, /Le dossier Téléchargements est illisible\u00a0: D:\\Dl/);
+  await page.emitAssist({ state: 'error', reason: 'ENOSPC', message: 'Disque plein', downloadsDir: 'D:\\Dl' });
+  assert.match(settingsCard().textContent, /Impossible de continuer/);
+
+  // « Obtenir OptiFine » (carte Réglages) lance la surveillance ET ouvre optifine.net (le processus principal décide)
+  byId('optifine-download').disabled = false;
+  await byId('optifine-download').listeners.click[0]();
+  assert.deepEqual(plain(page.assistCalls.at(-1)), ['start', { browser: true }]);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('assistant OptiFine : « importé » propose Installer maintenant, et la page relit réglages et état', async () => {
+  const dirs = installed189();
+  fs.rmSync(dirs.source);
+  const { page } = await render(dirs, {});
+  await page.emitAssist({ state: 'imported', file: 'OptiFine_1.8.9_HD_U_M5.jar', version: 'HD_U_M5', downloadsDir: 'D:\\Dl' });
+  const text = page.byId('optifine-assist').textContent;
+  assert.match(text, /OptiFine HD U M5 est prêt/);
+  assert.match(text, /à la prochaine installation/);
+  assert.deepEqual(labelsOf(page.byId('optifine-assist')), ['Installer maintenant']);
+  assert.match(page.byId('optifine-live').textContent, /OptiFine HD U M5 est prêt/);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('assistant OptiFine au clavier : le focus ne retombe jamais sur <body> quand l’état change (Réglages et page Mods)', async (t) => {
+  const dirs = installed189();
+  t.after(() => fs.rmSync(dirs.root, { recursive: true, force: true }));
+  fs.rmSync(dirs.source);
+  const { page } = await render(dirs, {});
+  const { byId } = page;
+  const settingsCard = () => byId('optifine-assist');
+  const modsCard = () => byId('mods-grid').children.find((card) => /OptiFine/.test(card.textContent) && /wide/.test(card.className));
+  const focused = () => page.document.activeElement;
+  const keyOf = () => focused() && focused().dataset && focused().dataset.focusKey;
+  const button = (root, label) => nodesOf(root).find((n) => n.tagName === 'button' && n.textContent === label);
+  /** Entrée sur un bouton : focus puis clic, et attente des rendus qui suivent. */
+  const press = async (node) => {
+    node.focus();
+    await node.listeners.click[0]();
+    for (let i = 0; i < 5; i++) await page.tick();
+  };
+  const onTitle = (card, variant, step) => {
+    assert.notEqual(focused(), page.document.body, `${step} : pas sur <body>`);
+    assert.equal(keyOf(), `assist:${variant}:title`, `${step} : sur le titre de l’assistant`);
+    assert.ok(card.contains(focused()), `${step} : dans le bloc affiché`);
+  };
+
+  // Réglages : « Obtenir OptiFine » est hors du bloc et devient grisé pendant la surveillance
+  await press(byId('optifine-download'));
+  assert.equal(byId('optifine-download').disabled, true);
+  onTitle(settingsCard(), 'settings', 'Obtenir OptiFine');
+  await press(button(settingsCard(), 'Annuler'));
+  await page.emitAssist({ state: 'cancelled', downloadsDir: 'D:\\Dl' });
+  onTitle(settingsCard(), 'settings', 'Annuler');
+  await press(button(settingsCard(), 'Relancer'));
+  onTitle(settingsCard(), 'settings', 'Relancer');
+  await page.emitAssist({ state: 'seen', file: 'OptiFine_1.8.9_HD_U_M5.jar', version: 'HD_U_M5', downloadsDir: 'D:\\Dl' });
+  onTitle(settingsCard(), 'settings', 'titre gardé d’un état à l’autre');
+  await press(button(settingsCard(), 'Utiliser ce fichier'));
+  await page.emitAssist({ state: 'checking', file: 'OptiFine_1.8.9_HD_U_M5.jar', downloadsDir: 'D:\\Dl' });
+  onTitle(settingsCard(), 'settings', 'Utiliser ce fichier (vérification, aucun bouton)');
+  await page.emitAssist({ state: 'refused', file: 'OptiFine_1.8.9_HD_U_M5.jar', reason: 'NO_TWEAK', downloadsDir: 'D:\\Dl' });
+  onTitle(settingsCard(), 'settings', 'refusé');
+  // un bouton présent dans les deux états garde le focus : la clé est son rôle, pas son libellé (Réessayer -> Attendre encore)
+  button(settingsCard(), 'Réessayer').focus();
+  await page.emitAssist({ state: 'timeout', downloadsDir: 'D:\\Dl' });
+  assert.equal(keyOf(), 'assist:settings:start');
+  assert.equal(focused().textContent, 'Attendre encore');
+
+  // page Mods : la grille entière est refaite, le focus reste sur la carte OptiFine
+  await page.emitAssist({ state: 'cancelled', downloadsDir: 'D:\\Dl' });
+  await press(button(modsCard(), 'Relancer'));
+  onTitle(modsCard(), 'mods', 'Relancer (page Mods)');
+  await press(button(modsCard(), 'Annuler'));
+  await page.emitAssist({ state: 'cancelled', downloadsDir: 'D:\\Dl' });
+  onTitle(modsCard(), 'mods', 'Annuler (page Mods)');
+});
+
+test('assistant OptiFine en anglais : « (Mirror) », « Download », « Keep » dans les étapes', async () => {
+  const dirs = installed189();
+  fs.rmSync(dirs.source);
+  const { page } = await render(dirs, { lang: 'en' });
+  await page.emitAssist({ state: 'waiting', downloadsDir: 'D:\\Dl' });
+  const text = page.byId('optifine-assist').textContent;
+  assert.match(text, /Waiting for your download/);
+  assert.match(text, /“\(Mirror\)”/);
+  assert.match(text, /“Keep”/);
+  assert.deepEqual(labelsOf(page.byId('optifine-assist')), ['Cancel']);
   fs.rmSync(dirs.root, { recursive: true, force: true });
 });

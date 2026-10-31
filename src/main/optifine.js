@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { readEntries, readEntry } = require('./zip');
-const { renameRetry } = require('./http');
+const { renameRetry } = require('./fsretry'); // jamais ./http : ce module n'accède pas au réseau (test statique)
 const { safeJoin } = require('./maven');
 
 /** Page de téléchargement officielle, ouverte dans le navigateur (jamais lue ni téléchargée par le launcher). */
@@ -26,9 +26,17 @@ const FILENAME = /^[\w.+-]+\.jar$/;
 /** Nom qui désigne un OptiFine 1.8.9 (OptiFine-1.8.9_HD_U_M5.jar, OptiFine_1.8.9_HD_U_M5.jar…). */
 const NAME = /optifine.*1\.8\.9/i;
 
-/** Variante dans le nom (« HD_U_M5 »), ou null. */
+/**
+ * Retire le suffixe « (1) » que le navigateur ajoute à un fichier déjà téléchargé : Chrome/Edge « OptiFine_1.8.9_HD_U_M5 (1).jar »,
+ * Firefox « OptiFine_1.8.9_HD_U_M5(1).jar » (collé) -> « OptiFine_1.8.9_HD_U_M5.jar ».
+ */
+function stripCopySuffix(name) {
+  return String(name).replace(/\s?\(\d+\)(?=\.jar$)/i, '');
+}
+
+/** Variante dans le nom (« HD_U_M5 »), ou null. Tolère le suffixe « (n) » d'un téléchargement répété. */
 function versionOf(name) {
-  return /1\.8\.9[_-]([\w.+-]+?)\.jar$/i.exec(String(name))?.[1] || null;
+  return /1\.8\.9[_-]([\w.+-]+?)\.jar$/i.exec(stripCopySuffix(name))?.[1] || null;
 }
 
 /** Attributs principaux d'un MANIFEST.MF (lignes repliées à 72 caractères recollées). */
@@ -156,7 +164,8 @@ async function ownCopy(gameDir, trackedName) {
 
 /** Nom sous lequel la copie est rangée dans mods : celui du fichier s'il est propre, sinon OptiFine-1.8.9_<variante>.jar. */
 function destName(found) {
-  if (FILENAME.test(found.name) && NAME.test(found.name)) return found.name;
+  const clean = stripCopySuffix(found.name); // « … (1).jar » -> « ….jar » : le suffixe du navigateur ne va pas dans mods
+  if (FILENAME.test(clean) && NAME.test(clean)) return clean;
   const version = (found.version || 'custom').replace(/[^\w.+-]/g, '_');
   return `OptiFine-${MC}_${version}.jar`;
 }
@@ -262,6 +271,39 @@ async function apply({ minecraftDir, gameDir, enabled = true, chosen = '', track
   return { action, info, view: { ...view, installed: true, pending: false } };
 }
 
+/**
+ * Assistant : copie PRIVÉE de l'OptiFine que le joueur vient de télécharger, dans <dossier de données>/optifine/ (son dossier
+ * Téléchargements est souvent vidé). Le jar est validé (ZIP lisible, TweakClass, 1.8.9), copié dans un `.part`, comparé par SHA-256
+ * puis renommé. La copie reste sur ce PC : ce n'est pas une redistribution. Lève une erreur (`code` OPTIFINE_<raison> ou COPY_MISMATCH)
+ * si le jar est refusé ou si la copie est altérée. Renvoie { file, name, size, sha256, version, reused }.
+ */
+async function importCopy(file, userDataDir) {
+  const checked = await validate(file);
+  if (!checked.ok) throw Object.assign(new Error(checked.message), { code: `OPTIFINE_${checked.reason}`, reason: checked.reason });
+  const dir = path.join(userDataDir, 'optifine');
+  await fsp.mkdir(dir, { recursive: true });
+  const name = destName(checked);
+  const dest = safeJoin(dir, name);
+  const info = { file: dest, name, size: checked.size, sha256: checked.sha256, version: checked.version };
+  // même fichier déjà rangé (ou fichier choisi dans notre propre dossier) : rien à recopier
+  if (path.resolve(file).toLowerCase() === path.resolve(dest).toLowerCase()) return { ...info, reused: true };
+  const existing = await fsp.stat(dest).catch(() => null);
+  if (existing?.isFile() && existing.size === checked.size && (await sha256Of(dest)) === checked.sha256) return { ...info, reused: true };
+  const part = `${dest}.part`;
+  try {
+    await fsp.copyFile(file, part);
+    if ((await sha256Of(part)) !== checked.sha256) {
+      throw Object.assign(new Error("La copie d'OptiFine ne correspond pas au fichier d'origine (fichier modifié pendant la copie ?)."), { code: 'COPY_MISMATCH' });
+    }
+    await renameRetry(part, dest);
+  } catch (error) {
+    await fsp.rm(part, { force: true });
+    throw error;
+  }
+  return { ...info, reused: false };
+}
+
 module.exports = {
-  DOWNLOAD_URL, TWEAK, REASONS, versionOf, parseManifest, checkBuffer, validate, candidates, detect, ownCopy, inspect, apply, removeTracked,
+  DOWNLOAD_URL, TWEAK, REASONS, MAX_JAR, stripCopySuffix, versionOf, destName, parseManifest, checkBuffer, validate, candidates, detect, ownCopy, inspect,
+  apply, importCopy, removeTracked,
 };

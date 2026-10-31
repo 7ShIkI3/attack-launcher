@@ -28,7 +28,7 @@ function usedKeys() {
   const keys = new Set();
   for (const file of ['index.html', 'app.js', 'skin.js']) {
     const text = read(file);
-    for (const m of text.matchAll(/data-i18n(?:-title|-placeholder)?="([\w.-]+)"/g)) keys.add(m[1]);
+    for (const m of text.matchAll(/data-i18n(?:-title|-placeholder|-label)?="([\w.-]+)"/g)) keys.add(m[1]);
     for (const m of text.matchAll(/\bt\('([\w.-]+)'/g)) keys.add(m[1]);
   }
   return keys;
@@ -93,7 +93,7 @@ test('CSP stricte : aucun script ni style en ligne, aucun gestionnaire d’évé
   }
 });
 
-test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; 0.6.0 en tête, version du paquet identique', () => {
+test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; la version du paquet en tête', () => {
   const pkg = require('../package.json');
   assert.equal(data.CHANGELOG[0].version, `Launcher ${pkg.version}`);
   for (const entry of data.CHANGELOG) {
@@ -103,10 +103,10 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; 0
     assert.ok(entry.date === '' || /^\d{4}-\d{2}-\d{2}$/.test(entry.date), `${entry.version} : date`);
   }
   assert.equal(new Set(data.CHANGELOG.map((e) => e.version)).size, data.CHANGELOG.length, 'versions uniques');
-  // les deux versions d'ATTACK Client livrées avec le launcher 0.6.0 suivent son entrée : Fabric (3.5.0) d'abord, puis la 1.8.9 (2.6.0), même date
+  // les deux versions d'ATTACK Client livrées avec le launcher 0.7.0 suivent son entrée : Fabric (3.6.0) d'abord, puis la 1.8.9 (2.7.0), même date
   assert.deepEqual(Array.from(data.CHANGELOG.slice(1, 3), (e) => [e.version, e.date, e.tag]), [
-    ['ATTACK Client 3.5.0', data.CHANGELOG[0].date, 'new'],
-    ['ATTACK Client 2.6.0', data.CHANGELOG[0].date, 'new'],
+    ['ATTACK Client 3.6.0', data.CHANGELOG[0].date, 'new'],
+    ['ATTACK Client 2.7.0', data.CHANGELOG[0].date, 'new'],
   ]);
   // la page découpe chaque texte en puces (une phrase chacune) : aucun texte n'est un bloc unique
   for (const entry of data.CHANGELOG.slice(1, 3)) {
@@ -130,7 +130,7 @@ test('vitrine : chaque mod des packs figés a sa fiche (icône, catégorie, text
 test('textes : la phrase de crédit et la carte OptiFine disent que rien n’est téléchargé', () => {
   i18n.setLang('fr');
   assert.match(i18n.t('credits.credit'), /Modrinth/);
-  assert.match(i18n.t('credits.note'), /ne l'embarque pas et ne le télécharge pas/);
+  assert.match(i18n.t('credits.note'), /ne l’embarque pas et ne le télécharge pas/);
   assert.match(i18n.t('optifine.textMissing'), /interdit au launcher de le télécharger/);
   i18n.setLang('en');
   assert.match(i18n.t('credits.note'), /neither ships nor downloads it/);
@@ -149,4 +149,80 @@ test('pont IPC : chaque canal du preload a son gestionnaire dans main.js, et cha
   const exposed = new Set([...preload.matchAll(/^\s{2}(\w+):/gm)].map((m) => m[1]));
   const calls = new Set([...read('app.js').matchAll(/\bapi\.(\w+)/g)].map((m) => m[1]));
   assert.deepEqual([...calls].filter((name) => !exposed.has(name)), [], 'appel de la page sans méthode exposée');
+});
+
+test('typographie : espace insécable avant « : ; ! ? » et dans « », apostrophe ’, singulier « 1 mod » (les variables ne sont jamais touchées)', () => {
+  const NBSP = '\u00a0';
+  i18n.setLang('fr');
+  assert.equal(i18n.t('home.needs', { items: 'a : b' }), `À installer${NBSP}: a : b`, 'seul le texte du modèle est typographié, pas la valeur');
+  assert.equal(i18n.t('pc.sub', { name: 'ATTACK Client' }), `Profil du launcher officiel${NBSP}: «${NBSP}ATTACK Client${NBSP}»`, '« » jamais orphelin');
+  assert.equal(i18n.t('home.mods', { n: 1 }), '1 mod');
+  assert.equal(i18n.t('home.mods', { n: 0 }), '0 mod', 'zéro est singulier en français');
+  assert.equal(i18n.t('home.mods', { n: 5 }), '5 mods');
+  assert.equal(i18n.t('mods.countModules', { n: 1 }), '1 module en jeu');
+  assert.match(i18n.t('credits.note'), /l’embarque/, 'apostrophe typographique');
+  assert.equal(/\p{L}'\p{L}/u.test(i18n.t('credits.note')), false);
+  assert.equal(i18n.t('settings.about', { version: '0.7.0', dir: 'C:\\a : b' }).includes('C:\\a : b'), true, 'un chemin passe tel quel');
+  i18n.setLang('en');
+  assert.equal(i18n.t('home.mods', { n: 1 }), '1 mod');
+  assert.equal(i18n.t('home.mods', { n: 0 }), '0 mods', 'zéro est pluriel en anglais');
+  assert.equal(i18n.t('home.changelog'), 'What’s new');
+  assert.equal(i18n.t('home.needs', { items: 'x' }), 'To install: x', 'pas d’espace insécable en anglais');
+  i18n.setLang('fr');
+  // chaque texte français qui a un « : » précédé d'une espace en a une insécable après typographie
+  const fr = (key) => i18n.t(key);
+  for (const key of usedKeys()) assert.equal(/[^\u00a0] [:;!?»]/.test(fr(key).replace(/\{\w+\}/g, '')), false, `${key} : espace sécable avant la ponctuation`);
+});
+
+test('échelle : toute taille de police et tout rayon du CSS passent par les jetons (rien sous 11 px, 4 rayons et la pastille)', () => {
+  const css = read('styles.css');
+  const sizes = [...css.matchAll(/font-size:\s*([^;}]+)[;}]/g)].map((m) => m[1].replace(/\s*!important$/, '').trim());
+  assert.deepEqual(sizes.filter((v) => !/^var\(--fs-(xs|sm|md|base|lg|xl|2xl|hero|hero-sm|code)\)$/.test(v)), [], 'taille hors échelle');
+  const tokens = Object.fromEntries([...css.matchAll(/--fs-([\w-]+):\s*(\d+)px/g)].map((m) => [m[1], Number(m[2])]));
+  assert.ok(Object.values(tokens).every((px) => px >= 11), 'aucun texte sous 11 px');
+  const radii = [...css.matchAll(/border-radius:\s*([^;}]+)[;}]/g)].map((m) => m[1].trim());
+  assert.deepEqual(radii.filter((v) => !/^(var\(--r-(xs|sm|md|lg|pill)\)|var\(--radius\)|50%|2px|0 3px 3px 0)$/.test(v)), [], 'rayon hors échelle');
+  // le rouge porteur de texte blanc est --accent-btn (4,98:1) ; color-scheme et contraste élevé sont là
+  assert.match(css, /--accent-btn:\s*#d32f2f/);
+  assert.match(css, /\.btn\.accent \{ background: var\(--accent-btn\)/);
+  assert.match(css, /color-scheme:\s*dark/);
+  assert.match(css, /@media \(forced-colors: active\)/);
+  assert.equal(/input\[type='text'\]:focus \{[^}]*outline:\s*none/.test(css), false, 'le champ garde son anneau de focus');
+  assert.match(css, /input\[type='text'\]:focus-visible \{ outline: 2px solid var\(--accent\)/);
+});
+
+test('sémantique : onglets liés à leurs panneaux, boutons de la barre de titre hors tabulation, alertes annoncées, zone aria-live de l’assistant', () => {
+  const html = read('index.html');
+  for (const tab of ['profile', 'launcher', 'advanced']) {
+    assert.match(html, new RegExp(`id="tabbtn-${tab}"[^>]*aria-controls="tab-${tab}"`));
+    assert.match(html, new RegExp(`id="tab-${tab}" role="tabpanel" aria-labelledby="tabbtn-${tab}"`));
+  }
+  for (const id of ['wc-min', 'wc-max', 'wc-close']) assert.match(html, new RegExp(`id="${id}" tabindex="-1"`));
+  assert.match(html, /id="alert" role="alert"/);
+  assert.match(html, /id="account-message" role="alert"/);
+  assert.match(html, /id="optifine-live" role="status" aria-live="polite"/);
+  assert.match(html, /<button class="nav-item active" data-page="home" aria-current="page">/);
+  for (const id of ['optifine-enabled', 'dev-mode']) assert.match(html, new RegExp(`id="${id}" aria-labelledby="[\\w-]+"`), `${id} a un nom`);
+  for (const id of ['game-dir', 'dev-dir']) assert.match(html, new RegExp(`id="${id}" readonly aria-labelledby="[\\w-]+"`), `${id} a un nom`);
+  // les groupes à choix unique sont des radiogroups (un arrêt de tabulation, flèches)
+  for (const id of ['profile-select', 'java-mode', 'lang', 'mods-filters', 'mods-state', 'mods-density', 'changelog-filters']) assert.match(html, new RegExp(`id="${id}"[^>]*role="radiogroup"`), id);
+  // « Pourquoi ? » : un <details> à trois puces
+  const why = /<details class="why" id="optifine-why">([\s\S]*?)<\/details>/.exec(html);
+  assert.ok(why, 'details Pourquoi ?');
+  assert.equal((why[1].match(/<li\b/g) || []).length, 3);
+});
+
+test('« Pourquoi ? » : trois raisons (licence, vérification locale, profils 1.21.1 et 26.3), rien sur les autres launchers ni sur les capes', () => {
+  for (const lang of ['fr', 'en']) {
+    i18n.setLang(lang);
+    const bullets = ['optifine.why1', 'optifine.why2', 'optifine.why3'].map((key) => i18n.t(key));
+    assert.equal(bullets.every((text) => text.length > 30), true);
+    assert.match(bullets[0], lang === 'fr' ? /licence/ : /license/);
+    assert.match(bullets[2], /1\.21\.1/);
+    assert.match(bullets[2], /26\.3/);
+    for (const text of [...bullets, i18n.t('optifine.assist.idle'), i18n.t('optifine.assist.step1'), i18n.t('optifine.assist.step2')]) {
+      assert.equal(/prism|multimc|lunar|badlion|feather|hmcl|tlauncher|atlauncher|gdlauncher|curseforge|modrinth|\bcapes?\b/i.test(text), false, `${lang} : ${text}`);
+    }
+  }
+  i18n.setLang('fr');
 });

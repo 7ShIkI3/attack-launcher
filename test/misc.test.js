@@ -1,5 +1,5 @@
 'use strict';
-// Release GitHub du mod, jar de développement, réglages, choix du launcher officiel, progression.
+// Release GitHub du mod, jar de développement, réglages, choix du launcher officiel, progression, filet d'erreurs du processus principal.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -192,4 +192,33 @@ test('erreurs corrigeables par le joueur : chacune porte son code (affiché trad
     nativesDir: dir, classpath: [], identity: { name: 'a', uuid: 'u', accessToken: 't', userType: 'msa' }, ramMb: 2048, jvmArgs: '-Xms4G',
   }), (e) => e.code === 'HEAP_TOO_BIG');
   fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('filet du processus principal : exception et rejet perdus écrits avec leur pile dans le journal, l’appli continue', (t) => {
+  const main = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
+  const instance = main.slice(main.indexOf('requestSingleInstanceLock'));
+  const call = instance.indexOf('catchStrayErrors();');
+  assert.ok(call !== -1 && call < instance.indexOf('app.whenReady'), 'filet posé dans l’instance principale, avant app.whenReady');
+  // les deux fonctions de main.js tournent telles quelles, avec un faux `process` et un faux `app` (dossier de données temporaire)
+  const source = (name) => new RegExp(String.raw`^function ${name}\(\) \{[\s\S]*?^\}$`, 'm').exec(main)[0];
+  const root = tempDir('atk-main-');
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const listeners = new (require('node:events'))();
+  const stops = [];
+  const sandbox = {
+    fs, path, console: { error: () => {} },
+    app: { getPath: () => root, isPackaged: true, quit: () => stops.push('quit'), exit: () => stops.push('exit') },
+    process: { on: (name, fn) => listeners.on(name, fn), exit: () => stops.push('process.exit') },
+  };
+  require('node:vm').runInNewContext(`${source('createUpdateLog')}\n${source('catchStrayErrors')}\ncatchStrayErrors();`, sandbox);
+  assert.deepEqual(listeners.eventNames().sort(), ['uncaughtException', 'unhandledRejection']);
+  const paused = Object.assign(new Error('false == true'), { code: 'ERR_ASSERTION' });
+  listeners.emit('uncaughtException', paused, 'uncaughtException');
+  listeners.emit('unhandledRejection', new TypeError('rejet sans catch'));
+  listeners.emit('unhandledRejection', 'raison sans pile');
+  const log = fs.readFileSync(path.join(root, 'logs', 'updater.log'), 'utf8');
+  assert.match(log, /\[error\] \[uncaughtException\] Error: false == true\n\s+at /, 'message et pile');
+  assert.match(log, /\[error\] \[unhandledRejection\] TypeError: rejet sans catch\n\s+at /);
+  assert.match(log, /\[error\] \[unhandledRejection\] raison sans pile\n/);
+  assert.deepEqual(stops, [], 'ni fermeture ni sortie');
 });

@@ -53,9 +53,13 @@ Elle suit le profil choisi sur l'accueil :
   ModernFix en 1.21.1, Krypton, Reflex AntiLag, Mod Menu, Continuity, Entity Texture / Model Features, Iris et Replay Mod en
   option, et les mods PvP : Crystal Optimizer, Anchor Optimizer, BetterHitReg, Complete Shield Fixes). Pas d'icônes venant de
   Modrinth : la page n'a le droit de charger aucune image distante.
-- **Recherche** (« Rechercher un mod… »), **compteurs** par catégorie, et sur chaque mod d'un groupe réglable (Iris, mods PvP,
-  packs OptiFine, Replay Mod) un **interrupteur** lié au réglage du même nom ; la carte est estompée quand le groupe est
-  coupé. L'en-tête compte les mods **installés** (le même nombre que sur l'accueil) et ceux qui sont désactivés. Quand
+- **Recherche** (« Rechercher un mod… »), filtres par **catégorie** (avec leur compteur) et par **état** (Tous, Activés, Désactivés ;
+  les modules d'ATTACK Client se règlent en jeu : le launcher ne connaît pas leur état), et trois **densités** (Détaillé, Compact,
+  Liste, retenue d'une session à l'autre). Sur chaque mod d'un groupe réglable (Iris, mods PvP, packs OptiFine, Replay Mod),
+  un **interrupteur** lié au réglage du même nom, en haut à droite de la carte ; la carte porte une pastille **Désactivé** (le
+  texte reste lisible, trait pointillé) quand le groupe est coupé. Deux compteurs séparés : les **mods** (ATTACK Client,
+  OptiFine, pack) et les **modules en jeu** ; l'en-tête compte les mods **installés** (le même nombre que sur l'accueil) et ceux
+  qui sont désactivés. Sans copie d'OptiFine, sa carte n'a pas d'interrupteur : elle porte l'assistant **Obtenir OptiFine**. Quand
   un réglage a changé, un bandeau « Le pack de mods a changé » propose **Installer maintenant**.
 
 ## Réglages
@@ -64,7 +68,7 @@ Elle suit le profil choisi sur l'accueil :
 
 Les réglages sont répartis en **trois onglets** : **Ce profil** (mémoire avec sa zone recommandée et des raccourcis 2, 3, 4, 6 Go,
 dossier de jeu, Java, pack de mods avec ses interrupteurs, carte OptiFine en 1.8.9), **Launcher** (langue, À propos, mods et
-licences) et **Avancé** (arguments Java, mode développeur, ID client Azure). Un bandeau « À appliquer » avec **Installer maintenant**
+licences, mises à jour, dossiers et journaux) et **Avancé** (arguments Java, mode développeur, ID client Azure). Un bandeau « À appliquer » avec **Installer maintenant**
 apparaît quand un réglage du pack attend une installation, et chaque interrupteur affiche **Appliqué**, **À appliquer** ou **Désactivé**.
 
 Les réglages sont enregistrés automatiquement dans `%APPDATA%\ATTACK Launcher\settings.json` et appliqués au profil

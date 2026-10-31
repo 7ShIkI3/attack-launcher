@@ -43,7 +43,7 @@
     { name: 'FOV', icon: 'FO', cat: 'visual', fr: 'Champ de vision fixe, sans effet de vitesse.', en: 'Fixed field of view, no speed effect.' },
     { name: 'View Bobbing', icon: 'VB', cat: 'visual', fr: 'Balancement de la caméra à ton goût.', en: 'Camera bobbing to your taste.' },
     { name: 'Nametags', icon: 'NT', cat: 'visual', fr: 'Pseudos plus lisibles, avec ton écusson.', en: 'Clearer nametags, with your badge.' },
-    { name: 'Capes ATTACK', en_name: 'ATTACK capes', icon: 'CA', cat: 'visual', fr: '19 capes animées avec physique (dont 12 « Ciné culte ») et 7 paires d’ailes, visibles par tous les joueurs ATTACK.', en: '19 animated capes with physics (12 of them “Cult cinema”) and 7 pairs of wings, seen by every ATTACK player.' },
+    { name: 'Capes ATTACK', en_name: 'ATTACK capes', icon: 'CA', cat: 'visual', fr: '37 capes avec physique, en 5 collections (dont 12 « Ciné culte »), 9 paires d’ailes, 6 auréoles et 6 effets, visibles par tous les joueurs ATTACK.', en: '37 capes with physics, in 5 collections (12 of them “Cult cinema”), 9 pairs of wings, 6 halos and 6 effects, seen by every ATTACK player.' },
     { name: 'FPS Boost', icon: 'FX', cat: 'perf', fr: 'Réglages de rendu pour plus d’images par seconde.', en: 'Rendering tweaks for higher frame rates.' },
     { name: 'Scoreboard', icon: 'SB', cat: 'utility', fr: 'Tableau des scores déplaçable et allégé.', en: 'Movable, cleaner scoreboard.' },
     { name: 'Chat', icon: 'CT', cat: 'utility', fr: 'Messages répétés regroupés et chat plus propre.', en: 'Stacks repeated messages, cleaner chat.' },
@@ -78,6 +78,24 @@
   ];
 
   const CHANGELOG = [
+    {
+      version: 'Launcher 0.7.0', date: '2026-10-30',
+      title_fr: 'Assistant OptiFine, interface soignée', title_en: 'OptiFine assistant, refined interface', tag: 'new',
+      fr: 'En 1.8.9, un assistant « Obtenir OptiFine » t’accompagne : il ouvre optifine.net, repère le fichier dans ton dossier Téléchargements, le vérifie et en garde une copie privée. Le launcher ne le télécharge toujours pas, sa licence l’interdit, et le lien « Pourquoi ? » explique pourquoi en trois points. Interface retravaillée : contrastes et focus clavier corrigés (le focus ne se perd plus, flèches dans les onglets et les profils), erreurs de l’accueil dans un bloc qui ne fait plus sauter la page, avec un bouton Copier, page Mods plus régulière (filtre Activés / Désactivés, trois densités, compteurs séparés), typographie française soignée et « Enregistré » visible partout.',
+      en: 'On 1.8.9, a “Get OptiFine” assistant guides you: it opens optifine.net, spots the file in your Downloads folder, checks it and keeps a private copy. The launcher still does not download it, its license forbids it, and the “Why?” link explains why in three points. Refined interface: contrast and keyboard focus fixed (focus is no longer lost, arrow keys in tabs and profiles), home-page errors in a block that no longer makes the page jump, with a Copy button, a more regular Mods page (Enabled / Disabled filter, three densities, separate counters), careful French typography and “Saved” shown everywhere.',
+    },
+    {
+      version: 'ATTACK Client 3.6.0', date: '2026-10-30',
+      title_fr: 'Nouvelles capes, ailes et auréoles', title_en: 'New capes, wings and halos', tag: 'new',
+      fr: 'En 1.21.1 et 26.3 : 18 nouvelles capes en trois collections, Éléments (Feu, Glace, Foudre, Lave, Tempête, Néant, Poison, Plasma), Rangs PvP (Bronze, Argent, Or, Diamant, Maître, Champion) et Saisons (Halloween, Noël, Printemps, Été). Deux nouveaux effets (Éclairs, Neige), deux nouvelles ailes (Squelette, et Néon à ta couleur d’accent) et un nouveau cosmétique, l’auréole, en six styles : Ange, Givre, Braise, Néon, Étoiles et Néant. Les capes Maître et Champion sont réservées aux tournois, et tous ces cosmétiques sont gratuits. L’écran Cosmétiques passe à trois onglets (Capes, Ailes, Auréole), les collections deviennent des puces sous « Capes », et le réglage devient « Cosmétiques des autres joueurs ATTACK ».',
+      en: 'On 1.21.1 and 26.3: 18 new capes in three collections, Elements (Fire, Ice, Lightning, Lava, Storm, Void, Poison, Plasma), PvP Ranks (Bronze, Silver, Gold, Diamond, Master, Champion) and Seasons (Halloween, Christmas, Spring, Summer). Two new effects (Bolts, Snow), two new wings (Skeleton, and Neon in your accent colour) and a new cosmetic, the halo, in six styles: Angel, Frost, Ember, Neon, Stars and Void. The Master and Champion capes are reserved for tournaments, and all these cosmetics are free. The Cosmetics screen now has three tabs (Capes, Wings, Halo), the collections become chips under “Capes”, and the setting becomes “Other ATTACK players’ cosmetics”.',
+    },
+    {
+      version: 'ATTACK Client 2.7.0', date: '2026-10-30',
+      title_fr: 'Les mêmes cosmétiques en 1.8.9', title_en: 'The same cosmetics on 1.8.9', tag: 'new',
+      fr: 'En 1.8.9 : 18 nouvelles capes en trois collections (Éléments, Rangs PvP et Saisons), deux nouveaux effets (Éclairs, Neige) et deux nouvelles ailes (Squelette, Néon). Une auréole en six styles (Ange, Givre, Braise, Néon, Étoiles, Néant) suit ta tête quand tu bouges et reste visible accroupi. Les capes Maître et Champion sont réservées aux tournois, et tout est gratuit. L’écran Cosmétiques passe à trois onglets (Capes, Ailes, Auréole) et le réglage devient « Cosmétiques des autres joueurs ATTACK ».',
+      en: 'On 1.8.9: 18 new capes in three collections (Elements, PvP Ranks and Seasons), two new effects (Bolts, Snow) and two new wings (Skeleton, Neon). A halo in six styles (Angel, Frost, Ember, Neon, Stars, Void) follows your head as you move and stays visible while crouching. The Master and Champion capes are reserved for tournaments, and everything is free. The Cosmetics screen now has three tabs (Capes, Wings, Halo) and the setting becomes “Other ATTACK players’ cosmetics”.',
+    },
     {
       version: 'Launcher 0.6.0', date: '2026-10-29',
       title_fr: 'OptiFine en 1.8.9 et nouvelle interface', title_en: 'OptiFine on 1.8.9 and a new interface', tag: 'new',

@@ -11,6 +11,7 @@ const C = require('./constants');
 const catalog = require('./catalog');
 const modpack = require('./modpack');
 const optifine = require('./optifine');
+const optifineWatch = require('./optifine-watch');
 const installer = require('./installer');
 const settingsStore = require('./settings');
 const profiles = require('./profiles');
@@ -46,9 +47,20 @@ let accounts = null;
 let launching = false; // lancement direct en préparation (Java, connexion)
 const games = new Map(); // parties lancées directement et encore ouvertes : processus -> dossier de jeu du profil
 let updater = null; // contrôleur des mises à jour du launcher
+let assist = null; // assistant OptiFine : un seul guetteur du dossier Téléchargements (créé au premier usage)
 const transport = auth.createTransport();
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
+
+/** Dossier Téléchargements du joueur ; ATTACK_DOWNLOADS_DIR le remplace pour les essais (jamais utilisé par une installation normale). */
+const downloadsDir = () => (process.env.ATTACK_DOWNLOADS_DIR ? path.resolve(process.env.ATTACK_DOWNLOADS_DIR) : app.getPath('downloads'));
+
+/** Ouvre optifine.net dans le navigateur du joueur, sauf en mode capture ou avec ATTACK_NO_BROWSER (essais). Le launcher ne lit jamais cette page. */
+function openOptifinePage() {
+  if (process.env.ATTACK_SCREENSHOT_DIR || process.env.ATTACK_NO_BROWSER) return false;
+  shell.openExternal(optifine.DOWNLOAD_URL);
+  return true;
+}
 
 /** Profil choisi (catalogue) et ses réglages effectifs à plat : dossier de jeu, Java, jars de développement, groupes du pack, OptiFine. */
 const currentProfile = () => catalog.get(settings.profileId);
@@ -106,7 +118,10 @@ function handle(channel, fn) {
   });
 }
 
-/** Journal des mises à jour : <userData>/logs/updater.log (l'ancien passe en .old au-delà de 1 Mo). */
+/**
+ * Journal du launcher : <userData>/logs/updater.log (l'ancien passe en .old au-delà de 1 Mo). Mises à jour, et erreurs que rien n'a
+ * attrapées dans le processus principal (catchStrayErrors).
+ */
 function createUpdateLog() {
   const file = path.join(app.getPath('userData'), 'logs', 'updater.log');
   try {
@@ -123,6 +138,21 @@ function createUpdateLog() {
     }
   };
   return { info: write('info'), warn: write('warn'), error: write('error'), debug: () => {} };
+}
+
+/**
+ * Filet du processus principal : une exception ou un rejet que rien n'attrape (vu une fois : l'assertion « !this.paused » d'undici
+ * pendant un téléchargement d'assets) est écrit avec sa pile dans le journal du launcher, et l'appli continue (ni fermeture, ni boîte
+ * d'erreur d'Electron).
+ */
+function catchStrayErrors() {
+  const log = createUpdateLog();
+  const report = (kind, error) => {
+    log.error(`[${kind}]`, (error && error.stack) || String(error));
+    if (!app.isPackaged) console.error(`[${kind}]`, error); // depuis les sources (npm start) : visible aussi dans le terminal
+  };
+  process.on('uncaughtException', (error, origin) => report(origin || 'uncaughtException', error));
+  process.on('unhandledRejection', (reason) => report('unhandledRejection', reason));
 }
 
 /** Raison de ne rien faire côté mise à jour : installation, lancement ou partie en cours (même par le launcher officiel). */
@@ -237,7 +267,7 @@ function registerIpc() {
     const result = await dialog.showOpenDialog(win, {
       title: 'Choisir OptiFine pour Minecraft 1.8.9 (.jar)',
       properties: ['openFile'],
-      defaultPath: app.getPath('downloads'),
+      defaultPath: downloadsDir(),
       filters: [{ name: 'OptiFine 1.8.9', extensions: ['jar'] }],
     });
     if (result.canceled || !result.filePaths[0]) return { ok: false, code: 'CANCELLED' };
@@ -246,7 +276,35 @@ function registerIpc() {
     await applySettings({ optifineJar: checked.file, optifine: true });
     return { ok: true, name: checked.name };
   });
-  handle('shell:openOptifine', () => shell.openExternal(optifine.DOWNLOAD_URL));
+  handle('shell:openOptifine', () => openOptifinePage());
+
+  // Assistant : le joueur télécharge OptiFine sur optifine.net, le launcher repère le jar dans Téléchargements, le valide et en garde
+  // une copie privée (<userData>/optifine). Aucun appel réseau : seulement l'ouverture de la page dans le navigateur du joueur.
+  const optifineProfileId = () => catalog.list().find((profile) => catalog.hasOptifine(profile)).id;
+  function optifineAssist() {
+    if (!assist) {
+      assist = optifineWatch.createWatcher({
+        dir: downloadsDir,
+        onState: (state) => send('optifine:assist', state),
+        importFile: async (file) => {
+          const copy = await optifine.importCopy(file, app.getPath('userData'));
+          await applySettings({ profiles: { [optifineProfileId()]: { optifineJar: copy.file, optifine: true } } });
+          return copy;
+        },
+      });
+    }
+    return assist;
+  }
+  handle('optifine:assistStart', async (_event, options) => {
+    if (!catalog.hasOptifine(currentProfile())) return { ok: false, code: 'NO_OPTIFINE', message: 'OptiFine : profil 1.8.9 seulement.' };
+    const watcher = optifineAssist();
+    const first = !watcher.isActive();
+    const state = await watcher.start(); // l'état de départ est lu AVANT d'ouvrir la page : un jar déjà présent est proposé, pas importé
+    if (first && !(options && options.browser === false)) openOptifinePage();
+    return { ok: true, ...state };
+  });
+  handle('optifine:assistUse', () => optifineAssist().use());
+  handle('optifine:assistCancel', () => ({ ok: true, ...optifineAssist().cancel() }));
 
   handle('install:run', async (event) => {
     if (installing) return { ok: false, code: 'BUSY', message: 'Installation déjà en cours' };
@@ -588,6 +646,7 @@ function createWindow() {
   }
   win.on('closed', () => {
     win = null;
+    assist?.dispose(); // plus de page pour afficher l'assistant : les minuteries s'arrêtent
   });
   win.loadFile(INDEX_HTML);
   if (process.env.ATTACK_SCREENSHOT_DIR) {
@@ -688,13 +747,40 @@ async function captureScreens() {
   await js("window.showPage && window.showPage('home'); document.getElementById('changelog-all').click()");
   await wait(500);
   await fsp.writeFile(path.join(dir, 'changelog.png'), (await win.webContents.capturePage()).toPNG());
+  await js("document.getElementById('changelog-close').click()");
+  if (process.env.ATTACK_SCREENSHOT_ERROR) {
+    // alerte de l'accueil pour ce code d'erreur (texte et bouton d'action propres à ce code)
+    await js(`window.showPage('home'); window.AttackUI.showError(${JSON.stringify(process.env.ATTACK_SCREENSHOT_ERROR)}, 'Échec : message d’exemple')`);
+    await wait(500);
+    await shot('home-error');
+  }
+  if (process.env.ATTACK_SCREENSHOT_OPTIFINE) {
+    // assistant OptiFine : le dossier Téléchargements est celui d'ATTACK_DOWNLOADS_DIR (dossier temporaire), optifine.net n'est pas ouvert.
+    // « imported » et « refused » : le jar factice (ATTACK_SCREENSHOT_OPTIFINE_JAR) arrive APRÈS le départ, comme un vrai téléchargement.
+    const mode = process.env.ATTACK_SCREENSHOT_OPTIFINE;
+    await js("window.showPage('settings'); window.selectSettingsTab('profile'); document.getElementById('optifine-download').click()");
+    await wait(900);
+    if (mode !== 'waiting' && process.env.ATTACK_SCREENSHOT_OPTIFINE_JAR) {
+      await fsp.copyFile(process.env.ATTACK_SCREENSHOT_OPTIFINE_JAR, path.join(downloadsDir(), 'OptiFine_1.8.9_HD_U_M5.jar'));
+      await wait(4500); // deux sondages d'une seconde (fichier stable), puis la vérification et la copie
+    }
+    await js("document.getElementById('optifine-card').scrollIntoView({ block: 'center' })");
+    await wait(400);
+    await shot(`optifine-${mode}`);
+    await js("window.showPage('mods')");
+    await wait(600);
+    await shot(`optifine-${mode}-mods`);
+  }
   app.quit();
 }
 
-/** Au démarrage : rafraîchit le compte actif en silence (nouveau jeton, refresh token tenu à jour). */
+/**
+ * Au démarrage : rafraîchit le compte actif en silence (nouveau jeton, refresh token tenu à jour). Pas en mode capture : le compte
+ * factice (ATTACK_OFFLINE, ATTACK_ACCOUNT_TYPE=msa) n'a pas de jeton, et l'erreur s'afficherait en haut de la page Compte.
+ */
 async function refreshActiveAccount() {
   const account = accounts.active();
-  if (!account || account.type !== 'msa' || !settingsStore.clientId(settings)) return;
+  if (process.env.ATTACK_SCREENSHOT_DIR || !account || account.type !== 'msa' || !settingsStore.clientId(settings)) return;
   try {
     await accounts.refresh(account.id, refreshWith);
     lastRefreshError = null;
@@ -707,6 +793,7 @@ async function refreshActiveAccount() {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
+  catchStrayErrors();
   app.on('second-instance', () => {
     if (win) {
       if (win.isMinimized()) win.restore();
@@ -724,6 +811,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('window-all-closed', () => app.quit());
   // mise à jour prête : la fermeture ne l'installe que si aucune partie ni installation ne tourne
   app.on('before-quit', (event) => {
+    assist?.dispose();
     if (!updater?.needsQuitCheck()) return;
     event.preventDefault();
     updater.prepareQuit().finally(() => app.quit());

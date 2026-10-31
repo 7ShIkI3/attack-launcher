@@ -493,9 +493,10 @@ test('actualités : les 3 entrées les plus récentes du CHANGELOG, dans la lang
   const en = await miniPage('{{html.news}}', {}, 'en/index.html');
   assert.equal(fr.match(/<article class="news-item">/g).length, 3);
   assert.equal(en.match(/<article class="news-item">/g).length, 3);
-  assert.ok(fr.includes('Launcher 0.6.0') && fr.includes('OptiFine en 1.8.9 et nouvelle interface') && fr.includes('29 octobre 2026'));
-  assert.ok(en.includes('OptiFine on 1.8.9 and a new interface') && en.includes('October 29, 2026'));
-  assert.ok(fr.includes('datetime="2026-10-29"') && fr.includes('class="news-tag news-tag-new"'));
+  assert.ok(fr.includes('Launcher 0.7.0') && fr.includes('Assistant OptiFine, interface soignée') && fr.includes('30 octobre 2026'));
+  assert.ok(fr.includes('ATTACK Client 3.6.0') && fr.includes('ATTACK Client 2.7.0'), 'les deux versions du client livrées avec le launcher');
+  assert.ok(en.includes('OptiFine assistant, refined interface') && en.includes('October 30, 2026'));
+  assert.ok(fr.includes('datetime="2026-10-30"') && fr.includes('class="news-tag news-tag-new"'));
 });
 
 test('logos : SVG décoratif, identifiants de dégradés uniques par occurrence', async () => {
