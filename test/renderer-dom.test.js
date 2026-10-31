@@ -960,38 +960,49 @@ test('profil 1.7.10 : jar du mod absent = « À installer : ATTACK Client », et
   fs.rmSync(dirs.root, { recursive: true, force: true });
 });
 
-test('page Mods du profil 1.7.10 : sa liste « lite », sans les modules interdits en classé, sans OptiFine ni pack', async () => {
+test('page Mods du profil 1.7.10 : tous les modules de la page Mods sauf Mouse Delay Fix et Titles, dans l’ordre de MODS, sans OptiFine ni pack', async () => {
   const data = (() => {
     const sandbox = { window: {} };
     vm.createContext(sandbox);
     vm.runInContext(fs.readFileSync(path.join(RENDERER, 'data.js'), 'utf8'), sandbox, { filename: 'data.js' });
     return sandbox.window.AttackData;
   })();
+  // la référence est MODS lui-même, pas une liste du profil : le mod 1.7.10 a tout le contenu du mod 1.8.9 sauf OptiFine, moins deux modules
+  const expected = Array.from(data.MODS).map((m) => m.name).filter((n) => n !== 'Mouse Delay Fix' && n !== 'Titles');
+  assert.equal(expected.length, data.MODS.length - 2);
   const dirs = installed1710();
   const { page } = await render1710(dirs);
   assert.equal(page.byId('mods-title').textContent, 'Mods du profil 1.7.10');
   const subtitle = page.byId('mods-subtitle').textContent;
   assert.match(subtitle, /sans pack de mods/);
-  assert.match(subtitle, new RegExp(`${data.MODULES_BY_PROFILE['forge-1.7.10'].names.length} modules`));
+  assert.match(subtitle, new RegExp(`${expected.length} modules`));
   assert.ok(!/ 0 mod/.test(subtitle), subtitle);
 
   const names = modCardNames(page);
-  const expected = Array.from(data.MODS).filter((m) => data.MODULES_BY_PROFILE['forge-1.7.10'].names.includes(m.name)).map((m) => m.name);
   assert.equal(names[0], 'ATTACK Client');
-  assert.deepEqual(names.slice(1), expected, 'les modules de la liste lite, dans l’ordre de la page Mods');
-  assert.equal(names.length, 1 + data.MODULES_BY_PROFILE['forge-1.7.10'].names.length);
-  for (const banned of ['No Jump Delay', 'No Hit Delay', 'Snap Tap', 'Perspective', 'OptiFine']) assert.ok(!names.includes(banned), `${banned} n’est pas dans la liste 1.7.10`);
-  assert.ok(names.includes('Capes ATTACK') && names.includes('ToggleSprint') && names.includes('Zoom'));
+  assert.deepEqual(names.slice(1), expected, 'tous les modules de MODS sauf deux, dans l’ordre de la page Mods (aucune liste « lite »)');
+  assert.equal(names.length, 1 + expected.length);
+  for (const gone of ['Mouse Delay Fix', 'Titles', 'OptiFine']) assert.ok(!names.includes(gone), `${gone} n’est pas dans la liste 1.7.10`);
+  // les modules interdits en classé, les Amis, la Minimap, les Waypoints, le flou de mouvement et FPS Boost y sont (ils n'étaient pas dans la liste « lite »)
+  for (const present of ['No Jump Delay', 'No Hit Delay', 'Perspective', 'Amis', 'Minimap', 'Waypoints', 'Motion Blur', 'FPS Boost', 'Capes ATTACK', 'ToggleSprint', 'Zoom', 'Personnalisation']) assert.ok(names.includes(present), `${present} est dans la liste 1.7.10`);
   assert.match(page.byId('mods-count').textContent, new RegExp(`^1 mod · ${expected.length} modules en jeu`));
-  // la carte ATTACK Client dit que ses modules se règlent en jeu, sans promettre « tous » ses modules
+  // Animations 1.7 : le texte propre à la 1.7.10 (position, style, vitesse du coup ; blocage et pose natifs) ; les autres gardent celui de MODS
+  const cardOf = (name) => page.byId('mods-grid').children.find((card) => card.children[0].children[1].textContent === name);
+  assert.match(cardOf('Animations 1.7').textContent, /Position, style et vitesse du coup réglables/);
+  assert.ok(!cardOf('Animations 1.7').textContent.includes('Blocage, coup et pose à l’ancienne'), 'pas le texte de la 1.8.9');
+  assert.ok(cardOf('Capes ATTACK').textContent.includes(data.MODS.find((m) => m.name === 'Capes ATTACK').fr), 'les cosmétiques gardent le texte de MODS (37 / 9 / 6 / 6)');
+  assert.ok(cardOf('Personnalisation').textContent.includes('22 polices'));
+  // la carte ATTACK Client dit que tous ses modules se règlent en jeu : la page les présente tous, comme en 1.8.9
   const attack = page.byId('mods-grid').children[0];
-  assert.ok(!/tous ses modules/.test(attack.textContent), attack.textContent);
+  assert.match(attack.textContent, /tous ses modules/);
 
-  // la 1.8.9 garde sa liste complète, et Fabric n'a aucun module
+  // la 1.8.9 garde sa liste complète (Animations avec son texte d'origine), et Fabric n'a aucun module
   const full = installed189();
   const view = await render(full, {});
   assert.ok(modCardNames(view.page).includes('No Jump Delay'), 'la 1.8.9 ne change pas');
+  assert.ok(modCardNames(view.page).includes('Titles') && modCardNames(view.page).includes('Mouse Delay Fix'), 'la 1.8.9 garde Titles et Mouse Delay Fix');
   assert.equal(modCardNames(view.page).filter((n) => data.MODS.some((m) => m.name === n)).length, data.MODS.length);
+  assert.ok(view.page.byId('mods-grid').children.find((card) => card.children[0].children[1].textContent === 'Animations 1.7').textContent.includes('Blocage, coup et pose à l’ancienne'), '1.8.9 : texte d’Animations inchangé');
   assert.equal(view.page.byId('mods-title').textContent, 'Mods inclus');
   assert.equal(view.page.byId('pack-card').classList.contains('hidden'), false, 'la 1.8.9 a sa carte « Pack de mods » (Replay Mod)');
   assert.match(view.page.byId('ram-help').textContent, /^2 à 3 Go suffisent pour la 1\.8\.9\./);

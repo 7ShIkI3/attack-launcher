@@ -495,8 +495,11 @@ test('actualités : les 3 entrées les plus récentes du CHANGELOG, dans la lang
   assert.equal(en.match(/<article class="news-item">/g).length, 3);
   assert.ok(fr.includes('Launcher 0.8.0') && fr.includes('Le profil 1.7.10') && fr.includes('31 octobre 2026'));
   assert.ok(fr.includes('Launcher 0.7.0') && fr.includes('Assistant OptiFine, interface soignée') && fr.includes('30 octobre 2026'));
-  assert.ok(fr.includes('ATTACK Client 3.6.0'), 'la plus récente version du client livrée avec le launcher précédent');
+  assert.ok(fr.includes('ATTACK Client 1.7.10 1.0.0') && fr.includes('Le mod ATTACK arrive en 1.7.10'), 'le mod 1.7.10 livré avec le launcher 0.8.0 est la deuxième entrée');
+  assert.ok(!fr.includes('ATTACK Client 3.6.0'), 'les versions du client livrées avec le launcher précédent sortent des 3 plus récentes');
   assert.ok(en.includes('The 1.7.10 profile') && en.includes('October 31, 2026') && en.includes('OptiFine assistant, refined interface'));
+  assert.ok(en.includes('ATTACK Client 1.7.10 1.0.0') && en.includes('The ATTACK mod comes to 1.7.10'));
+  assert.ok(!/lite/i.test(fr) && !/lite/i.test(en), 'plus de version « lite »');
   assert.ok(fr.includes('datetime="2026-10-31"') && fr.includes('class="news-tag news-tag-new"'));
 });
 

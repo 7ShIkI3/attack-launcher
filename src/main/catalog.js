@@ -53,7 +53,7 @@ const FORGE_1_8_9 = {
 
 /**
  * Minecraft 1.7.10 + Forge 10.13.4.1614 (Java 8, LWJGL 2.9.1). Même format d'installateur Forge que la 1.8.9 : aucun changement dans
- * forge.js. Profil SANS pack de mods ni OptiFine (v1) : seulement le mod ATTACK 1.7.10 « lite », dont le jar s'appelle
+ * forge.js. Profil SANS pack de mods ni OptiFine (v1) : seulement le mod ATTACK 1.7.10 (tout le contenu du mod 1.8.9 sauf OptiFine), dont le jar s'appelle
  * attack-forge-<version>+mc1.7.10.jar (jamais attack-client*, qui est la règle du profil 1.8.9 : voir les tests de test/catalog.test.js).
  */
 const FORGE_1_7_10 = {

@@ -78,21 +78,23 @@
   ];
 
   /**
-   * Modules présentés pour un profil Forge qui n'a pas tous ceux de la 1.8.9 (page Mods). Clé : identifiant du profil ; `names` :
-   * les modules de MODS retenus (l'ordre de MODS est gardé) ; `overrides` : texte propre à ce profil quand il diffère.
-   * Le mod ATTACK 1.7.10 est une version « lite » : le menu ATTACK, l'éditeur de HUD, les cosmétiques et ces modules.
-   * Absents exprès : No Jump Delay, No Hit Delay, Snap Tap et Perspective (modules interdits en classé), puis Amis, Waypoints,
-   * Minimap, Motion Blur et FPS Boost, prévus pour un patch suivant.
+   * Page Mods d'un profil Forge dont le mod ne reprend pas exactement les modules de MODS. Clé : identifiant du profil ; `exclude` :
+   * les modules de MODS que ce profil n'a pas (tous les autres sont présentés, dans l'ordre de MODS) ; `overrides` : texte propre
+   * à ce profil quand celui de MODS (écrit pour la 1.8.9) y serait faux. Pas de liste « à garder » : un nouveau module de MODS
+   * arrive tout seul dans ce profil, il suffit de l'exclure ici s'il n'existe pas là-bas.
+   * Le mod ATTACK 1.7.10 reprend tout le contenu du mod 1.8.9 sauf OptiFine (qui n'est pas un module de MODS). Deux modules de MODS
+   * n'y existent pas : Mouse Delay Fix (sans objet, le jeu 1.7.10 vise déjà là où l'on regarde) et Titles (les titres sont une
+   * fonction du 1.8, impossibles en 1.7.10). Animations : la 1.7.10 règle la position, le style et la vitesse du coup ; le blocage
+   * et la pose 1.7 sont ceux du jeu. Le reste (22 polices, 37 capes, 9 ailes, 6 auréoles, 6 effets) est identique.
    */
   const MODULES_BY_PROFILE = {
     'forge-1.7.10': {
-      names: [
-        'ToggleSprint', 'CPS', 'Combo Counter', 'Reach Display', 'Hit Color', 'Low Health Warning', 'Personnalisation',
-        'Zoom', 'Crosshair', 'Block Overlay', 'Clear Glass', 'Fullbright', 'Nametags', 'Capes ATTACK', 'Item Physics',
-        'Scoreboard', 'Chat', 'Sound Changer',
-      ],
+      exclude: ['Mouse Delay Fix', 'Titles'],
       overrides: {
-        Personnalisation: { fr: 'Thèmes, couleur d’accent, polices et éditeur de HUD.', en: 'Themes, accent colour, fonts and HUD editor.' },
+        'Animations 1.7': {
+          fr: 'Position, style et vitesse du coup réglables ; le blocage et la pose 1.7 sont déjà ceux du jeu.',
+          en: 'Adjustable swing position, style and speed; the 1.7 block and pose are already the game’s own.',
+        },
       },
     },
   };
@@ -101,8 +103,14 @@
     {
       version: 'Launcher 0.8.0', date: '2026-10-31',
       title_fr: 'Le profil 1.7.10', title_en: 'The 1.7.10 profile', tag: 'new',
-      fr: 'Un quatrième profil, « 1.7.10 » (PvP 1.7) : Minecraft 1.7.10 avec Forge 10.13.4.1614 et le mod ATTACK 1.7.10, une version « lite » avec le menu ATTACK, l’éditeur de HUD, tous les cosmétiques et une sélection de modules. Ce profil n’a ni pack de mods ni OptiFine. Il a son dossier de jeu et ses réglages, comme les autres. Si la dernière release n’a pas encore le jar d’un profil, l’installation s’arrête tout de suite avec un message clair, au lieu de le dire après le téléchargement de Minecraft.',
-      en: 'A fourth profile, “1.7.10” (1.7 PvP): Minecraft 1.7.10 with Forge 10.13.4.1614 and the ATTACK 1.7.10 mod, a “lite” version with the ATTACK menu, the HUD editor, every cosmetic and a selection of modules. This profile has no mod pack and no OptiFine. It has its own game folder and settings, like the others. If the latest release does not have a profile’s jar yet, the installation now stops right away with a clear message, instead of saying so after the Minecraft download.',
+      fr: 'Un quatrième profil, « 1.7.10 » (PvP 1.7) : Minecraft 1.7.10 avec Forge 10.13.4.1614 et le mod ATTACK 1.7.10, qui a toutes les fonctions du mod 1.8.9 sauf OptiFine. Ce profil n’a pas de pack de mods. Il a son dossier de jeu et ses réglages, comme les autres. Si la dernière release n’a pas encore le jar d’un profil, l’installation s’arrête tout de suite avec un message clair, au lieu de le dire après le téléchargement de Minecraft.',
+      en: 'A fourth profile, “1.7.10” (1.7 PvP): Minecraft 1.7.10 with Forge 10.13.4.1614 and the ATTACK 1.7.10 mod, which has every feature of the 1.8.9 mod except OptiFine. This profile has no mod pack. It has its own game folder and settings, like the others. If the latest release does not have a profile’s jar yet, the installation now stops right away with a clear message, instead of saying so after the Minecraft download.',
+    },
+    {
+      version: 'ATTACK Client 1.7.10 1.0.0', date: '2026-10-31',
+      title_fr: 'Le mod ATTACK arrive en 1.7.10', title_en: 'The ATTACK mod comes to 1.7.10', tag: 'new',
+      fr: 'En 1.7.10 : le mod ATTACK Client reprend tout le contenu du mod 1.8.9, sauf OptiFine. Tu retrouves le menu ATTACK (Maj droite, ou « ATTACK Mods » dans le menu Échap), l’écran titre ATTACK, l’éditeur de HUD, la page Personnaliser et les profils de mods. Il compte 61 modules, dont la Minimap, les Waypoints (/wp), les Amis (touche N), Motion Blur, FPS Boost, No Jump Delay, No Hit Delay et Perspective. Tous les cosmétiques sont là : 37 capes à physique, 9 ailes, 6 auréoles et 6 effets, visibles par les autres joueurs ATTACK. Titles n’existe pas en 1.7.10 (les titres sont une fonction du 1.8), et Mouse Delay Fix est sans objet, le jeu visant déjà là où tu regardes. Animations règle la position, le style et la vitesse du coup ; le blocage et la pose 1.7 sont ceux du jeu.',
+      en: 'On 1.7.10: the ATTACK Client mod has all the content of the 1.8.9 mod, except OptiFine. You get the ATTACK menu (Right Shift, or “ATTACK Mods” in the pause menu), the ATTACK title screen, the HUD editor, the Customize page and mod profiles. It has 61 modules, including the Minimap, Waypoints (/wp), Friends (N key), Motion Blur, FPS Boost, No Jump Delay, No Hit Delay and Perspective. Every cosmetic is there: 37 capes with physics, 9 wings, 6 halos and 6 effects, seen by other ATTACK players. Titles does not exist on 1.7.10 (titles are a 1.8 feature), and Mouse Delay Fix is not needed, since the game already aims where you look. Animations sets the swing position, style and speed; the 1.7 block and pose are the game’s own.',
     },
     {
       version: 'Launcher 0.7.0', date: '2026-10-30',

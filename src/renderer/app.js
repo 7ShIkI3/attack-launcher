@@ -256,14 +256,16 @@
 
   /**
    * Modules d'ATTACK Client que la page Mods présente pour ce profil (réglés en jeu, le launcher ne les touche pas) :
-   * tous ceux de la 1.8.9, la liste « lite » de la 1.7.10 (data.js, MODULES_BY_PROFILE), aucun en Fabric (leur mod a ses propres
-   * écrans). La liste d'un profil garde l'ordre de MODS ; un module peut avoir, pour ce profil, un autre texte (`overrides`).
+   * ceux de MODS (1.8.9 et 1.7.10), aucun en Fabric (leur mod a ses propres écrans). Un profil peut retirer des modules qui
+   * n'existent pas dans son mod (`exclude`, data.js, MODULES_BY_PROFILE : Mouse Delay Fix et Titles en 1.7.10) et donner à un
+   * module un autre texte (`overrides`) ; la liste garde l'ordre de MODS.
    */
   function modulesFor(profile) {
     if (!profile || isFabric(profile)) return [];
-    const lite = MODULES_BY_PROFILE[profile.id];
-    if (!lite) return MODS;
-    return MODS.filter((m) => lite.names.includes(m.name)).map((m) => (lite.overrides && lite.overrides[m.name] ? { ...m, ...lite.overrides[m.name] } : m));
+    const own = MODULES_BY_PROFILE[profile.id];
+    if (!own) return MODS;
+    const excluded = new Set(own.exclude || []);
+    return MODS.filter((m) => !excluded.has(m.name)).map((m) => (own.overrides && own.overrides[m.name] ? { ...m, ...own.overrides[m.name] } : m));
   }
 
   /** Sous-titre de l'accueil et cartes de profil (désactivées pendant une installation ou un lancement). */
@@ -692,8 +694,8 @@
       name: 'ATTACK Client',
       icon: 'AT',
       cat: 'attack',
-      // « tous ses modules » seulement quand la page les présente tous (1.8.9) : la 1.7.10 n'en a qu'une partie
-      text: t(modulesFor(profile) === MODS ? 'mods.attackDescForge' : 'mods.attackDesc', { mc: profile.mc }),
+      // « tous ses modules » : la page présente tous ceux du mod (1.8.9 et 1.7.10) ; en Fabric, le mod a ses propres écrans
+      text: t(modulesFor(profile).length ? 'mods.attackDescForge' : 'mods.attackDesc', { mc: profile.mc }),
       meta: attackInstalled ? t('mods.attackVersion', { version: status.modVersion }) : t('mods.attackMissing'),
       on: attackInstalled ? true : null,
     }];
