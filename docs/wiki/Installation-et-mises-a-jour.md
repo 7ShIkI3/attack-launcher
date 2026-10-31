@@ -395,7 +395,9 @@ stateDiagram-v2
   de vérification de signature d'éditeur (aucun `publisherName` dans la configuration de mise à jour).
 - **Réglages d'`electron-updater`** (`updates.js:112-117`) : téléchargement lancé par le launcher seulement quand rien ne tourne,
   pas de retour en arrière de version, pas de préversion, pas d'installateur web.
-- **Journal** : `%APPDATA%\ATTACK Launcher\logs\updater.log` (l'ancien passe en `.old` au-delà de 1 Mo).
+- **Journal** : `%APPDATA%\ATTACK Launcher\logs\updater.log` (l'ancien passe en `.old` au-delà de 1 Mo). Il reçoit aussi,
+  avec leur pile, les erreurs que rien n'a attrapées dans le processus principal (`uncaughtException`, `unhandledRejection`) :
+  le launcher reste ouvert au lieu d'afficher la boîte d'erreur d'Electron.
 - La mise à jour automatique existe **depuis la 0.3.0** : avec une 0.2.0 ou plus ancienne, télécharge la 0.3.0 à la
   main une dernière fois.
 - Chaque release doit contenir `latest.yml` et le `Setup.exe` qu'il désigne : voir [Publier une version](Publier-une-version.md).

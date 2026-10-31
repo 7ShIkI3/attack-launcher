@@ -118,7 +118,10 @@ function handle(channel, fn) {
   });
 }
 
-/** Journal des mises à jour : <userData>/logs/updater.log (l'ancien passe en .old au-delà de 1 Mo). */
+/**
+ * Journal du launcher : <userData>/logs/updater.log (l'ancien passe en .old au-delà de 1 Mo). Mises à jour, et erreurs que rien n'a
+ * attrapées dans le processus principal (catchStrayErrors).
+ */
 function createUpdateLog() {
   const file = path.join(app.getPath('userData'), 'logs', 'updater.log');
   try {
@@ -135,6 +138,21 @@ function createUpdateLog() {
     }
   };
   return { info: write('info'), warn: write('warn'), error: write('error'), debug: () => {} };
+}
+
+/**
+ * Filet du processus principal : une exception ou un rejet que rien n'attrape (vu une fois : l'assertion « !this.paused » d'undici
+ * pendant un téléchargement d'assets) est écrit avec sa pile dans le journal du launcher, et l'appli continue (ni fermeture, ni boîte
+ * d'erreur d'Electron).
+ */
+function catchStrayErrors() {
+  const log = createUpdateLog();
+  const report = (kind, error) => {
+    log.error(`[${kind}]`, (error && error.stack) || String(error));
+    if (!app.isPackaged) console.error(`[${kind}]`, error); // depuis les sources (npm start) : visible aussi dans le terminal
+  };
+  process.on('uncaughtException', (error, origin) => report(origin || 'uncaughtException', error));
+  process.on('unhandledRejection', (reason) => report('unhandledRejection', reason));
 }
 
 /** Raison de ne rien faire côté mise à jour : installation, lancement ou partie en cours (même par le launcher officiel). */
@@ -772,6 +790,7 @@ async function refreshActiveAccount() {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
+  catchStrayErrors();
   app.on('second-instance', () => {
     if (win) {
       if (win.isMinimized()) win.restore();

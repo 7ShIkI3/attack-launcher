@@ -7,7 +7,7 @@ Où regarder en premier :
 | Problème | Fichier à lire |
 | --- | --- |
 | Le jeu ne démarre pas ou plante (lancement direct) | `<dossier de jeu>\logs\launcher\game-*.log` (lien **Journaux du jeu** sur l'accueil). La première ligne indique le joueur, la deuxième la ligne de commande Java avec le jeton **masqué** |
-| La mise à jour du launcher ne se fait pas | `%APPDATA%\ATTACK Launcher\logs\updater.log` |
+| La mise à jour du launcher ne se fait pas, ou le launcher a eu une erreur imprévue | `%APPDATA%\ATTACK Launcher\logs\updater.log` (lignes `[error]`, avec la pile) |
 | Une erreur s'affiche dans le launcher | Le message de l'erreur (voir les tableaux ci-dessous) |
 
 ## Windows SmartScreen

@@ -74,7 +74,7 @@ Détails utiles :
 | --- | --- | --- | --- |
 | `%APPDATA%\ATTACK Launcher\accounts.json` | Pour chaque compte : identifiant (UUID), pseudo, type, image du skin (`data:` URL), modèle de bras, date d'ajout ; **refresh token** | Le refresh token : **oui** (DPAPI). Le reste : non (pas de secret) | `accounts.js:67-75` |
 | `%APPDATA%\ATTACK Launcher\settings.json` | Mémoire, dossier de jeu, Java, arguments Java, langue, mode développeur, dossier des jars de test, ID client Azure (pas un secret) ; par profil : groupes du pack (Mods PvP, Packs OptiFine, Replay Mod, Shaders) et OptiFine (réglage et chemin du fichier choisi, `optifineJar`) | Non | `settings.js:53-74` |
-| `%APPDATA%\ATTACK Launcher\logs\updater.log` | Journal des mises à jour (dates, versions, erreurs) ; passe en `.old` au-delà de 1 Mo | Non | `main.js:74-90` |
+| `%APPDATA%\ATTACK Launcher\logs\updater.log` | Journal des mises à jour (dates, versions, erreurs) et erreurs imprévues du processus principal (message et pile) ; passe en `.old` au-delà de 1 Mo | Non | `main.js:74-90` |
 | `%LOCALAPPDATA%\ATTACK Launcher\runtime` | Java officiel de Mojang du profil (Java 8, 21 ou 25) | Non | `main.js:33-35` |
 | `%LOCALAPPDATA%\attack-launcher-updater` | Mise à jour téléchargée en attente d'installation (cache d'`electron-updater`) | Non | `app-update.yml` généré par electron-builder |
 | `%APPDATA%\.minecraft\...` | Versions, bibliothèques, ressources, `launcher_profiles.json` (+ `.bak`) | Non | [Installation](Installation-et-mises-a-jour.md) |

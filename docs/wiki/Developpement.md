@@ -82,7 +82,7 @@ Les 167 tests tournent en quelques secondes et n'ont besoin ni du réseau ni d'E
 | `game.test.js` | Fusion Forge + 1.8.9 (ancien format), classpath, ligne de commande Java, masquage du jeton, natives, runtime Java |
 | `profiles.test.js` | `-Xmx`, fusion du profil, `.bak`, fichier illisible jamais écrasé |
 | `updates.test.js` | Versions semver, mode installé / portable / sources, vérifications, report pendant une partie ou une installation, fermeture, détection d'une partie |
-| `misc.test.js` | Release GitHub et SHA-256, jar de développement, réglages, launcher officiel, progression, état d'installation, version du mod |
+| `misc.test.js` | Release GitHub et SHA-256, jar de développement, réglages, launcher officiel, progression, état d'installation, version du mod, filet d'erreurs du processus principal (journal, pas de fermeture) |
 
 ## Tests réels (réseau, vrai jeu)
 
