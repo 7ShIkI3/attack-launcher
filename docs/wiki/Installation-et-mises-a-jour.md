@@ -271,11 +271,12 @@ sauf avec `ATTACK_NO_BROWSER`) et surveille le dossier Téléchargements (`ATTAC
 - **Étapes montrées** : bouton **(Mirror)**, puis **Download**, puis **Conserver** si le navigateur ou Windows le demande.
 - **Sondage** chaque seconde, 10 minutes au plus (**Attendre encore** relance un tour), un seul guetteur à la fois. Noms
   acceptés : `OptiFine_1.8.9_….jar` ou `preview_OptiFine_1.8.9_….jar` (`-` ou `_`, insensible à la casse), après retrait du
-  suffixe « (1) » du navigateur. Ignorés : `.crdownload`, `.part`, `.tmp`, fichiers vides, plus de 64 Mo, un jar qui a un
+  suffixe « (1) » du navigateur (espacé par Chrome et Edge, collé par Firefox). Ignorés : `.crdownload`, `.part`, `.tmp`, fichiers vides, plus de 64 Mo, un jar qui a un
   `<nom>.part` voisin, tout ce qui n'est pas un fichier ordinaire (liens).
 - **Un fichier nouveau** doit être **stable sur deux sondages**, puis passe la validation ci-dessus (états *vérification*, puis
-  *importé* ou *refusé* avec la raison). **Un fichier déjà présent au départ** est seulement **proposé** (« Utiliser ce
-  fichier ») : jamais importé sans clic.
+  *importé* ou *refusé* avec la raison). Un jar **verrouillé un instant** (antivirus, OneDrive : illisible, `EBUSY`, `EPERM`,
+  `EACCES`) est repris aux 5 sondages suivants avant le refus ou l'erreur. **Un fichier déjà présent au départ** est seulement
+  **proposé** (« Utiliser ce fichier ») : jamais importé sans clic.
 - **Import** (`optifine.importCopy`) : copie **privée** dans `%APPDATA%\ATTACK Launcher\optifine\` (fichier temporaire, SHA-256,
   renommage) ; le réglage **fichier choisi** du profil 1.8.9 pointe dessus et l'interrupteur OptiFine est activé. Le jar est
   ensuite copié dans `mods` à la prochaine installation (bouton **Installer maintenant**).

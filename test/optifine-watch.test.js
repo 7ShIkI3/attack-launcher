@@ -374,6 +374,99 @@ test('import qui échoue (disque plein…) : état « error » avec le message, 
   s.clean();
 });
 
+/** validate ou import qui échoue `times` fois (verrou d'antivirus ou de OneDrive), puis fait le vrai travail. */
+function flaky(times, fail, real) {
+  let calls = 0;
+  const fn = async (...args) => (++calls <= times ? fail(...args) : real(...args));
+  fn.calls = () => calls;
+  return fn;
+}
+const unreadable = async (file) => ({ ok: false, file, reason: 'UNREADABLE', message: optifine.REASONS.UNREADABLE });
+const busyLock = async () => { throw Object.assign(new Error('EBUSY: resource busy or locked, copyfile'), { code: 'EBUSY' }); };
+
+test('verrou passager à la validation (antivirus, OneDrive) : repris aux sondages suivants, puis importé', async () => {
+  for (const times of [1, 2]) {
+    const validate = flaky(times, unreadable, optifine.validate);
+    const s = setup({ validate });
+    await s.watcher.start();
+    s.put(NAME, optifineJar());
+    await s.clock.advance(2000, s.watcher); // stable : première validation, refusée par le verrou
+    assert.deepEqual(s.states(), ['waiting', 'checking'], `${times} : pas de refus définitif`);
+    assert.equal(s.watcher.isActive(), true);
+    await s.clock.advance(times * 1000, s.watcher);
+    assert.deepEqual(s.states(), ['waiting', 'checking', 'imported'], `${times} : « checking » n’est pas republié`);
+    assert.equal(validate.calls(), times + 1);
+    assert.ok(fs.existsSync(path.join(s.userData, 'optifine', NAME)));
+    assert.equal(s.clock.pending(), 0);
+    s.clean();
+  }
+});
+
+test('verrou passager à la copie (EBUSY, EPERM, refus UNREADABLE de la revalidation) : l’import est repris puis réussit', async () => {
+  const locks = [
+    busyLock,
+    async () => { throw Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' }); },
+    async () => { throw Object.assign(new Error(optifine.REASONS.UNREADABLE), { code: 'OPTIFINE_UNREADABLE', reason: 'UNREADABLE' }); },
+  ];
+  for (const lock of locks) {
+    let userData = null;
+    const importFile = flaky(2, lock, async (file) => optifine.importCopy(file, userData));
+    const s = setup({ importFile });
+    userData = s.userData;
+    await s.watcher.start();
+    s.put(NAME, optifineJar());
+    await s.clock.advance(3000, s.watcher);
+    assert.deepEqual(s.states(), ['waiting', 'checking'], 'deux échecs : toujours en cours');
+    await s.clock.advance(1000, s.watcher);
+    assert.deepEqual(s.states(), ['waiting', 'checking', 'imported']);
+    assert.equal(importFile.calls(), 3);
+    assert.ok(fs.existsSync(path.join(s.userData, 'optifine', NAME)));
+    assert.equal(s.clock.pending(), 0);
+    s.clean();
+  }
+});
+
+test('« Utiliser ce fichier » sur un jar verrouillé : repris aux sondages suivants, sans nouveau clic', async () => {
+  let locks = 0; // la proposition du départ lit le jar sans verrou ; le clic tombe sur un verrou qui dure deux lectures
+  const s = setup({ validate: async (file) => (locks-- > 0 ? unreadable(file) : optifine.validate(file)) });
+  s.put(NAME, optifineJar());
+  assert.equal((await s.watcher.start()).state, 'seen');
+  locks = 2;
+  const used = await s.watcher.use();
+  assert.deepEqual([used.ok, used.state, used.code], [false, 'checking', undefined], 'pas de refus ni de code d’erreur au clic');
+  await s.clock.advance(1000, s.watcher);
+  assert.equal(s.states().at(-1), 'checking');
+  await s.clock.advance(1000, s.watcher);
+  assert.deepEqual(s.states(), ['waiting', 'seen', 'checking', 'imported']);
+  assert.equal(s.clock.pending(), 0);
+  s.clean();
+});
+
+test('verrou qui dure : refus « UNREADABLE » (ou erreur de copie) après LOCK_RETRIES sondages, plus aucune minuterie', async () => {
+  const s = setup({ validate: unreadable });
+  await s.watcher.start();
+  s.put(NAME, optifineJar());
+  await s.clock.advance(2000 + (watch.LOCK_RETRIES - 1) * 1000, s.watcher);
+  assert.deepEqual(s.states(), ['waiting', 'checking'], 'encore une tentative à faire');
+  await s.clock.advance(1000, s.watcher);
+  assert.deepEqual(s.states(), ['waiting', 'checking', 'refused']);
+  assert.equal(s.events.at(-1).reason, 'UNREADABLE');
+  assert.equal(s.clock.pending(), 0);
+  assert.equal(s.watcher.isActive(), false);
+  s.clean();
+
+  const importFile = flaky(Infinity, busyLock, null);
+  const c = setup({ importFile });
+  await c.watcher.start();
+  c.put(NAME, optifineJar());
+  await c.clock.advance(2000 + watch.LOCK_RETRIES * 1000, c.watcher);
+  assert.equal(c.states().at(-1), 'error');
+  assert.equal(c.events.at(-1).reason, 'EBUSY');
+  assert.equal(importFile.calls(), watch.LOCK_RETRIES + 1);
+  assert.equal(c.clock.pending(), 0);
+  c.clean();
+});
+
 test('« use » ne fait rien pendant qu’une validation tourne, et jamais deux fois', async () => {
   const s = setup();
   s.put(NAME, optifineJar());

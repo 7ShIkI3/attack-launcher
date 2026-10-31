@@ -9,6 +9,8 @@
 //               jamais importé sans clic sur « Utiliser ce fichier » (use()).
 //  - sondage toutes les secondes pendant 10 minutes (« Attendre encore » = start() à nouveau). Un jar NOUVEAU (ou modifié) dont le nom est
 //               accepté et qui est stable sur deux sondages est validé (optifine.validate), puis importé : « imported » ou « refused ».
+//               Un jar momentanément verrouillé (antivirus, OneDrive : illisible, EBUSY, EPERM, EACCES) est repris aux 5 sondages
+//               suivants avant le refus ou l'erreur.
 //  - cancel() / fin du délai / fermeture de l'app (dispose) : toutes les minuteries sont arrêtées.
 const fsp = require('node:fs/promises');
 const path = require('node:path');
@@ -16,6 +18,9 @@ const optifine = require('./optifine');
 
 const POLL_MS = 1000;
 const TIMEOUT_MS = 10 * 60 * 1000;
+/** Nouvelles tentatives (une par sondage) sur un jar momentanément verrouillé, avant de le refuser ou d'échouer. */
+const LOCK_RETRIES = 5;
+const LOCK_CODES = ['EBUSY', 'EPERM', 'EACCES'];
 /**
  * Nom accepté une fois le suffixe « (n) » du navigateur retiré (« M5 (1).jar » de Chrome/Edge, « M5(1).jar » collé de Firefox) :
  * OptiFine_1.8.9_HD_U_M5.jar, preview_OptiFine_1.8.9_HD_U_M6_pre2.jar…
@@ -32,6 +37,8 @@ function acceptedName(name) {
 
 const signature = (candidate) => `${candidate.size}:${candidate.mtimeMs}`;
 const newestFirst = (a, b) => b.mtimeMs - a.mtimeMs || a.name.localeCompare(b.name);
+/** Échec de lecture ou de copie qui peut venir d'un verrou passager : l'import revalide le jar (raison UNREADABLE) puis le copie. */
+const lockedError = (error) => Boolean(error) && (error.reason === 'UNREADABLE' || LOCK_CODES.includes(error.code));
 
 /**
  * options : { dir (chaîne ou fonction), importFile(file, checked) -> Promise, onState(état), validate, setTimer, clearTimer, fsApi,
@@ -60,6 +67,7 @@ function createWatcher(options) {
   let baseline = null; // Map nom -> signature des jars présents au départ
   let lastSeen = new Map(); // nom -> signature vue au sondage précédent (stabilité sur deux sondages)
   let proposal = null; // jar déjà présent au départ, proposé : { file, name, version }
+  let retry = null; // jar momentanément verrouillé, repris au sondage suivant : { name, file, left }
   let inflight = Promise.resolve();
   let current = { state: 'idle', downloadsDir: dirOf() };
 
@@ -85,6 +93,7 @@ function createWatcher(options) {
     active = false;
     busy = false;
     proposal = null;
+    retry = null;
     clearTimers();
     emit(state, extra);
     return true;
@@ -106,8 +115,8 @@ function createWatcher(options) {
 
   function expire(id) {
     if (id !== run || !active) return;
-    if (busy) {
-      deadlineTimer = timer(() => expire(id), pollMs); // une validation est en cours : on la laisse finir
+    if (busy || retry) {
+      deadlineTimer = timer(() => expire(id), pollMs); // une validation est en cours (ou va être reprise) : on la laisse finir
       return;
     }
     deadlineTimer = null;
@@ -128,20 +137,37 @@ function createWatcher(options) {
     return { name, file: path.join(dir, name), size: stat.size, mtimeMs: stat.mtimeMs };
   }
 
-  /** Validation (par optifine.validate) puis import ; publie l'état final. Renvoie true quand la surveillance est terminée. */
+  /**
+   * Jar momentanément verrouillé (antivirus, OneDrive) : il sera repris au sondage suivant, LOCK_RETRIES fois au plus. Renvoie false
+   * quand les tentatives sont épuisées (le refus ou l'erreur est alors définitif).
+   */
+  function retryLater(name, file) {
+    const left = retry && retry.name === name ? retry.left : LOCK_RETRIES;
+    retry = left > 0 ? { name, file, left: left - 1 } : null;
+    return retry !== null;
+  }
+
+  /**
+   * Validation (par optifine.validate) puis import ; publie l'état final. Renvoie true quand la surveillance est terminée, false quand
+   * le jar, verrouillé, sera repris au sondage suivant (l'état reste « checking »).
+   */
   async function checkAndImport(id, name, file) {
     busy = true;
     proposal = null;
-    emit('checking', { file: name });
+    if (!retry || retry.name !== name) emit('checking', { file: name }); // une reprise ne republie pas « checking »
     try {
       const checked = await validate(file);
       if (id !== run) return true;
-      if (!checked.ok) return finish('refused', { file: name, reason: checked.reason, message: checked.message });
+      if (!checked.ok) {
+        if (checked.reason === 'UNREADABLE' && retryLater(name, file)) return false;
+        return finish('refused', { file: name, reason: checked.reason, message: checked.message });
+      }
       const copy = await importFile(file, checked);
       if (id !== run) return true;
       return finish('imported', { file: name, version: (copy && copy.version) || checked.version || undefined });
     } catch (error) {
       if (id !== run) return true;
+      if (lockedError(error) && retryLater(name, file)) return false;
       // l'import revalide le jar : un refus à ce moment-là est un refus comme un autre
       if (error && error.reason) return finish('refused', { file: name, reason: error.reason, message: error.message });
       return finish('error', { file: name, reason: (error && error.code) || 'ERROR', message: String((error && error.message) || error) });
@@ -167,6 +193,12 @@ function createWatcher(options) {
     if (id !== run || !active) return;
     if (busy) {
       schedule(id); // « Utiliser ce fichier » est en cours : ce sondage n'apporterait rien
+      return;
+    }
+    if (retry) {
+      // jar verrouillé au sondage précédent (ou au clic sur « Utiliser ce fichier ») : on le reprend, sans relire le dossier
+      if (await checkAndImport(id, retry.name, retry.file)) return;
+      schedule(id);
       return;
     }
     const dir = dirOf();
@@ -197,10 +229,10 @@ function createWatcher(options) {
         const fresh = found.filter((c) => baseline.get(c.name) !== signature(c));
         const stable = fresh.filter((c) => lastSeen.get(c.name) === signature(c)).sort(newestFirst);
         lastSeen = new Map(fresh.map((c) => [c.name, signature(c)]));
-        // le premier jar stable met fin à la surveillance (importé, refusé ou en erreur) ; un clic sur « Utiliser » en cours : on attend
+        // le premier jar stable met fin à la surveillance (importé, refusé ou en erreur), sauf verrou passager (repris au sondage
+        // suivant) ; un clic sur « Utiliser » en cours : on attend
         if (stable.length > 0 && !busy) {
-          await checkAndImport(id, stable[0].name, stable[0].file);
-          return;
+          if (await checkAndImport(id, stable[0].name, stable[0].file)) return;
         }
       }
     }
@@ -220,6 +252,7 @@ function createWatcher(options) {
     baseline = null;
     lastSeen = new Map();
     proposal = null;
+    retry = null;
     emit('waiting');
     deadlineTimer = timer(() => expire(id), timeoutMs);
     inflight = poll(id);
@@ -247,10 +280,11 @@ function createWatcher(options) {
     active = false;
     busy = false;
     proposal = null;
+    retry = null;
     clearTimers();
   }
 
   return { start, use, cancel, dispose, snapshot: () => ({ ...current }), whenIdle: () => inflight, isActive: () => active };
 }
 
-module.exports = { POLL_MS, TIMEOUT_MS, ACCEPTED_NAME, acceptedName, createWatcher };
+module.exports = { POLL_MS, TIMEOUT_MS, LOCK_RETRIES, ACCEPTED_NAME, acceptedName, createWatcher };
