@@ -643,6 +643,30 @@ test('alerte de l’accueil au clavier : fermée ou activée, le focus va à une
   assert.equal(document.activeElement, byId('alert-action'));
   byId('alert-close').listeners.click[0]();
 
+  // une action coûteuse (« Vérifier / réparer » relance une installation) ne prend jamais le focus : une Entrée répétée l'activerait
+  for (const code of ['PACK_CLEANUP', 'FILES_MISSING']) {
+    byId('repair-button').focus();
+    page.window.AttackUI.showError(code);
+    assert.equal(byId('alert-action').classList.contains('hidden'), false, `${code} : bouton d’action affiché`);
+    assert.equal(document.activeElement, byId('alert-copy'), `${code} : « Copier », pas « Vérifier / réparer »`);
+    byId('alert-close').listeners.click[0]();
+  }
+  // une nouvelle erreur arrive pendant que le bouton d'action a le focus : sans action, ou avec une action coûteuse, « Copier » le reprend
+  for (const code of ['SOMETHING_ELSE', 'PACK_CLEANUP']) {
+    byId('logs-button').focus();
+    page.window.AttackUI.showError('NO_ACCOUNT');
+    assert.equal(document.activeElement, byId('alert-action'));
+    page.window.AttackUI.showError(code, 'autre erreur');
+    assert.equal(document.activeElement, byId('alert-copy'), `${code} : le focus quitte le bouton d’action`);
+    byId('alert-close').listeners.click[0]();
+  }
+  // une nouvelle erreur à action sans coût : le bouton d'action garde le focus
+  byId('logs-button').focus();
+  page.window.AttackUI.showError('NO_ACCOUNT');
+  page.window.AttackUI.showError('JAVA_NOT_FOUND');
+  assert.equal(document.activeElement, byId('alert-action'));
+  byId('alert-close').listeners.click[0]();
+
   // le bouton d'action masque l'alerte puis la page d'accueil entière : le titre de la page affichée reprend le focus
   for (const [code, name] of [['NO_ACCOUNT', 'account'], ['JAVA_NOT_FOUND', 'settings']]) {
     page.window.AttackUI.showError(code);
@@ -781,7 +805,13 @@ test('page Mods au clavier : une carte qui sort du filtre ou « Tout afficher »
   // « Tout afficher » : le bouton disparaît avec la reconstruction de la grille
   const clear = nodesOf(grid()).find((n) => n.tagName === 'button' && n.textContent === 'Tout afficher');
   assert.ok(clear, 'bouton « Tout afficher » dans l’état vide');
-  await pressKey(page, clear);
+  // la grille est refaite sans changement (retour sur la fenêtre, état relu) : « Tout afficher » garde le focus, sur place
+  clear.focus();
+  search(name);
+  const clearAgain = nodesOf(grid()).find((n) => n.tagName === 'button' && n.textContent === 'Tout afficher');
+  assert.notEqual(clearAgain, clear, 'le bouton a bien été recréé');
+  assert.equal(document.activeElement, clearAgain, '« Tout afficher » recréé reprend le focus au lieu de sauter au filtre « Tous »');
+  await pressKey(page, clearAgain);
   assert.ok(grid().children.length > 1, 'la grille est de nouveau pleine');
   assert.equal(byId('mods-q').value, '');
   assert.equal(document.activeElement, stateButton.all, 'les filtres sont remis à zéro : « Tous » reprend le focus');

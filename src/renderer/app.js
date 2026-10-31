@@ -180,7 +180,7 @@
    */
   const toAccount = { label: 'home.connect', run: () => showPage('account') };
   const toSettings = { label: 'alert.settings', run: () => { showPage('settings'); selectTab('profile'); } };
-  const toRepair = { label: 'home.repairShort', run: () => !busy && !playing && runInstall() };
+  const toRepair = { label: 'home.repairShort', run: () => !busy && !playing && runInstall(), costly: true }; // relance une installation
   const ALERT_ACTIONS = {
     LAUNCHER_NOT_FOUND: toAccount, NO_ACCOUNT: toAccount, SESSION_EXPIRED: toAccount,
     JAVA_NOT_FOUND: toSettings, JAVA_UNAVAILABLE: toSettings, HEAP_TOO_BIG: toSettings, GAMEDIR_IN_USE: toSettings,
@@ -216,6 +216,7 @@
     const inline = Boolean(text) && kind !== 'ok';
     const focusInAlert = !inline && $('alert').contains(document.activeElement); // l'alerte se ferme avec le focus dedans (croix, bouton d'action)
     const focusInLower = inline && $('lower').contains(document.activeElement); // l'alerte s'ouvre sur la commande qui a le focus (Dossier de jeu, Journaux…)
+    const focusOnAction = inline && document.activeElement === $('alert-action'); // une nouvelle erreur arrive, l'alerte restant ouverte
     $('message').textContent = inline ? text : '';
     $('alert').classList.toggle('hidden', !inline);
     $('lower').inert = inline; // les commandes recouvertes par l'alerte ne sont plus atteignables au clavier
@@ -223,8 +224,13 @@
     alertAction = inline ? ALERT_ACTIONS[code] || null : null;
     $('alert-action').classList.toggle('hidden', !alertAction);
     if (alertAction) $('alert-action').textContent = t(alertAction.label);
-    // ces commandes viennent de devenir inertes avec le focus dedans : l'alerte, annoncée aux lecteurs d'écran, le prend au lieu de <body>
-    if (focusInLower) (alertAction ? $('alert-action') : $('alert-copy')).focus({ preventScroll: true });
+    // ces commandes viennent de devenir inertes avec le focus dedans : l'alerte, annoncée aux lecteurs d'écran, le prend au lieu de <body>.
+    // Jamais sur une action coûteuse (« Vérifier / réparer » relance une installation) : une Entrée destinée à l'ancienne commande, ou
+    // maintenue, la déclencherait ; « Copier » ne coûte rien.
+    const safeAction = Boolean(alertAction) && !alertAction.costly;
+    if (focusInLower) (safeAction ? $('alert-action') : $('alert-copy')).focus({ preventScroll: true });
+    // le bouton d'action avait le focus et disparaît, ou propose désormais une action coûteuse : « Copier » le reprend
+    else if (focusOnAction && !safeAction) $('alert-copy').focus({ preventScroll: true });
     if (text && kind === 'ok') showToast(text);
     if (!text) $('toast').classList.remove('show');
   }
@@ -781,7 +787,8 @@
     ].filter(Boolean).join(' · ');
     const category = (id) => CATEGORIES.find((c) => c.id === id)[lang];
     if (visible.length === 0) {
-      const clear = el('button', { class: 'btn small', type: 'button', text: t('mods.clear') });
+      // la clé garde le focus sur place quand la grille est refaite sans changement (retour sur la fenêtre, état relu)
+      const clear = el('button', { class: 'btn small', type: 'button', text: t('mods.clear'), 'data-focus-key': 'mods:clear' });
       clear.addEventListener('click', () => {
         modQuery = '';
         modFilter = 'all';
@@ -976,12 +983,17 @@
   let assist = { state: 'idle', downloadsDir: '' };
   const ASSIST_ACTIVE = ['waiting', 'seen', 'checking'];
 
+  let whyOpen = false; // « Pourquoi ? » reste ouvert quand la carte est refaite (retour sur la fenêtre, interrupteur…)
+
   /** Les trois raisons, en puces (rien d'autre : ni les autres launchers, ni les capes). */
   function whyNode() {
-    return el('details', { class: 'why' }, [
-      el('summary', { text: t('optifine.why') }),
+    const node = el('details', { class: 'why' }, [
+      el('summary', { text: t('optifine.why'), 'data-focus-key': 'assist:mods:why' }), // garde le focus quand la carte est refaite
       el('ul', {}, [el('li', { text: t('optifine.why1') }), el('li', { text: t('optifine.why2') }), el('li', { text: t('optifine.why3') })]),
     ]);
+    node.open = whyOpen;
+    node.addEventListener('toggle', () => { whyOpen = node.open; });
+    return node;
   }
 
   async function assistStart(openBrowser = true) {
