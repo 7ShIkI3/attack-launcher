@@ -14,6 +14,7 @@
     "icons": "node scripts/make-icons.js",
     "install-test": "node scripts/install-test.js",
     "launch-test": "node scripts/launch-test.js",
+    "check-release": "node scripts/check-release.js",
     "screenshot": "node scripts/screenshot.js",
     "update-test": "node scripts/update-test.js",
     "site": "node scripts/build-site.js",

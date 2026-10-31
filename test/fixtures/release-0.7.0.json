@@ -1,0 +1,73 @@
+{
+  "tagName": "v0.7.0",
+  "isDraft": false,
+  "isPrerelease": false,
+  "assets": [
+    {
+      "name": "attack-client-2.7.0.jar",
+      "size": 3437203,
+      "digest": "sha256:61034f0e4967fd896af14c8abdea0c23f5449584529937971651c9fe5462e9fb",
+      "url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.7.0/attack-client-2.7.0.jar"
+    },
+    {
+      "name": "attack-client-2.7.0.jar.sha256",
+      "size": 90,
+      "digest": "sha256:709eaf09a9192ba8135d7bfe28a62f7fbec34cca62f531feea33254d6e0e2527",
+      "url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.7.0/attack-client-2.7.0.jar.sha256"
+    },
+    {
+      "name": "attack-fabric-3.6.0+mc1.21.1.jar",
+      "size": 2494686,
+      "digest": "sha256:0bc39b41dd215ee52741f75688a229a1c1e96c613d3cecd5a5519597e7fb88ce",
+      "url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.7.0/attack-fabric-3.6.0%2Bmc1.21.1.jar"
+    },
+    {
+      "name": "attack-fabric-3.6.0+mc1.21.1.jar.sha256",
+      "size": 99,
+      "digest": "sha256:8b72fd1f8edfd1a38d7960bda4a10b8d5c265c0db0e5656d279fe518877c8316",
+      "url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.7.0/attack-fabric-3.6.0%2Bmc1.21.1.jar.sha256"
+    },
+    {
+      "name": "attack-fabric-3.6.0+mc26.3.jar",
+      "size": 2498158,
+      "digest": "sha256:a779a644f55556d1e204689e470884aa35b14701f74408d53eba26abccf25344",
+      "url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.7.0/attack-fabric-3.6.0%2Bmc26.3.jar"
+    },
+    {
+      "name": "attack-fabric-3.6.0+mc26.3.jar.sha256",
+      "size": 97,
+      "digest": "sha256:bdc79f795bc61f2ede7a5fdd401d80d41f3407aeffa164682df025131b484573",
+      "url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.7.0/attack-fabric-3.6.0%2Bmc26.3.jar.sha256"
+    },
+    {
+      "name": "ATTACK-Launcher-Portable-0.7.0.exe",
+      "size": 112550330,
+      "digest": "sha256:3ae9e8a76a9ecc3eeb5bc223f1555e227d0b9bf2eb3b458d9431e7d7c8aaf259",
+      "url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.7.0/ATTACK-Launcher-Portable-0.7.0.exe"
+    },
+    {
+      "name": "ATTACK-Launcher-Setup-0.7.0.exe",
+      "size": 112813132,
+      "digest": "sha256:a61ef0a0e6b00f3a171ba74ee1092a44fb4ad6325325566b8942634c8fd2caa1",
+      "url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.7.0/ATTACK-Launcher-Setup-0.7.0.exe"
+    },
+    {
+      "name": "ATTACK-Launcher-Setup-0.7.0.exe.blockmap",
+      "size": 119641,
+      "digest": "sha256:a0dc575e59f733d1a56585c7a08d4b0c21f48901161860067f04263872b64b68",
+      "url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.7.0/ATTACK-Launcher-Setup-0.7.0.exe.blockmap"
+    },
+    {
+      "name": "latest.yml",
+      "size": 359,
+      "digest": "sha256:18b80f2e148c1db97fcf559771a8053ad65076b14cf580b7a376a44430de3272",
+      "url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.7.0/latest.yml"
+    },
+    {
+      "name": "SHA256SUMS",
+      "size": 485,
+      "digest": "sha256:624527bdf9c94e81768486db22b4ef32ca6f71554a4c55772a6ab3599ec0661a",
+      "url": "https://github.com/7ShIkI3/attack-launcher/releases/download/v0.7.0/SHA256SUMS"
+    }
+  ]
+}
