@@ -206,6 +206,7 @@ function createWatcher(options) {
     try {
       names = await fsApi.readdir(dir);
     } catch (error) {
+      if (id !== run) return; // annulée, finie ou relancée pendant le readdir : cet ancien sondage ne touche plus à l'état
       // dossier illisible dès le départ : inutile d'attendre ; plus tard (dossier déplacé, OneDrive) on réessaie au sondage suivant
       if (baseline === null) {
         finish('error', { reason: 'DIR_UNREADABLE', message: String((error && error.message) || error) });
