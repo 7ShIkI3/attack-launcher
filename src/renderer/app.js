@@ -98,15 +98,21 @@
   /**
    * Remplace le contenu d'un conteneur en gardant le focus clavier : si l'élément qui l'a (un bouton, un interrupteur) est recréé, le
    * nouvel élément de même `data-focus-key` le reprend. Sans cela le focus retombait sur <body> après chaque interrupteur ou puce.
+   * Si l'élément a disparu (carte sortie du filtre, bouton sans clé…), `fallback()` donne une cible stable de la page qui prend le focus à
+   * sa place ; le focus n'est jamais touché quand il n'était pas dans le conteneur.
    */
-  function replaceKeepingFocus(container, nodes) {
+  function replaceKeepingFocus(container, nodes, fallback) {
     const active = document.activeElement;
-    const key = active && active.dataset && container.contains(active) ? active.dataset.focusKey : '';
+    const inside = Boolean(active && active.dataset && container.contains(active));
+    const key = inside ? active.dataset.focusKey || '' : '';
     container.replaceChildren(...nodes);
-    if (!key) return;
-    let next = [...container.querySelectorAll('[data-focus-key]')].find((node) => node.dataset.focusKey === key);
+    if (!inside) return;
+    let next = key ? [...container.querySelectorAll('[data-focus-key]')].find((node) => node.dataset.focusKey === key) : null;
     // assistant OptiFine : le bouton activé disparaît avec l'état (Annuler, Utiliser ce fichier…) ; le titre du nouvel état prend le focus
     if (!next && key.startsWith('assist:')) next = container.querySelector(`[data-focus-key="${key.split(':', 2).join(':')}:title"]`);
+    // page Mods : la copie est devenue utilisable, la carte OptiFine remplace l'assistant par son interrupteur, qui prend le focus
+    if (!next && key.startsWith('assist:mods:')) next = container.querySelector('[data-focus-key="mod:optifine"]');
+    if (!next && fallback) next = fallback();
     if (next && !next.disabled) next.focus({ preventScroll: true });
   }
 
@@ -752,6 +758,8 @@
     syncSegmented($('mods-state'), modState);
     syncSegmented($('mods-density'), modDensity);
     const grid = $('mods-grid');
+    // cible stable quand l'élément focalisé quitte la grille (carte sortie du filtre, « Tout afficher ») : le filtre d'état actif, hors de la grille
+    const stableTarget = () => [...$('mods-state').querySelectorAll('button')].find(isActive);
     grid.dataset.density = modDensity;
     const visible = base.filter((m) => modFilter === 'all' || m.cat === modFilter);
     // compteurs séparés : les mods (ATTACK Client, OptiFine, pack) et les modules d'ATTACK Client réglés en jeu
@@ -771,7 +779,7 @@
         $('mods-q').value = '';
         renderMods();
       });
-      grid.replaceChildren(el('div', { class: 'mods-empty' }, [el('p', { text: modQuery.trim() ? t('mods.none', { q: modQuery.trim() }) : t('mods.noneFilters') }), clear]));
+      replaceKeepingFocus(grid, [el('div', { class: 'mods-empty' }, [el('p', { text: modQuery.trim() ? t('mods.none', { q: modQuery.trim() }) : t('mods.noneFilters') }), clear])], stableTarget);
       return;
     }
     replaceKeepingFocus(grid, visible.map((m) => {
@@ -794,7 +802,7 @@
         ...children,
         el('div', { class: 'mod-foot' }, foot),
       ]);
-    }));
+    }), stableTarget);
   }
   $('mods-q').addEventListener('input', (event) => {
     modQuery = event.target.value;
