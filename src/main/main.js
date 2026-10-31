@@ -774,10 +774,13 @@ async function captureScreens() {
   app.quit();
 }
 
-/** Au démarrage : rafraîchit le compte actif en silence (nouveau jeton, refresh token tenu à jour). */
+/**
+ * Au démarrage : rafraîchit le compte actif en silence (nouveau jeton, refresh token tenu à jour). Pas en mode capture : le compte
+ * factice (ATTACK_OFFLINE, ATTACK_ACCOUNT_TYPE=msa) n'a pas de jeton, et l'erreur s'afficherait en haut de la page Compte.
+ */
 async function refreshActiveAccount() {
   const account = accounts.active();
-  if (!account || account.type !== 'msa' || !settingsStore.clientId(settings)) return;
+  if (process.env.ATTACK_SCREENSHOT_DIR || !account || account.type !== 'msa' || !settingsStore.clientId(settings)) return;
   try {
     await accounts.refresh(account.id, refreshWith);
     lastRefreshError = null;
