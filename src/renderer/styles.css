@@ -239,8 +239,9 @@ p { margin: 0; }
 .btn.small { padding: 5px 12px; font-size: var(--fs-md); }
 .btn:disabled { opacity: 0.5; }
 .btn .ic { width: 15px; height: 15px; }
-/* un bouton biseauté est découpé : son anneau de focus passe à l'intérieur (blanc sur le rouge) */
-.btn:focus-visible { outline-offset: -4px; }
+/* un bouton biseauté est découpé : son anneau de focus passe à l'intérieur (blanc sur le rouge), assez loin du bord
+   pour que son coin bas droit échappe à la coupe (bord extérieur à --cut / 2 du bord : -5 px en cut-sm, -7 px en cut-md) */
+.btn:focus-visible { outline-offset: calc(var(--cut) * -0.5 - 2px); }
 .btn.accent:focus-visible { outline-color: var(--on-accent); }
 .link { border: 0; background: none; color: var(--muted); padding: 2px; font-size: var(--fs-md); display: inline-flex; align-items: center; gap: 3px; }
 .link:hover { color: var(--text); text-decoration: underline; }

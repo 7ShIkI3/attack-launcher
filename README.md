@@ -285,7 +285,7 @@ Toutes les commandes, les scripts de test réels et la procédure de publication
 - Mods des packs : ils appartiennent à leurs auteurs et restent sous leur licence. ATTACK Launcher les télécharge sans les modifier depuis leur page officielle sur Modrinth et vérifie chaque fichier par son empreinte SHA-512. La liste avec auteur, version et licence est dans le launcher (Réglages, onglet **Launcher**, bouton **Mods et licences**) et dans la section crédits du [site](https://7shiki3.github.io/attack-launcher/).
 - OptiFine appartient à **sp614x** : le launcher ne l'embarque ni ne le télécharge, il utilise seulement la copie que tu as récupérée toi-même sur optifine.net. Il n'est jamais redistribué.
 - Vue 3D du skin : **skinview3d** et **three.js**, licence MIT (`src/renderer/vendor/LICENSE-*.txt`).
-- Polices **Inter** et **Montserrat** : SIL Open Font License 1.1 (`src/renderer/fonts/OFL-*.txt`).
+- Polices **Inter**, **Montserrat** et **Barlow Condensed** : SIL Open Font License 1.1 (`src/renderer/fonts/OFL-*.txt`).
 - À l'exécution, une seule dépendance : `electron-updater` (mise à jour du launcher). Outils de développement :
   `electron` et `electron-builder`.
 - Minecraft est une marque de Mojang AB / Microsoft. ATTACK Launcher est un projet indépendant, ni approuvé
