@@ -1307,6 +1307,22 @@ test('profil 1.7.10 : le mod a tout le contenu du mod 1.8.9 sauf OptiFine, plus 
   }
 });
 
+test('FAQ « mods PvP autorisés ? » et README : No Jump Delay / No Hit Delay actifs par défaut en 1.8.9 ET en 1.7.10, jamais « le mod 1.7.10 n’en a aucun »', { skip: NEED_SRC }, async () => {
+  const result = await generated();
+  for (const [file, lang] of [['index.html', 'fr'], ['en/index.html', 'en']]) {
+    const html = result.read(file);
+    const faq = html.slice(html.indexOf('id="faq"'));
+    const answer = faq.slice(faq.indexOf('No Jump Delay') - 200, faq.indexOf('Perspective') + 200);
+    assert.ok(answer.includes('No Hit Delay'), `${lang} : la réponse de la FAQ sur les mods PvP cite No Jump Delay et No Hit Delay`);
+    assert.ok(answer.includes(lang === 'fr' ? 'En 1.8.9 et en 1.7.10,' : 'On 1.8.9 and on 1.7.10,'), `${lang} : la FAQ dit que ces deux modules sont actifs par défaut aussi en 1.7.10`);
+    // le mod 1.7.10 a No Jump Delay, No Hit Delay et Perspective : aucune page ne dit le contraire
+    assert.ok(!/aucun de ces|n’a aucun|none of these|has none/i.test(html), `${lang} : aucune phrase ne dit que le mod 1.7.10 n’a pas ces modules`);
+  }
+  const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8').replace(/\s+/g, ' ');
+  assert.ok(readme.includes('En 1.8.9 et en 1.7.10, **Saut sans délai** (No Jump Delay) et **Coups sans délai** (No Hit Delay) sont actifs par défaut'), 'README : même avertissement que le site');
+  assert.ok(!readme.includes('En 1.8.9, **Saut sans délai**'), 'README : plus de « En 1.8.9 » seul devant Saut sans délai');
+});
+
 test('profils : quatre cartes dont la 1.7.10 (Forge 10.13.4.1614, Java 8, son dossier), les textes ne parlent plus de trois profils', { skip: NEED_SRC }, async () => {
   const result = await generated();
   for (const [file, lang] of [['index.html', 'fr'], ['en/index.html', 'en']]) {

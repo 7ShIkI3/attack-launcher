@@ -129,7 +129,7 @@ Features, Entity Model Features) lit les packs de ressources au format OptiFine 
 **Les mods PvP sont-ils autorisés sur mon serveur ?** Ça dépend du serveur : lis ses règles. Sur les profils Fabric, le
 groupe **Mods PvP (latence)** (Crystal Optimizer, Anchor Optimizer, WalksyLib, BetterHitReg, Complete Shield Fixes) est activé
 par défaut ; ils ne changent que ce que le client affiche ou anticipe, et sont à couper sur un serveur qui les interdit :
-désactive le groupe dans les Réglages, puis clique sur **INSTALLER** pour les retirer. En 1.8.9, **Saut sans délai** (No Jump
+désactive le groupe dans les Réglages, puis clique sur **INSTALLER** pour les retirer. En 1.8.9 et en 1.7.10, **Saut sans délai** (No Jump
 Delay) et **Coups sans délai** (No Hit Delay) sont actifs par défaut sur tous les serveurs : ils sont interdits et détectés sur
 beaucoup de serveurs publics (Hypixel par exemple), à couper là-bas depuis le menu ATTACK. **Perspective** est interdit sur
 Hypixel. La page **Mods** le rappelle aussi dans la description de ces modules.
