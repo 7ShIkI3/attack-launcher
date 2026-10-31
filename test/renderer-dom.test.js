@@ -16,6 +16,8 @@ const FORGE = catalog.get('forge-1.8.9');
 
 // ---------- faux DOM : juste ce que app.js touche au chargement et dans renderStatus ----------
 
+let fakeDocument = null; // document du dernier boot() : focus() et la perte du focus (élément retiré ou grisé) passent par lui
+
 class FakeNode {
   constructor(tag = 'div') {
     this.tagName = tag;
@@ -25,7 +27,7 @@ class FakeNode {
     this.style = { setProperty: (name, value) => { this.style[name] = value; } };
     this.listeners = {};
     this.hidden = false;
-    this.disabled = false;
+    this.isDisabled = false;
     this.value = '';
     this.checked = false;
     this.className = '';
@@ -65,11 +67,24 @@ class FakeNode {
   }
 
   replaceChildren(...nodes) {
+    const active = fakeDocument && fakeDocument.activeElement;
+    const lost = Boolean(active) && this.children.some((child) => typeof child !== 'string' && child.contains(active));
     this.children = [...nodes];
+    if (lost && !this.contains(active)) fakeDocument.activeElement = fakeDocument.body; // comme un navigateur : l'élément retiré perd le focus
+  }
+
+  get disabled() {
+    return this.isDisabled;
+  }
+
+  set disabled(value) {
+    this.isDisabled = Boolean(value);
+    if (this.isDisabled && fakeDocument && fakeDocument.activeElement === this) fakeDocument.activeElement = fakeDocument.body;
   }
 
   setAttribute(name, value) {
     this.attributes[name] = String(value);
+    if (name.startsWith('data-')) this.dataset[name.slice(5).replace(/-(\w)/g, (_, c) => c.toUpperCase())] = String(value);
   }
 
   getAttribute(name) {
@@ -80,14 +95,32 @@ class FakeNode {
     (this.listeners[type] ||= []).push(listener);
   }
 
-  contains() {
-    return false;
+  focus() {
+    if (fakeDocument) fakeDocument.activeElement = this;
   }
 
-  querySelectorAll() {
-    return [];
+  contains(node) {
+    return node === this || this.children.some((child) => typeof child !== 'string' && child.contains(node));
   }
 
+  /** Seuls les sélecteurs de la reprise du focus : [data-focus-key] et [data-focus-key="…"] (le reste : aucun noeud, comme avant). */
+  querySelectorAll(selector) {
+    const match = /^\[data-focus-key(?:="([^"]*)")?\]$/.exec(selector);
+    if (!match) return [];
+    const all = [];
+    const walk = (node) => node.children.forEach((child) => {
+      if (typeof child === 'string') return;
+      const key = child.attributes['data-focus-key'];
+      if (key !== undefined && (match[1] === undefined || key === match[1])) all.push(child);
+      walk(child);
+    });
+    walk(this);
+    return all;
+  }
+
+  querySelector(selector) {
+    return this.querySelectorAll(selector)[0] || null;
+  }
 }
 
 /**
@@ -111,6 +144,7 @@ async function boot({ info, settings, status }) {
     addEventListener: () => {},
     dispatchEvent: () => {},
   };
+  fakeDocument = document;
   const noop = () => {};
   const tick = () => new Promise((resolve) => setImmediate(resolve));
   let statusRead = false;
@@ -153,7 +187,7 @@ async function boot({ info, settings, status }) {
     for (const handler of assistHandlers) await handler(state);
     for (let i = 0; i < 5; i++) await tick();
   };
-  return { byId, window, assistCalls, emitAssist };
+  return { byId, window, document, assistCalls, emitAssist, tick };
 }
 
 // ---------- état d'installation réel ----------
@@ -455,6 +489,60 @@ test('assistant OptiFine : « importé » propose Installer maintenant, et la pa
   assert.deepEqual(labelsOf(page.byId('optifine-assist')), ['Installer maintenant']);
   assert.match(page.byId('optifine-live').textContent, /OptiFine HD U M5 est prêt/);
   fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('assistant OptiFine au clavier : le focus ne retombe jamais sur <body> quand l’état change (Réglages et page Mods)', async (t) => {
+  const dirs = installed189();
+  t.after(() => fs.rmSync(dirs.root, { recursive: true, force: true }));
+  fs.rmSync(dirs.source);
+  const { page } = await render(dirs, {});
+  const { byId } = page;
+  const settingsCard = () => byId('optifine-assist');
+  const modsCard = () => byId('mods-grid').children.find((card) => /OptiFine/.test(card.textContent) && /wide/.test(card.className));
+  const focused = () => page.document.activeElement;
+  const keyOf = () => focused() && focused().dataset && focused().dataset.focusKey;
+  const button = (root, label) => nodesOf(root).find((n) => n.tagName === 'button' && n.textContent === label);
+  /** Entrée sur un bouton : focus puis clic, et attente des rendus qui suivent. */
+  const press = async (node) => {
+    node.focus();
+    await node.listeners.click[0]();
+    for (let i = 0; i < 5; i++) await page.tick();
+  };
+  const onTitle = (card, variant, step) => {
+    assert.notEqual(focused(), page.document.body, `${step} : pas sur <body>`);
+    assert.equal(keyOf(), `assist:${variant}:title`, `${step} : sur le titre de l’assistant`);
+    assert.ok(card.contains(focused()), `${step} : dans le bloc affiché`);
+  };
+
+  // Réglages : « Obtenir OptiFine » est hors du bloc et devient grisé pendant la surveillance
+  await press(byId('optifine-download'));
+  assert.equal(byId('optifine-download').disabled, true);
+  onTitle(settingsCard(), 'settings', 'Obtenir OptiFine');
+  await press(button(settingsCard(), 'Annuler'));
+  await page.emitAssist({ state: 'cancelled', downloadsDir: 'D:\\Dl' });
+  onTitle(settingsCard(), 'settings', 'Annuler');
+  await press(button(settingsCard(), 'Relancer'));
+  onTitle(settingsCard(), 'settings', 'Relancer');
+  await page.emitAssist({ state: 'seen', file: 'OptiFine_1.8.9_HD_U_M5.jar', version: 'HD_U_M5', downloadsDir: 'D:\\Dl' });
+  onTitle(settingsCard(), 'settings', 'titre gardé d’un état à l’autre');
+  await press(button(settingsCard(), 'Utiliser ce fichier'));
+  await page.emitAssist({ state: 'checking', file: 'OptiFine_1.8.9_HD_U_M5.jar', downloadsDir: 'D:\\Dl' });
+  onTitle(settingsCard(), 'settings', 'Utiliser ce fichier (vérification, aucun bouton)');
+  await page.emitAssist({ state: 'refused', file: 'OptiFine_1.8.9_HD_U_M5.jar', reason: 'NO_TWEAK', downloadsDir: 'D:\\Dl' });
+  onTitle(settingsCard(), 'settings', 'refusé');
+  // un bouton présent dans les deux états garde le focus : la clé est son rôle, pas son libellé (Réessayer -> Attendre encore)
+  button(settingsCard(), 'Réessayer').focus();
+  await page.emitAssist({ state: 'timeout', downloadsDir: 'D:\\Dl' });
+  assert.equal(keyOf(), 'assist:settings:start');
+  assert.equal(focused().textContent, 'Attendre encore');
+
+  // page Mods : la grille entière est refaite, le focus reste sur la carte OptiFine
+  await page.emitAssist({ state: 'cancelled', downloadsDir: 'D:\\Dl' });
+  await press(button(modsCard(), 'Relancer'));
+  onTitle(modsCard(), 'mods', 'Relancer (page Mods)');
+  await press(button(modsCard(), 'Annuler'));
+  await page.emitAssist({ state: 'cancelled', downloadsDir: 'D:\\Dl' });
+  onTitle(modsCard(), 'mods', 'Annuler (page Mods)');
 });
 
 test('assistant OptiFine en anglais : « (Mirror) », « Download », « Keep » dans les étapes', async () => {

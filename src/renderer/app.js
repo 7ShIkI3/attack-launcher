@@ -104,7 +104,9 @@
     const key = active && active.dataset && container.contains(active) ? active.dataset.focusKey : '';
     container.replaceChildren(...nodes);
     if (!key) return;
-    const next = [...container.querySelectorAll('[data-focus-key]')].find((node) => node.dataset.focusKey === key);
+    let next = [...container.querySelectorAll('[data-focus-key]')].find((node) => node.dataset.focusKey === key);
+    // assistant OptiFine : le bouton activé disparaît avec l'état (Annuler, Utiliser ce fichier…) ; le titre du nouvel état prend le focus
+    if (!next && key.startsWith('assist:')) next = container.querySelector(`[data-focus-key="${key.split(':', 2).join(':')}:title"]`);
     if (next && !next.disabled) next.focus({ preventScroll: true });
   }
 
@@ -971,24 +973,27 @@
     await call(() => api.optifineAssist.cancel());
   }
 
-  /** Titre, texte (ou étapes) et boutons de l'assistant pour son état courant ; null quand il n'y a rien à dire. */
+  /**
+   * Titre, texte (ou étapes) et boutons de l'assistant pour son état courant ; null quand il n'y a rien à dire. Chaque bouton a un
+   * rôle (start, cancel, use, install, pick) : sa clé de focus ne dépend ni du libellé ni de la langue.
+   */
   function assistModel() {
     const a = assist;
     const dir = a.downloadsDir || '';
     const file = a.file || '';
-    const button = (label, run, kind = '') => ({ label, run, kind });
-    const pick = button(t('optifine.pick'), pickOptifine);
+    const button = (role, label, run, kind = '') => ({ role, label, run, kind });
+    const pick = button('pick', t('optifine.pick'), pickOptifine);
     switch (a.state) {
       case 'waiting':
         return {
           title: t('optifine.assist.waitingTitle'), busy: true,
           steps: [t('optifine.assist.step1'), t('optifine.assist.step2'), t('optifine.assist.step3', { dir })],
-          actions: [button(t('optifine.assist.cancel'), assistCancel, 'ghost')],
+          actions: [button('cancel', t('optifine.assist.cancel'), assistCancel, 'ghost')],
         };
       case 'seen':
         return {
           title: t('optifine.assist.seenTitle'), text: t('optifine.assist.seenText', { file, dir }),
-          actions: [button(t('optifine.assist.use'), assistUse, 'accent'), button(t('optifine.assist.cancel'), assistCancel, 'ghost')],
+          actions: [button('use', t('optifine.assist.use'), assistUse, 'accent'), button('cancel', t('optifine.assist.cancel'), assistCancel, 'ghost')],
         };
       case 'checking':
         return { title: t('optifine.assist.checkingTitle'), text: t('optifine.assist.checkingText', { file }), busy: true, actions: [] };
@@ -996,29 +1001,29 @@
         return {
           title: t(a.version ? 'optifine.assist.importedTitle' : 'optifine.assist.importedTitleNoVersion', { version: String(a.version || '').replace(/_/g, ' ') }),
           text: t('optifine.assist.importedText'), good: true,
-          actions: busy || playing ? [] : [button(t('pending.install'), () => !busy && !playing && runInstall(), 'accent')],
+          actions: busy || playing ? [] : [button('install', t('pending.install'), () => !busy && !playing && runInstall(), 'accent')],
         };
       case 'refused':
         return {
           title: t('optifine.assist.refusedTitle'), warn: true,
           text: t('optifine.assist.refusedText', { file, reason: t(`error.OPTIFINE_${a.reason}`) }),
-          actions: [button(t('optifine.assist.retry'), () => assistStart(true), 'accent'), pick],
+          actions: [button('start', t('optifine.assist.retry'), () => assistStart(true), 'accent'), pick],
         };
       case 'timeout':
         return {
           title: t('optifine.assist.timeoutTitle'), text: t('optifine.assist.timeoutText', { dir }),
-          actions: [button(t('optifine.assist.waitMore'), () => assistStart(false), 'accent'), pick],
+          actions: [button('start', t('optifine.assist.waitMore'), () => assistStart(false), 'accent'), pick],
         };
       case 'cancelled':
         return {
           title: t('optifine.assist.cancelledTitle'), text: t('optifine.assist.cancelledText'),
-          actions: [button(t('optifine.assist.restart'), () => assistStart(true), 'accent'), pick],
+          actions: [button('start', t('optifine.assist.restart'), () => assistStart(true), 'accent'), pick],
         };
       case 'error':
         return {
           title: t('optifine.assist.errorTitle'), warn: true,
           text: a.reason === 'DIR_UNREADABLE' ? t('optifine.assist.dirUnreadable', { dir }) : errorText({ code: a.reason, message: a.message }),
-          actions: [button(t('optifine.assist.retry'), () => assistStart(true), 'accent'), pick],
+          actions: [button('start', t('optifine.assist.retry'), () => assistStart(true), 'accent'), pick],
         };
       default:
         return null;
@@ -1030,24 +1035,25 @@
   /**
    * Bloc de l'assistant. variant : 'settings' (rien tant qu'il est au repos : les boutons sont dans la carte) ou 'mods' (au repos, il
    * propose de l'obtenir). Les changements d'état sont annoncés par la zone aria-live (announceAssist), pas par ce bloc, qui est refait
-   * à chaque rendu de la page.
+   * à chaque rendu de la page. Le titre peut prendre le focus (tabindex -1) : il le reçoit quand le bouton activé disparaît avec l'état.
    */
   function assistNode(variant) {
     const model = assistModel();
     if (!model && variant === 'settings') return null;
     const children = [];
     if (model) {
-      children.push(el('div', { class: 'assist-head' }, [el('span', { class: 'assist-dot', 'aria-hidden': 'true' }), el('b', { text: model.title })]));
+      const title = el('b', { text: model.title, tabindex: '-1', 'data-focus-key': `assist:${variant}:title` });
+      children.push(el('div', { class: 'assist-head' }, [el('span', { class: 'assist-dot', 'aria-hidden': 'true' }), title]));
       if (model.steps) children.push(el('ol', { class: 'assist-steps' }, model.steps.map((step) => el('li', { text: step }))));
       if (model.text) children.push(el('p', { class: 'assist-text', text: model.text }));
     } else {
       children.push(el('p', { class: 'assist-text', text: t('optifine.assist.idle') }));
     }
     const actions = (model ? model.actions : [
-      { label: t('optifine.get'), run: () => assistStart(true), kind: 'accent' },
-      { label: t('optifine.pick'), run: pickOptifine, kind: '' },
+      { role: 'start', label: t('optifine.get'), run: () => assistStart(true), kind: 'accent' },
+      { role: 'pick', label: t('optifine.pick'), run: pickOptifine, kind: '' },
     ]).map((a) => {
-      const node = el('button', { type: 'button', class: `btn small${a.kind ? ` ${a.kind}` : ''}`, text: a.label, 'data-focus-key': `assist:${variant}:${a.label}` });
+      const node = el('button', { type: 'button', class: `btn small${a.kind ? ` ${a.kind}` : ''}`, text: a.label, 'data-focus-key': `assist:${variant}:${a.role}` });
       node.addEventListener('click', a.run);
       return node;
     });
@@ -1118,6 +1124,11 @@
     // assistant : son bloc (états), et le bouton qui le lance (en rouge quand rien n'est trouvé, grisé pendant qu'il surveille)
     replaceKeepingFocus($('optifine-assist'), [assistNode('settings')].filter(Boolean));
     const running = ASSIST_ACTIVE.includes(assist.state);
+    if (running && document.activeElement === $('optifine-download')) {
+      // le bouton qui a lancé l'assistant va être grisé : le focus passe au titre de l'assistant plutôt que de retomber sur <body>
+      const head = $('optifine-assist').querySelector('[data-focus-key="assist:settings:title"]');
+      if (head) head.focus({ preventScroll: true });
+    }
     $('optifine-download').disabled = running;
     $('optifine-download').classList.toggle('accent', Boolean(of) && !of.found && !of.own && !of.kept && !running);
   }
