@@ -1285,3 +1285,24 @@ test('captures : plus de recadrage CSS, et la commande site:images exige --sourc
   assert.throws(() => images.checkSource(account, { width: 1120, height: 617 }), /moins que la coupe prévue \(618 px\)/);
   assert.doesNotThrow(() => images.checkSource(account, { width: 1120, height: 618 }));
 });
+
+test('profils : quatre cartes dont la 1.7.10 (Forge 10.13.4.1614, Java 8, son dossier), les textes ne parlent plus de trois profils', { skip: NEED_SRC }, async () => {
+  const result = await generated();
+  for (const [file, lang] of [['index.html', 'fr'], ['en/index.html', 'en']]) {
+    const html = result.read(file);
+    const section = html.slice(html.indexOf('id="profiles"'), html.indexOf('id="client"'));
+    const cards = section.match(/<article class="card profile">/g) || [];
+    assert.equal(cards.length, 4, `${lang} : quatre cartes de profil`);
+    assert.match(section, /<div class="grid grid-4">/, `${lang} : grille à 4 colonnes`);
+    const titles = [...section.matchAll(/<div class="profile-head"><h3>([^<]+)<\/h3><span class="badge">([A-Z]+)<\/span>/g)].map((m) => [m[1], m[2]]);
+    assert.deepEqual(titles, [['1.8.9', 'FORGE'], ['1.21.1', 'FABRIC'], ['26.3', 'FABRIC'], ['1.7.10', 'FORGE']], `${lang} : versions et chargeurs`);
+    const last = section.slice(section.lastIndexOf('<article class="card profile">'));
+    assert.ok(last.includes('Forge 10.13.4.1614') && last.includes('<dd>8</dd>'), `${lang} : chargeur et Java de la 1.7.10`);
+    assert.ok(last.includes('profiles\\<wbr>forge-1.7.10'), `${lang} : dossier de jeu de la 1.7.10`);
+    assert.ok(last.includes(lang === 'fr' ? 'PvP 1.7' : '1.7 PvP'), `${lang} : étiquette de la carte`);
+    assert.ok(!/Trois profils|Three independent profiles|garder les trois|keep all three/.test(html), `${lang} : plus de « trois profils »`);
+    assert.ok(html.includes(lang === 'fr' ? 'Quatre profils' : 'Four independent profiles'), `${lang} : titre de la section`);
+    assert.ok(html.includes('1.7.10, 1.8.9, 1.21.1'), `${lang} : titre et description citent la 1.7.10`);
+    assert.ok(html.includes(lang === 'fr' ? 'sauf en 1.7.10' : 'except on 1.7.10'), `${lang} : le pack de mods n’existe pas en 1.7.10`);
+  }
+});
