@@ -103,15 +103,16 @@ class FakeNode {
     return node === this || this.children.some((child) => typeof child !== 'string' && child.contains(node));
   }
 
-  /** Seuls les sélecteurs de la reprise du focus : [data-focus-key] et [data-focus-key="…"] (le reste : aucun noeud, comme avant). */
+  /** Seuls les sélecteurs de la reprise du focus : [data-focus-key], [data-focus-key="…"] et un nom de balise (h1, button) ; le reste : aucun noeud. */
   querySelectorAll(selector) {
     const match = /^\[data-focus-key(?:="([^"]*)")?\]$/.exec(selector);
-    if (!match) return [];
+    const tag = /^[a-z][a-z0-9]*$/.test(selector) ? selector : null;
+    if (!match && !tag) return [];
     const all = [];
     const walk = (node) => node.children.forEach((child) => {
       if (typeof child === 'string') return;
       const key = child.attributes['data-focus-key'];
-      if (key !== undefined && (match[1] === undefined || key === match[1])) all.push(child);
+      if (match ? key !== undefined && (match[1] === undefined || key === match[1]) : child.tagName === tag) all.push(child);
       walk(child);
     });
     walk(this);
@@ -140,7 +141,7 @@ async function boot({ info, settings, status }) {
     createElement: (tag) => new FakeNode(tag),
     createElementNS: (ns, tag) => new FakeNode(tag),
     importNode: (node) => node,
-    querySelectorAll: () => [],
+    querySelectorAll: (selector) => (selector.startsWith('.') ? [...nodes.values()].filter((node) => node.classList.contains(selector.slice(1))) : []), // .page, .nav-item… : les noeuds que le test a marqués
     addEventListener: () => {},
     dispatchEvent: () => {},
   };
@@ -153,6 +154,7 @@ async function boot({ info, settings, status }) {
   const attack = {
     info: async () => info,
     getSettings: async () => settings,
+    setSettings: async (patch) => Object.assign(settings, patch),
     status: async () => {
       statusRead = true;
       return status;
@@ -556,4 +558,170 @@ test('assistant OptiFine en anglais : « (Mirror) », « Download », « Keep »
   assert.match(text, /“Keep”/);
   assert.deepEqual(labelsOf(page.byId('optifine-assist')), ['Cancel']);
   fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+// ---------- focus clavier : l'élément focalisé disparaît ou sa page est masquée ----------
+
+/** Entrée sur un bouton ou un interrupteur : focus, puis son gestionnaire, puis les rendus qui suivent. */
+async function pressKey(page, node, event = 'click', ...args) {
+  node.focus();
+  await node.listeners[event][0](...args);
+  for (let i = 0; i < 5; i++) await page.tick();
+}
+const dataKey = (node) => node && node.attributes && node.attributes['data-focus-key'];
+
+test('alerte de l’accueil au clavier : fermée ou activée, le focus va à une commande visible, jamais <body>', async (t) => {
+  const dirs = installed189();
+  t.after(() => fs.rmSync(dirs.root, { recursive: true, force: true }));
+  const { page } = await render(dirs, {});
+  const { byId, document } = page;
+  // le faux DOM n'a pas la page HTML : on lui donne la hiérarchie dont showPage et l'alerte ont besoin
+  const titles = {};
+  for (const name of ['home', 'mods', 'settings', 'account']) {
+    const section = byId(`page-${name}`);
+    section.id = `page-${name}`;
+    section.classList.add('page');
+    section.classList.toggle('active', name === 'home');
+    titles[name] = new FakeNode('h1');
+    section.append(titles[name]);
+  }
+  byId('page-home').append(byId('ready-btn'), byId('play-button'), byId('alert'));
+  byId('alert').append(byId('alert-close'), byId('alert-action'), byId('alert-copy'));
+  byId('page-mods').append(byId('mods-q'));
+  const body = document.body;
+
+  // la croix masque le bouton qui a le focus : la ligne « prêt » de l'accueil le reprend
+  page.window.AttackUI.showError('SOMETHING_ELSE', 'disque plein');
+  await pressKey(page, byId('alert-close'));
+  assert.equal(byId('alert').classList.contains('hidden'), true);
+  assert.equal(byId('lower').inert, false);
+  assert.notEqual(document.activeElement, body);
+  assert.equal(document.activeElement, byId('ready-btn'));
+
+  // le bouton d'action masque l'alerte puis la page d'accueil entière : le titre de la page affichée reprend le focus
+  for (const [code, name] of [['NO_ACCOUNT', 'account'], ['JAVA_NOT_FOUND', 'settings']]) {
+    page.window.AttackUI.showError(code);
+    assert.equal(byId('alert-action').classList.contains('hidden'), false, `${code} : bouton d’action`);
+    await pressKey(page, byId('alert-action'));
+    assert.equal(byId(`page-${name}`).classList.contains('active'), true, `${code} : page ${name} affichée`);
+    assert.equal(byId('page-home').classList.contains('active'), false);
+    assert.equal(document.activeElement, titles[name], `${code} : focus sur le titre de la page ${name}`);
+    assert.equal(titles[name].tabIndex, -1, 'titre focalisable par programme, hors de l’ordre de tabulation');
+    page.window.showPage('home'); // retour à l'accueil depuis la page (le focus y était) : le titre de l'accueil
+    assert.equal(document.activeElement, titles.home);
+  }
+
+  // le focus était ailleurs : rien n'est volé (champ de la page Mods, onglet de la barre latérale)
+  page.window.AttackUI.showError('SOMETHING_ELSE', 'disque plein');
+  byId('mods-q').focus();
+  byId('alert-close').listeners.click[0]();
+  assert.equal(document.activeElement, byId('mods-q'), 'fermer l’alerte sans y avoir le focus ne le déplace pas');
+  const sidebar = new FakeNode('button'); // hors de toute page
+  sidebar.focus();
+  page.window.showPage('account');
+  assert.equal(document.activeElement, sidebar, 'un onglet de la barre latérale garde le focus');
+  byId('mods-q').focus();
+  page.window.showPage('mods'); // la page affichée est celle qui a déjà le focus
+  assert.equal(document.activeElement, byId('mods-q'));
+});
+
+test('page Mods au clavier : une carte qui sort du filtre ou « Tout afficher » rend le focus au filtre d’état actif, jamais <body>', async (t) => {
+  const dirs = installed189();
+  t.after(() => fs.rmSync(dirs.root, { recursive: true, force: true }));
+  const { page } = await render(dirs, {});
+  const { byId, document } = page;
+  const grid = () => byId('mods-grid');
+  const switches = () => nodesOf(grid()).filter((n) => n.tagName === 'input' && /^mod:/.test(dataKey(n) || ''));
+  const cardOf = (key) => grid().children.find((card) => nodesOf(card).some((n) => dataKey(n) === key));
+  const nameOf = (card) => card.children[0].children[1].textContent;
+  /** Coche ou décoche l'interrupteur de la clé donnée, au clavier (focus puis changement), et attend l'enregistrement. */
+  const flip = async (key, checked) => {
+    const node = switches().find((n) => dataKey(n) === key);
+    node.checked = checked;
+    await pressKey(page, node, 'change');
+  };
+  // le faux DOM n'a pas la page HTML : les trois boutons du filtre d'état (Tous, Activés, Désactivés)
+  const stateButton = {};
+  for (const value of ['all', 'on', 'off']) {
+    stateButton[value] = new FakeNode('button');
+    stateButton[value].dataset.value = value;
+    byId('mods-state').append(stateButton[value]);
+  }
+  const setState = (value) => byId('mods-state').listeners.click[0]({ target: { dataset: { value } } });
+  const search = (value) => byId('mods-q').listeners.input[0]({ target: { value } });
+  // un mod du pack : son interrupteur règle un groupe (réglage enregistré), alors que celui d'OptiFine suit l'état lu par le processus principal
+  const first = switches().map(dataKey).find((key) => key !== 'mod:optifine');
+  assert.ok(first, 'le pack 1.8.9 a au moins un mod à interrupteur');
+
+  // témoin, filtre « Tous » : la carte reste, son interrupteur garde le focus
+  await flip(first, false);
+  assert.equal(dataKey(document.activeElement), first);
+  assert.notEqual(document.activeElement, document.body);
+
+  // filtre « Activés » : la coupure fait sortir la carte de la grille
+  await flip(first, true);
+  setState('on');
+  const name = nameOf(cardOf(first));
+  await flip(first, false);
+  assert.equal(cardOf(first), undefined, `la carte « ${name} » a quitté la grille`);
+  assert.notEqual(document.activeElement, document.body);
+  assert.equal(document.activeElement, stateButton.on, 'le bouton « Activés », qui a retiré la carte et reste à sa place, reprend le focus');
+
+  // filtre « Désactivés » : la remise en marche fait sortir la carte, et la grille peut devenir vide
+  setState('off');
+  search(name);
+  assert.deepEqual(grid().children.map(nameOf), [name], 'la recherche ne garde que cette carte');
+  await flip(first, true);
+  assert.equal(cardOf(first), undefined);
+  assert.equal(nodesOf(grid()).some((n) => n.className === 'mods-empty'), true, 'plus aucune carte : message « aucun résultat »');
+  assert.equal(document.activeElement, stateButton.off);
+
+  // « Tout afficher » : le bouton disparaît avec la reconstruction de la grille
+  const clear = nodesOf(grid()).find((n) => n.tagName === 'button' && n.textContent === 'Tout afficher');
+  assert.ok(clear, 'bouton « Tout afficher » dans l’état vide');
+  await pressKey(page, clear);
+  assert.ok(grid().children.length > 1, 'la grille est de nouveau pleine');
+  assert.equal(byId('mods-q').value, '');
+  assert.equal(document.activeElement, stateButton.all, 'les filtres sont remis à zéro : « Tous » reprend le focus');
+
+  // le focus n'est jamais volé quand il n'était pas dans la grille
+  byId('wc-min').focus();
+  search('');
+  setState('on');
+  assert.equal(document.activeElement, byId('wc-min'));
+});
+
+test('assistant OptiFine, import réussi sur la page Mods : le focus suit l’assistant jusqu’à l’interrupteur OptiFine', async (t) => {
+  const dirs = installed189();
+  const other = installed189(); // une installation avec la copie rangée : l'état que la page relira après l'import
+  t.after(() => {
+    fs.rmSync(dirs.root, { recursive: true, force: true });
+    fs.rmSync(other.root, { recursive: true, force: true });
+  });
+  await installer.installOptifine(other.gameDir, other.minecraftDir, {});
+  const withCopy = await installer.status({ minecraftDir: other.minecraftDir, gameDir: other.gameDir, profile: FORGE });
+  assert.equal(withCopy.optifine.found, true);
+  fs.rmSync(dirs.source); // aucune copie : la carte de la page Mods porte l'assistant
+  const { page, status } = await render(dirs, {});
+  assert.equal(status.optifine.found, false, 'départ : aucune copie utilisable');
+  const { byId, document } = page;
+  const modsCard = () => byId('mods-grid').children.find((card) => /OptiFine/.test(card.textContent) && /wide/.test(card.className));
+  const button = (label) => nodesOf(modsCard()).find((n) => n.tagName === 'button' && n.textContent === label);
+
+  await pressKey(page, button('Obtenir OptiFine'));
+  assert.equal(dataKey(document.activeElement), 'assist:mods:title');
+  await page.emitAssist({ state: 'seen', file: 'OptiFine_1.8.9_HD_U_M5.jar', version: 'HD_U_M5', downloadsDir: 'D:\\Dl' });
+  await pressKey(page, button('Utiliser ce fichier'));
+  await page.emitAssist({ state: 'checking', file: 'OptiFine_1.8.9_HD_U_M5.jar', downloadsDir: 'D:\\Dl' });
+  assert.equal(dataKey(document.activeElement), 'assist:mods:title', 'le titre garde le focus pendant la vérification');
+
+  // le processus principal a rangé la copie : la page relit l'état, la carte passe de l'assistant à l'interrupteur
+  status.optifine = withCopy.optifine;
+  await page.emitAssist({ state: 'imported', file: 'OptiFine_1.8.9_HD_U_M5.jar', version: 'HD_U_M5', downloadsDir: 'D:\\Dl' });
+  const card = byId('mods-grid').children.find((c) => /OptiFine/.test(c.textContent) && nodesOf(c).some((n) => dataKey(n) === 'mod:optifine'));
+  assert.ok(card, 'la carte OptiFine porte maintenant son interrupteur');
+  assert.notEqual(document.activeElement, document.body);
+  assert.equal(dataKey(document.activeElement), 'mod:optifine');
+  assert.equal(document.activeElement.tagName, 'input');
+  assert.ok(card.contains(document.activeElement));
 });
