@@ -229,3 +229,88 @@ test('aide du script : profils, --tag et jar factice documentés', () => {
   assert.match(head, /JAR FACTICE/);
   assert.match(head, /install_profile\.json/);
 });
+
+test('contre-vérification des bibliothèques Forge 1.7.10 : checksums de l’installateur, .sha1 Maven pour les autres, écarts signalés', async () => {
+  const { hashFile } = require('../src/main/http');
+  const profile = catalog.get('forge-1.7.10');
+  const real = fixture('forge-1.7.10-install_profile.json');
+  const universal = Buffer.from('universal de Forge 1.7.10 '.repeat(30));
+  const bodies = new Map();
+  for (const lib of real.versionInfo.libraries) {
+    if (lib.name === real.install.path) continue;
+    const body = Buffer.from(`jar ${lib.name}`);
+    bodies.set(lib.name, body);
+    if (lib.checksums) lib.checksums = lib.checksums.map((_, i, all) => (i === all.length - 1 ? sha('sha1', body) : 'f'.repeat(40)));
+  }
+  const installerJar = makeZip({ 'install_profile.json': JSON.stringify(real), [real.install.filePath]: universal });
+  const installerUrl = forge.installerUrl(profile);
+  const expected = it.forgeLibraryExpectations(installerJar, profile);
+
+  /** Faux fetch : l'installateur, son .sha1 et le .sha1 Maven des bibliothèques sans checksum. */
+  const routes = new Map([[installerUrl, installerJar], [`${installerUrl}.sha1`, sha('sha1', installerJar)]]);
+  for (const lib of expected) if (lib.url && lib.sha1 === null) routes.set(`${lib.url}.sha1`, `${sha('sha1', bodies.get(lib.name))}  ${lib.name}\n`);
+  const fakeFetch = (table) => async (url) => {
+    const body = table.get(url);
+    return { arrayBuffer: async () => Buffer.from(body ?? ''), text: async () => String(body ?? 'absent') };
+  };
+
+  /** Dossier .minecraft avec les bibliothèques posées par « le launcher » (les vrais faux jars), et le JSON de version qui les liste. */
+  const install = () => {
+    const dir = tempDir();
+    for (const lib of expected) {
+      const file = path.join(dir, 'libraries', ...lib.path.split('/'));
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, lib.name === real.install.path ? universal : bodies.get(lib.name));
+    }
+    return { dir, loaderJson: { libraries: expected.map((e) => ({ name: e.name })) } };
+  };
+  const run = async ({ dir, loaderJson }, table = routes) => {
+    const failures = [];
+    const check = async (file, algorithm, wanted, label) => {
+      if (!fs.existsSync(file)) return failures.push(`absent : ${label}`);
+      const list = Array.isArray(wanted) ? wanted : [wanted];
+      if (!list.includes(await hashFile(file, algorithm))) failures.push(`hash faux : ${label}`);
+      return undefined;
+    };
+    const summary = await it.verifyForgeLibraries({ profile, minecraftDir: dir, loaderJson, check, fail: (m) => failures.push(m), fetchFn: fakeFetch(table) });
+    return { failures, summary };
+  };
+
+  // tout est conforme : 18 bibliothèques, d'après trois sources
+  let world = install();
+  let result = await run(world);
+  assert.deepEqual(result.failures, []);
+  assert.match(result.summary, /^18 bibliothèques Forge recontrôlées avec l'installateur officiel/);
+  assert.match(result.summary, /1 par jar universal de l’installateur/);
+  assert.match(result.summary, /\d+ par checksums de install_profile\.json/);
+  assert.match(result.summary, /\d+ par \.sha1 du dépôt Maven/);
+
+  // une bibliothèque modifiée (avec checksums), une sans checksum (.sha1 Maven) et le jar universal : trois écarts nommés
+  const scala = expected.find((e) => e.name === 'org.scala-lang:scala-library:2.11.1');
+  const launchwrapper = expected.find((e) => e.name === 'net.minecraft:launchwrapper:1.12');
+  const forgeJar = expected.find((e) => e.name === real.install.path);
+  for (const lib of [scala, launchwrapper, forgeJar]) fs.writeFileSync(path.join(world.dir, 'libraries', ...lib.path.split('/')), 'remplacé');
+  result = await run(world);
+  assert.deepEqual([...result.failures].sort(), [
+    `hash faux : ${forgeJar.name} (jar universal de l’installateur)`,
+    `hash faux : ${scala.name} (checksums de install_profile.json)`,
+    `hash faux : ${launchwrapper.name} (.sha1 du dépôt Maven)`,
+  ].sort());
+
+  // fichier absent, JSON de version qui ne liste pas les mêmes bibliothèques
+  world = install();
+  fs.rmSync(path.join(world.dir, 'libraries', ...scala.path.split('/')));
+  world.loaderJson.libraries.pop();
+  result = await run(world);
+  assert.ok(result.failures.includes(`absent : ${scala.name} (${scala.source})`));
+  assert.ok(result.failures.includes('bibliothèques Forge installées ≠ celles de l’installateur officiel'));
+
+  // le .sha1 de Maven pour l'installateur ne correspond pas, ou le .sha1 d'une bibliothèque est introuvable
+  world = install();
+  const wrongInstaller = new Map(routes).set(`${installerUrl}.sha1`, 'a'.repeat(40));
+  assert.ok((await run(world, wrongInstaller)).failures.includes('installateur Forge : SHA-1 différent de celui de Maven'));
+  const noSha1 = new Map(routes);
+  noSha1.delete(`${launchwrapper.url}.sha1`);
+  assert.deepEqual((await run(world, noSha1)).failures, [`hash faux : ${launchwrapper.name} (.sha1 du dépôt Maven)`]);
+  fs.rmSync(world.dir, { recursive: true, force: true });
+});

@@ -157,6 +157,35 @@ function forgeLibraryExpectations(installerBuffer, profile) {
 }
 
 /**
+ * Contre-vérification des bibliothèques Forge installées, SANS les SHA-1 que le launcher a écrits dans le JSON de version : l'installateur
+ * officiel est retéléchargé (et contrôlé par le .sha1 de Maven), son install_profile.json donne les checksums attendus (forgeLibraryExpectations).
+ * `check(fichier, algorithme, attendu(s), libellé)` contrôle un fichier ; `fail(message)` signale un écart d'ensemble ; `fetchFn` : fetch (injectable).
+ * Renvoie le résumé à afficher.
+ */
+async function verifyForgeLibraries({ profile, minecraftDir, loaderJson, check, fail, fetchFn = fetch }) {
+  const sha1In = (text) => /\b([0-9a-f]{40})\b/i.exec(text)?.[1]?.toLowerCase();
+  const installerUrl = forge.installerUrl(profile);
+  const installerJar = Buffer.from(await (await fetchFn(installerUrl)).arrayBuffer());
+  const installerSha1 = sha1In(await (await fetchFn(`${installerUrl}.sha1`)).text());
+  if (!installerSha1 || installerSha1 !== sha1Of(installerJar)) fail('installateur Forge : SHA-1 différent de celui de Maven');
+  const expected = forgeLibraryExpectations(installerJar, profile);
+  const installedNames = loaderJson.libraries.map((l) => l.name).sort();
+  if (JSON.stringify(installedNames) !== JSON.stringify(expected.map((e) => e.name).sort())) fail('bibliothèques Forge installées ≠ celles de l’installateur officiel');
+  const bySource = {};
+  for (const lib of expected) {
+    const file = path.join(minecraftDir, 'libraries', ...lib.path.split('/'));
+    let accepted = lib.sha1;
+    if (!accepted) {
+      const published = sha1In(await (await fetchFn(`${lib.url}.sha1`)).text());
+      accepted = [published || 'introuvable'];
+    }
+    await check(file, 'sha1', accepted, `${lib.name} (${lib.source})`);
+    bySource[lib.source] = (bySource[lib.source] || 0) + 1;
+  }
+  return `${loaderJson.libraries.length} bibliothèques Forge recontrôlées avec l'installateur officiel (${Object.entries(bySource).map(([source, n]) => `${n} par ${source}`).join(', ')})`;
+}
+
+/**
  * Jar ATTACK EXACT d'une release précise (brouillon compris), téléchargé avec `gh` dans `dir` et vérifié par son SHA-256 (digest GitHub,
  * sinon la ligne de SHA256SUMS). Le jar est celui que mod.parseRelease() désigne pour ce profil, comme le ferait le launcher.
  * `run` : exécuteur de gh (injectable pour les essais). Renvoie { file, name, sha256, tag, draft }.
@@ -298,27 +327,7 @@ async function main() {
   const extra = [];
   if (profile.loader.type === 'forge') {
     if (loaderJson.inheritsFrom !== mc || loaderJson.mainClass !== 'net.minecraft.launchwrapper.Launch') failures.push('JSON Forge inattendu');
-    // contre-vérification SANS les SHA-1 écrits par le launcher : l'installateur officiel est retéléchargé (et vérifié par le .sha1 de Maven),
-    // son install_profile.json donne les checksums attendus ; le jar universal vaut le fichier que l'installateur contient
-    const installerUrl = forge.installerUrl(profile);
-    const installerJar = Buffer.from(await (await fetch(installerUrl)).arrayBuffer());
-    const installerSha1 = /\b([0-9a-f]{40})\b/i.exec(await (await fetch(`${installerUrl}.sha1`)).text())?.[1];
-    if (!installerSha1 || installerSha1.toLowerCase() !== sha1Of(installerJar)) failures.push('installateur Forge : SHA-1 différent de celui de Maven');
-    const expected = forgeLibraryExpectations(installerJar, profile);
-    const installedNames = loaderJson.libraries.map((l) => l.name).sort();
-    if (JSON.stringify(installedNames) !== JSON.stringify(expected.map((e) => e.name).sort())) failures.push('bibliothèques Forge installées ≠ celles de l’installateur officiel');
-    const bySource = {};
-    for (const lib of expected) {
-      const file = path.join(minecraftDir, 'libraries', ...lib.path.split('/'));
-      let accepted = lib.sha1;
-      if (!accepted) {
-        const published = /\b([0-9a-f]{40})\b/i.exec(await (await fetch(`${lib.url}.sha1`)).text())?.[1];
-        accepted = published ? [published.toLowerCase()] : ['introuvable'];
-      }
-      await check(file, 'sha1', accepted, `${lib.name} (${lib.source})`);
-      bySource[lib.source] = (bySource[lib.source] || 0) + 1;
-    }
-    extra.push(`${loaderJson.libraries.length} bibliothèques Forge recontrôlées avec l'installateur officiel (${Object.entries(bySource).map(([source, n]) => `${n} par ${source}`).join(', ')})`);
+    extra.push(await verifyForgeLibraries({ profile, minecraftDir, loaderJson, check, fail: (message) => failures.push(message) }));
   } else {
     if (loaderJson.id !== vid || loaderJson.inheritsFrom !== mc || loaderJson.mainClass !== KNOT_CLIENT) failures.push('JSON Fabric inattendu');
     // contre-vérification SANS le code du launcher : le profil publié par Fabric est relu, SHA-512 puis .sha1 recalculés
@@ -443,5 +452,5 @@ if (require.main === module) {
 }
 
 module.exports = {
-  gameDirFor, makeDummyFabricJar, makeDummyForgeJar, makeDummyJar, allowsDummyJar, dummyModClass, forgeLibraryExpectations, fetchTagJar, parseArgs,
+  gameDirFor, makeDummyFabricJar, makeDummyForgeJar, makeDummyJar, allowsDummyJar, dummyModClass, forgeLibraryExpectations, verifyForgeLibraries, fetchTagJar, parseArgs,
 };
