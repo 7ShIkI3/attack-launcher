@@ -5,7 +5,7 @@
 // ATTACK_SCREENSHOT_INSTALL=1 clique d'abord sur INSTALLER (installation réelle dans les dossiers donnés),
 // ATTACK_DEV=1 active le mode développeur (jar local), ATTACK_LANG=en passe l'interface en anglais,
 // ATTACK_OFFLINE=<pseudo> ajoute un compte hors ligne actif et ATTACK_SCREENSHOT_PLAY=1 clique sur JOUER,
-// ATTACK_PROFILE=<id> choisit le profil affiché (forge-1.8.9 par défaut, fabric-1.21.1, fabric-26.3),
+// ATTACK_PROFILE=<id> choisit le profil affiché (forge-1.8.9 par défaut, fabric-1.21.1, fabric-26.3, forge-1.7.10),
 // ATTACK_SETTINGS='{"replayMod":true}' ajoute ces réglages à plat au profil affiché (essai d'un état « à appliquer »),
 // ATTACK_SCREENSHOT_SIZE=940x600 prend les captures à la taille minimale de la fenêtre,
 // ATTACK_SCREENSHOT_ERROR=<code> ajoute home-error.png (l'alerte de l'accueil pour ce code, par ex. LAUNCHER_NOT_FOUND),
