@@ -16,8 +16,8 @@ function typo(value) {
 
 const fr = {
   meta: {
-    title: 'ATTACK Launcher : Minecraft PvP en un clic, en 1.8.9, 1.21.1 et 26.3',
-    description: 'Le launcher Windows d’ATTACK Client : Minecraft PvP installé et lancé en un clic, en 1.8.9, 1.21.1 et 26.3. Fichiers vérifiés par hash, aucune télémétrie dans le launcher.',
+    title: 'ATTACK Launcher : Minecraft PvP en un clic, en 1.7.10, 1.8.9, 1.21.1 et 26.3',
+    description: 'Le launcher Windows d’ATTACK Client : Minecraft PvP installé et lancé en un clic, en 1.7.10, 1.8.9, 1.21.1 et 26.3. Fichiers vérifiés par hash, aucune télémétrie dans le launcher.',
     ogImage: '{{url.fr}}og.png', // image de partage : l'accueil du launcher, à la racine du site (la page française en est la racine)
   },
   nav: {
@@ -38,7 +38,7 @@ const fr = {
   hero: {
     eyebrow: 'Launcher Windows pour ATTACK Client',
     title: 'Minecraft PvP installé et lancé en un clic',
-    lead: 'ATTACK Launcher installe Minecraft, le chargeur de mods, un pack de mods vérifié et ATTACK Client, dans un dossier de jeu séparé de ton <code>.minecraft</code>. Trois profils indépendants : 1.8.9 (Forge), 1.21.1 et 26.3 (Fabric).',
+    lead: 'ATTACK Launcher installe Minecraft, le chargeur de mods, un pack de mods vérifié (sauf en 1.7.10) et ATTACK Client, dans un dossier de jeu séparé de ton <code>.minecraft</code>. Quatre profils indépendants : 1.8.9 et 1.7.10 (Forge), 1.21.1 et 26.3 (Fabric).',
     download: 'Télécharger pour Windows',
     version: 'Version',
     fallback: 'Voir les versions sur GitHub',
@@ -94,8 +94,8 @@ const fr = {
   features: {
     title: 'Ce que fait le launcher',
     lead: 'Pour jouer ATTACK Client, il faut normalement installer Minecraft, le chargeur de mods et le bon jar au bon endroit, sans mélanger avec tes autres mods. Le launcher s’en charge.',
-    c1: { t: 'Installation en un clic', p: 'INSTALLER télécharge Minecraft, le chargeur de mods, le pack de mods du profil et ATTACK Client, dans un dossier de jeu séparé de ton <code>.minecraft</code>. Chaque fichier est vérifié par son empreinte (hash) : sans le bon hash, il est refusé.' },
-    c2: { t: 'Packs de mods figés, par groupes', p: 'Chaque profil a un pack de mods figé. Des groupes s’activent ou se coupent dans les Réglages : <strong>Mods PvP (latence)</strong>, <strong>Packs OptiFine</strong>, <strong>Replay Mod</strong> et <strong>Shaders (Iris)</strong>. Un réglage s’applique à la prochaine installation.' },
+    c1: { t: 'Installation en un clic', p: 'INSTALLER télécharge Minecraft, le chargeur de mods, le pack de mods du profil (s’il en a un) et ATTACK Client, dans un dossier de jeu séparé de ton <code>.minecraft</code>. Chaque fichier est vérifié par son empreinte (hash) : sans le bon hash, il est refusé.' },
+    c2: { t: 'Packs de mods figés, par groupes', p: 'Chaque profil, sauf le 1.7.10, a un pack de mods figé. Des groupes s’activent ou se coupent dans les Réglages : <strong>Mods PvP (latence)</strong>, <strong>Packs OptiFine</strong>, <strong>Replay Mod</strong> et <strong>Shaders (Iris)</strong>. Un réglage s’applique à la prochaine installation.' },
     c3: { t: 'OptiFine en 1.8.9, avec ta propre copie', p: 'Sa licence interdit de le redistribuer : le launcher ne le télécharge jamais. Il repère l’OptiFine que tu as récupéré toi-même (ou celui que tu choisis), le valide, puis le copie dans le dossier <code>mods</code> du profil.' },
     c4: { t: 'JOUER, avec ou sans compte Microsoft', p: 'Avec un compte connecté, JOUER lance directement le jeu, avec le Java officiel de Mojang adapté au profil. Sans compte, il ouvre le launcher Minecraft officiel sur le profil ATTACK choisi.' },
     c5: { t: 'Skin en 3D', p: 'La page Compte affiche ton skin en 3D (marche, course ou repos) et te laisse en changer sans quitter le launcher. La connexion se fait par code d’appareil : le launcher ne voit jamais ton mot de passe.' },
@@ -104,8 +104,8 @@ const fr = {
     c8: { t: 'Français et anglais', p: 'Le launcher existe dans les deux langues (Réglages, Langue). Un nouveau dossier de jeu démarre aussi dans cette langue ; un <code>options.txt</code> existant garde la sienne.' },
   },
   profiles: {
-    title: 'Trois profils, indépendants',
-    lead: 'Chaque profil a son dossier de jeu, son état d’installation, son Java et ses réglages. Tu peux garder les trois.',
+    title: 'Quatre profils, indépendants',
+    lead: 'Chaque profil a son dossier de jeu, son état d’installation, son Java et ses réglages. Tu peux garder les quatre.',
     mc: 'Minecraft',
     loader: 'Chargeur',
     java: 'Java',
@@ -113,10 +113,11 @@ const fr = {
     forge189: { tag: 'PvP classique', p: 'Le profil historique « ATTACK Client » : son identifiant et son dossier de jeu ne changent pas. Pack de mods : Phosphor Legacy et Client Side Sounds, Replay Mod en option, et OptiFine avec ta propre copie.' },
     fabric1211: { tag: 'PvP moderne', p: 'Fabric avec le pack de performance (Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast…) et les groupes réglables : Mods PvP, Packs OptiFine, Replay Mod et Shaders.' },
     fabric263: { tag: 'Dernière version', p: 'Le même genre de pack qu’en 1.21.1, sans ModernFix (qui n’a pas de version 26.3), avec les mêmes groupes réglables.' },
+    forge1710: { tag: 'PvP 1.7', p: 'Forge 10.13.4.1614 et le mod ATTACK 1.7.10, une version « lite » : menu ATTACK, éditeur de HUD, cosmétiques et une partie des modules, sans ceux qui sont interdits en classé. Ni pack de mods ni OptiFine.' },
   },
   client: {
     title: 'ATTACK Client, en jeu',
-    lead: 'Le launcher installe ATTACK Client, un mod de PvP (Forge en 1.8.9, Fabric en 1.21.1 et 26.3) avec environ 60 modules : HUD, PvP, visuel et divers. Ouvre son menu avec <kbd>Maj droite</kbd> ou avec le bouton « ATTACK Mods » du menu Échap.',
+    lead: 'Le launcher installe ATTACK Client, un mod de PvP (Forge en 1.7.10 et 1.8.9, Fabric en 1.21.1 et 26.3) avec environ 60 modules : HUD, PvP, visuel et divers. La version 1.7.10 est plus légère, avec une partie de ces modules. Ouvre son menu avec <kbd>Maj droite</kbd> ou avec le bouton « ATTACK Mods » du menu Échap.',
     k1: { t: 'Un menu qui se parcourt vite', p: 'Barre latérale, cartes à interrupteur en trois densités, favoris et filtres Actifs / Inactifs. Les noms des modules et les valeurs des listes suivent la langue du jeu (français ou anglais).' },
     k2: { t: 'Recherche dès la frappe', p: 'La recherche trouve tous les modules et tous les réglages dès que tu tapes.' },
     k3: { t: 'Éditeur de HUD', p: 'Glisse un élément pour le placer, molette pour changer sa taille. Les HUD désactivés ne sont plus dessinés, et « Réinitialiser » demande confirmation.' },
@@ -133,7 +134,7 @@ const fr = {
     lead: 'Ce que le launcher installe et règle pour tes FPS, avec une seule mesure, et son contexte exact.',
     p1: { t: 'Un pack de mods de performance', p: 'En 1.21.1 et 26.3 : Sodium, Lithium, FerriteCore, ImmediatelyFast, Entity Culling, More Culling, BadOptimizations, Krypton et Reflex AntiLag, plus ModernFix en 1.21.1 (il n’existe pas en 26.3). En 1.8.9, Phosphor Legacy apporte un moteur d’éclairage plus rapide : moins de saccades quand la lumière change.' },
     p2: { t: 'Des réglages de départ', p: 'Un nouveau dossier de jeu Fabric démarre sans VSync ni limite de FPS, sans ombres d’entités, avec une distance d’affichage de 10. Dans un dossier existant, seules deux valeurs d’origine de Minecraft (VSync activée, limite à 120 FPS) sont remplacées, une seule fois, par « sans VSync, sans limite ». Un choix que tu as fait n’est jamais modifié.' },
-    p3: { t: 'Le Java officiel, adapté au profil', p: 'Le launcher installe le Java officiel de Mojang du profil (Java 8, 21 ou 25) et lance le jeu avec. Côté mémoire, 2 à 3 Go suffisent en 1.8.9 et 3 à 4 Go conviennent en 1.21.1 et 26.3 avec le pack : plus n’augmente pas les FPS.' },
+    p3: { t: 'Le Java officiel, adapté au profil', p: 'Le launcher installe le Java officiel de Mojang du profil (Java 8, 21 ou 25) et lance le jeu avec. Côté mémoire, 2 à 3 Go suffisent en 1.8.9 et en 1.7.10, et 3 à 4 Go conviennent en 1.21.1 et 26.3 avec le pack : plus n’augmente pas les FPS.' },
     stat: { label: 'Une mesure', from: '664', to: '1 097', unit: 'FPS en moyenne', p: 'ATTACK Client 3.4.2, en 26.3 : les cadres arrondis des HUD (Keystrokes surtout) prenaient presque la moitié du temps de chaque image, et les HUD ne coûtent presque plus de FPS. Mesuré sur une RTX 3060. Ta machine donnera d’autres chiffres.' },
   },
   security: {
@@ -161,11 +162,11 @@ const fr = {
     q2: 'Faut-il posséder Minecraft Java Edition ?',
     a2: '<p>Oui. Avec un compte Microsoft connecté, le launcher vérifie que le compte possède Minecraft Java Edition (achat ou Game Pass). Sans compte, JOUER ouvre le launcher Minecraft officiel sur le profil ATTACK : c’est le seul cas où ce launcher officiel est nécessaire.</p>',
     q3: 'OptiFine est-il inclus ?',
-    a3: `<p>Non : sa licence interdit de le redistribuer, donc le launcher <strong>ne le télécharge jamais</strong>. En 1.8.9, il utilise <strong>ta copie</strong>, que tu récupères toi-même sur ${ext('https://optifine.net/downloads', 'optifine.net')}. Il la cherche dans <code>.minecraft\\libraries\\optifine</code> puis dans <code>.minecraft\\mods</code>, ou tu la choisis avec « Choisir le fichier… » ; il la valide, puis la copie dans le dossier <code>mods</code> du profil. Sans copie, le jeu marche sans OptiFine.</p><p>En 1.21.1 et 26.3, le groupe <strong>Packs OptiFine</strong> (Continuity, Entity Texture Features, Entity Model Features) lit les packs de ressources au format OptiFine sans OptiFine.</p>`,
+    a3: `<p>Non : sa licence interdit de le redistribuer, donc le launcher <strong>ne le télécharge jamais</strong>. En 1.8.9, il utilise <strong>ta copie</strong>, que tu récupères toi-même sur ${ext('https://optifine.net/downloads', 'optifine.net')}. Il la cherche dans <code>.minecraft\\libraries\\optifine</code> puis dans <code>.minecraft\\mods</code>, ou tu la choisis avec « Choisir le fichier… » ; il la valide, puis la copie dans le dossier <code>mods</code> du profil. Sans copie, le jeu marche sans OptiFine.</p><p>En 1.21.1 et 26.3, le groupe <strong>Packs OptiFine</strong> (Continuity, Entity Texture Features, Entity Model Features) lit les packs de ressources au format OptiFine sans OptiFine. Le profil 1.7.10 n’a pas d’OptiFine pour l’instant.</p>`,
     q4: 'Est-ce que ça touche à mon dossier .minecraft ?',
     a4: '<p>Ton jeu ATTACK vit dans son propre dossier de jeu (par défaut <code>%APPDATA%\\.attack</code>) : mods, réglages, captures et mondes ne se mélangent pas avec ceux de ton <code>.minecraft</code>. Le launcher y ajoute quand même les versions de Minecraft, les bibliothèques et les ressources, partagées entre les profils, et fusionne un profil dans <code>launcher_profiles.json</code> (copie <code>.bak</code> avant chaque écriture ; tes autres profils restent intacts).</p>',
     q5: 'Les mods PvP sont-ils autorisés sur mon serveur ?',
-    a5: '<p>Ça dépend du serveur : lis ses règles. Sur les profils Fabric, le groupe <strong>Mods PvP (latence)</strong> (Crystal Optimizer, Anchor Optimizer, WalksyLib, BetterHitReg, Complete Shield Fixes) est activé par défaut. Ces mods ne changent que ce que le client affiche ou anticipe ; à couper sur un serveur qui les interdit : désactive le groupe dans les Réglages, puis clique sur INSTALLER pour les retirer.</p><p>En 1.8.9, <strong>Saut sans délai</strong> (No Jump Delay) et <strong>Coups sans délai</strong> (No Hit Delay) sont actifs par défaut sur tous les serveurs : ils sont interdits et détectés sur beaucoup de serveurs publics (Hypixel par exemple), à couper là-bas depuis le menu ATTACK. <strong>Perspective</strong> est interdit sur Hypixel.</p>',
+    a5: '<p>Ça dépend du serveur : lis ses règles. Sur les profils Fabric, le groupe <strong>Mods PvP (latence)</strong> (Crystal Optimizer, Anchor Optimizer, WalksyLib, BetterHitReg, Complete Shield Fixes) est activé par défaut. Ces mods ne changent que ce que le client affiche ou anticipe ; à couper sur un serveur qui les interdit : désactive le groupe dans les Réglages, puis clique sur INSTALLER pour les retirer.</p><p>En 1.8.9, <strong>Saut sans délai</strong> (No Jump Delay) et <strong>Coups sans délai</strong> (No Hit Delay) sont actifs par défaut sur tous les serveurs : ils sont interdits et détectés sur beaucoup de serveurs publics (Hypixel par exemple), à couper là-bas depuis le menu ATTACK. <strong>Perspective</strong> est interdit sur Hypixel. Le mod 1.7.10 n’a aucun de ces trois modules.</p>',
     q6: 'Installateur ou version portable ?',
     a6: '<p>L’installateur (<code>Setup.exe</code>) met un raccourci dans le menu Démarrer, télécharge les nouvelles versions tout seul et affiche une bannière « Redémarrer ». La version portable n’a pas besoin d’installation, mais elle ne peut pas se remplacer elle-même : elle affiche « Nouvelle version disponible » avec un lien vers la page des versions. Dans les deux cas, rien n’est installé pendant une partie.</p>',
     q7: 'Comment tout effacer ?',
@@ -208,8 +209,8 @@ const fr = {
 
 const en = {
   meta: {
-    title: 'ATTACK Launcher: Minecraft PvP in one click, on 1.8.9, 1.21.1 and 26.3',
-    description: 'The Windows launcher for ATTACK Client: Minecraft PvP installed and launched in one click, on 1.8.9, 1.21.1 and 26.3. Files checked by hash, no telemetry in the launcher.',
+    title: 'ATTACK Launcher: Minecraft PvP in one click, on 1.7.10, 1.8.9, 1.21.1 and 26.3',
+    description: 'The Windows launcher for ATTACK Client: Minecraft PvP installed and launched in one click, on 1.7.10, 1.8.9, 1.21.1 and 26.3. Files checked by hash, no telemetry in the launcher.',
     ogImage: '{{url.fr}}og-en.png', // share image: the English launcher home, at the site root (the French page is the root)
   },
   nav: {
@@ -230,7 +231,7 @@ const en = {
   hero: {
     eyebrow: 'Windows launcher for ATTACK Client',
     title: 'Minecraft PvP, installed and launched in one click',
-    lead: 'ATTACK Launcher installs Minecraft, the mod loader, a verified mod pack and ATTACK Client, in a game folder separate from your <code>.minecraft</code>. Three independent profiles: 1.8.9 (Forge), 1.21.1 and 26.3 (Fabric).',
+    lead: 'ATTACK Launcher installs Minecraft, the mod loader, a verified mod pack (except on 1.7.10) and ATTACK Client, in a game folder separate from your <code>.minecraft</code>. Four independent profiles: 1.8.9 and 1.7.10 (Forge), 1.21.1 and 26.3 (Fabric).',
     download: 'Download for Windows',
     version: 'Version',
     fallback: 'See the releases on GitHub',
@@ -286,8 +287,8 @@ const en = {
   features: {
     title: 'What the launcher does',
     lead: 'To play ATTACK Client you would normally install Minecraft, the mod loader and the right jar in the right place, without mixing it with your other mods. The launcher does it for you.',
-    c1: { t: 'One-click install', p: 'INSTALL downloads Minecraft, the mod loader, the profile’s mod pack and ATTACK Client, in a game folder separate from your <code>.minecraft</code>. Every file is checked against its hash: without the right hash, it is refused.' },
-    c2: { t: 'Pinned mod packs, in groups', p: 'Each profile has a pinned mod pack. Groups switch on or off in Settings: <strong>PvP mods (latency)</strong>, <strong>OptiFine packs</strong>, <strong>Replay Mod</strong> and <strong>Shaders (Iris)</strong>. A setting applies at the next install.' },
+    c1: { t: 'One-click install', p: 'INSTALL downloads Minecraft, the mod loader, the profile’s mod pack (if it has one) and ATTACK Client, in a game folder separate from your <code>.minecraft</code>. Every file is checked against its hash: without the right hash, it is refused.' },
+    c2: { t: 'Pinned mod packs, in groups', p: 'Each profile except 1.7.10 has a pinned mod pack. Groups switch on or off in Settings: <strong>PvP mods (latency)</strong>, <strong>OptiFine packs</strong>, <strong>Replay Mod</strong> and <strong>Shaders (Iris)</strong>. A setting applies at the next install.' },
     c3: { t: 'OptiFine on 1.8.9, with your own copy', p: 'Its license forbids redistributing it: the launcher never downloads it. It finds the OptiFine you got yourself (or the one you pick), validates it, then copies it into the profile’s <code>mods</code> folder.' },
     c4: { t: 'PLAY, with or without a Microsoft account', p: 'With a signed-in account, PLAY starts the game directly, with the official Mojang Java suited to the profile. Without an account, it opens the official Minecraft launcher on the chosen ATTACK profile.' },
     c5: { t: '3D skin', p: 'The Account page shows your skin in 3D (walking, running or idle) and lets you change it without leaving the launcher. Sign-in uses a device code: the launcher never sees your password.' },
@@ -296,8 +297,8 @@ const en = {
     c8: { t: 'French and English', p: 'The launcher comes in both languages (Settings, Language). A new game folder also starts in that language; an existing <code>options.txt</code> keeps its own.' },
   },
   profiles: {
-    title: 'Three independent profiles',
-    lead: 'Each profile has its own game folder, install state, Java and settings. You can keep all three.',
+    title: 'Four independent profiles',
+    lead: 'Each profile has its own game folder, install state, Java and settings. You can keep all four.',
     mc: 'Minecraft',
     loader: 'Loader',
     java: 'Java',
@@ -305,10 +306,11 @@ const en = {
     forge189: { tag: 'Classic PvP', p: 'The original “ATTACK Client” profile: its identifier and game folder do not change. Mod pack: Phosphor Legacy and Client Side Sounds, Replay Mod optional, and OptiFine with your own copy.' },
     fabric1211: { tag: 'Modern PvP', p: 'Fabric with the performance pack (Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast…) and the adjustable groups: PvP mods, OptiFine packs, Replay Mod and Shaders.' },
     fabric263: { tag: 'Latest version', p: 'The same kind of pack as on 1.21.1, without ModernFix (it has no 26.3 version), with the same adjustable groups.' },
+    forge1710: { tag: '1.7 PvP', p: 'Forge 10.13.4.1614 and the ATTACK 1.7.10 mod, a “lite” version: ATTACK menu, HUD editor, cosmetics and part of the modules, without the ones banned in ranked. No mod pack and no OptiFine.' },
   },
   client: {
     title: 'ATTACK Client, in game',
-    lead: 'The launcher installs ATTACK Client, a PvP mod (Forge on 1.8.9, Fabric on 1.21.1 and 26.3) with about 60 modules: HUD, PvP, visual and misc. Open its menu with <kbd>Right Shift</kbd> or with the “ATTACK Mods” button of the pause menu.',
+    lead: 'The launcher installs ATTACK Client, a PvP mod (Forge on 1.7.10 and 1.8.9, Fabric on 1.21.1 and 26.3) with about 60 modules: HUD, PvP, visual and misc. The 1.7.10 version is lighter, with some of these modules. Open its menu with <kbd>Right Shift</kbd> or with the “ATTACK Mods” button of the pause menu.',
     k1: { t: 'A menu that is quick to browse', p: 'Sidebar, toggle cards in three densities, favourites and Enabled / Disabled filters. Module names and list values follow the game language (French or English).' },
     k2: { t: 'Search as you type', p: 'Search finds every module and every setting as you type.' },
     k3: { t: 'HUD editor', p: 'Drag an element to place it, mouse wheel to change its size. Disabled HUDs are no longer drawn, and “Reset” asks for confirmation.' },
@@ -325,7 +327,7 @@ const en = {
     lead: 'What the launcher installs and sets up for your FPS, with a single measurement and its exact context.',
     p1: { t: 'A performance mod pack', p: 'On 1.21.1 and 26.3: Sodium, Lithium, FerriteCore, ImmediatelyFast, Entity Culling, More Culling, BadOptimizations, Krypton and Reflex AntiLag, plus ModernFix on 1.21.1 (it does not exist for 26.3). On 1.8.9, Phosphor Legacy brings a faster lighting engine: fewer stutters when light changes.' },
     p2: { t: 'Starting settings', p: 'A new Fabric game folder starts without VSync or an FPS cap, without entity shadows, with a render distance of 10. In an existing folder, only two original Minecraft values (VSync on, 120 FPS cap) are replaced, once, by “no VSync, no cap”. A choice you made is never changed.' },
-    p3: { t: 'Official Java, suited to the profile', p: 'The launcher installs the profile’s official Mojang Java (Java 8, 21 or 25) and starts the game with it. For memory, 2 to 3 GB is enough on 1.8.9 and 3 to 4 GB suits 1.21.1 and 26.3 with the pack: more does not raise FPS.' },
+    p3: { t: 'Official Java, suited to the profile', p: 'The launcher installs the profile’s official Mojang Java (Java 8, 21 or 25) and starts the game with it. For memory, 2 to 3 GB is enough on 1.8.9 and on 1.7.10, and 3 to 4 GB suits 1.21.1 and 26.3 with the pack: more does not raise FPS.' },
     stat: { label: 'One measurement', from: '664', to: '1,097', unit: 'FPS on average', p: 'ATTACK Client 3.4.2, on 26.3: rounded HUD boxes (mostly Keystrokes) took almost half of every frame, and HUDs now barely cost any FPS. Measured on an RTX 3060. Your machine will give other numbers.' },
   },
   security: {
@@ -353,11 +355,11 @@ const en = {
     q2: 'Do I need to own Minecraft Java Edition?',
     a2: '<p>Yes. With a signed-in Microsoft account, the launcher checks that the account owns Minecraft Java Edition (purchase or Game Pass). Without an account, PLAY opens the official Minecraft launcher on the ATTACK profile: that is the only case where the official launcher is needed.</p>',
     q3: 'Is OptiFine included?',
-    a3: `<p>No: its license forbids redistributing it, so the launcher <strong>never downloads it</strong>. On 1.8.9, it uses <strong>your copy</strong>, which you get yourself from ${ext('https://optifine.net/downloads', 'optifine.net')}. It looks in <code>.minecraft\\libraries\\optifine</code> then in <code>.minecraft\\mods</code>, or you pick the file with “Choose the file…”; it validates it, then copies it into the profile’s <code>mods</code> folder. Without a copy, the game runs without OptiFine.</p><p>On 1.21.1 and 26.3, the <strong>OptiFine packs</strong> group (Continuity, Entity Texture Features, Entity Model Features) reads resource packs in the OptiFine format without OptiFine.</p>`,
+    a3: `<p>No: its license forbids redistributing it, so the launcher <strong>never downloads it</strong>. On 1.8.9, it uses <strong>your copy</strong>, which you get yourself from ${ext('https://optifine.net/downloads', 'optifine.net')}. It looks in <code>.minecraft\\libraries\\optifine</code> then in <code>.minecraft\\mods</code>, or you pick the file with “Choose the file…”; it validates it, then copies it into the profile’s <code>mods</code> folder. Without a copy, the game runs without OptiFine.</p><p>On 1.21.1 and 26.3, the <strong>OptiFine packs</strong> group (Continuity, Entity Texture Features, Entity Model Features) reads resource packs in the OptiFine format without OptiFine. The 1.7.10 profile has no OptiFine for now.</p>`,
     q4: 'Does it touch my .minecraft folder?',
     a4: '<p>Your ATTACK game lives in its own game folder (by default <code>%APPDATA%\\.attack</code>): mods, settings, screenshots and worlds do not mix with those of your <code>.minecraft</code>. The launcher still adds the Minecraft versions, libraries and assets there, shared between profiles, and merges a profile into <code>launcher_profiles.json</code> (a <code>.bak</code> copy before every write; your other profiles stay untouched).</p>',
     q5: 'Are PvP mods allowed on my server?',
-    a5: '<p>It depends on the server: read its rules. On the Fabric profiles, the <strong>PvP mods (latency)</strong> group (Crystal Optimizer, Anchor Optimizer, WalksyLib, BetterHitReg, Complete Shield Fixes) is on by default. These mods only change what the client displays or anticipates; switch them off on a server that bans them: turn the group off in Settings, then click INSTALL to remove them.</p><p>On 1.8.9, <strong>No Jump Delay</strong> and <strong>No Hit Delay</strong> are on by default on every server: they are banned and detected on many public servers (Hypixel for one), so switch them off there from the ATTACK menu. <strong>Perspective</strong> is banned on Hypixel.</p>',
+    a5: '<p>It depends on the server: read its rules. On the Fabric profiles, the <strong>PvP mods (latency)</strong> group (Crystal Optimizer, Anchor Optimizer, WalksyLib, BetterHitReg, Complete Shield Fixes) is on by default. These mods only change what the client displays or anticipates; switch them off on a server that bans them: turn the group off in Settings, then click INSTALL to remove them.</p><p>On 1.8.9, <strong>No Jump Delay</strong> and <strong>No Hit Delay</strong> are on by default on every server: they are banned and detected on many public servers (Hypixel for one), so switch them off there from the ATTACK menu. <strong>Perspective</strong> is banned on Hypixel. The 1.7.10 mod has none of these three modules.</p>',
     q6: 'Installer or portable version?',
     a6: '<p>The installer (<code>Setup.exe</code>) adds a Start menu shortcut, downloads new versions by itself and shows a “Restart” banner. The portable version needs no installation, but it cannot replace itself: it shows “New version available” with a link to the releases page. In both cases, nothing is installed during a game.</p>',
     q7: 'How do I erase everything?',

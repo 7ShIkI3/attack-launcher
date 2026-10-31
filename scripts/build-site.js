@@ -355,7 +355,7 @@ function logoSvg(id, size, glow) {
   return decorative;
 }
 
-const CATALOG_IDS = { forge189: 'forge-1.8.9', fabric1211: 'fabric-1.21.1', fabric263: 'fabric-26.3' };
+const CATALOG_IDS = { forge189: 'forge-1.8.9', fabric1211: 'fabric-1.21.1', fabric263: 'fabric-26.3', forge1710: 'forge-1.7.10' };
 
 function catalogValue(name, field) {
   const profile = catalog.find(CATALOG_IDS[name]);

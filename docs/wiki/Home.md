@@ -3,8 +3,9 @@
 [← Retour au README](../../README.md)
 
 ATTACK Launcher est le launcher Windows (Electron) d'**ATTACK Client**, le client de PvP pour Minecraft. Il propose
-trois profils : **1.8.9** (Forge), **1.21.1** et **26.3** (Fabric), chacun avec un pack de mods figé (en Fabric : performance,
-packs OptiFine, mods PvP, shaders ; Replay Mod dans les trois ; groupes réglables) et, en 1.8.9, ta propre copie d'**OptiFine** (jamais téléchargée). Il installe
+quatre profils : **1.8.9** et **1.7.10** (Forge), **1.21.1** et **26.3** (Fabric). Trois ont un pack de mods figé (en Fabric : performance,
+packs OptiFine, mods PvP, shaders ; Replay Mod dans les trois ; groupes réglables) ; en 1.8.9, tu peux aussi utiliser ta propre copie d'**OptiFine** (jamais téléchargée) ;
+le profil 1.7.10 n'a ni pack ni OptiFine, seulement le mod ATTACK 1.7.10. Il installe
 Minecraft, le chargeur et le mod, gère la connexion Microsoft, lance le jeu directement, affiche ton skin en 3D et se met
 à jour tout seul. Les releases (jar du mod compris) sont publiées sur
 [7ShIkI3/attack-launcher](https://github.com/7ShIkI3/attack-launcher/releases).
@@ -17,7 +18,7 @@ Le **site du projet** présente le launcher en français ([7shiki3.github.io/att
 | --- | --- |
 | [Architecture](Architecture.md) | Processus principal, page d'interface, IPC, schémas, rôle de chaque fichier de `src/` |
 | [Fonctionnalités](Fonctionnalites.md) | Accueil et profils, Mods, Réglages, Compte ; lancement direct ou par le launcher officiel ; mode développeur ; profils officiels |
-| [Installation et mises à jour](Installation-et-mises-a-jour.md) | Les trois profils, ce qui est installé et où, pack de mods, vérification des hash, sources autorisées, mises à jour automatiques |
+| [Installation et mises à jour](Installation-et-mises-a-jour.md) | Les quatre profils, ce qui est installé et où, pack de mods, vérification des hash, sources autorisées, mises à jour automatiques |
 | [Comptes et skin](Comptes-et-skin.md) | Connexion Microsoft par code d'appareil, stockage des jetons, skin 3D et changement de skin |
 | [Vie privée et sécurité](Vie-privee-et-securite.md) | Données, destinataires, durées, protections, avec références `fichier:ligne` |
 | [Développement](Developpement.md) | Commandes npm, tests unitaires et tests réels, captures d'écran, site web |

@@ -103,20 +103,25 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     assert.ok(entry.date === '' || /^\d{4}-\d{2}-\d{2}$/.test(entry.date), `${entry.version} : date`);
   }
   assert.equal(new Set(data.CHANGELOG.map((e) => e.version)).size, data.CHANGELOG.length, 'versions uniques');
+  // 0.8.0 : le profil 1.7.10 ; son entrée est suivie de la 0.7.0 (le mod 1.7.10 aura la sienne quand il existera)
+  assert.equal(data.CHANGELOG[0].tag, 'new');
+  assert.equal(data.CHANGELOG[1].version, 'Launcher 0.7.0');
+  for (const lang of ['fr', 'en']) assert.match(data.CHANGELOG[0][lang], /1\.7\.10/, `0.8.0 (${lang}) : le profil 1.7.10`);
   // les deux versions d'ATTACK Client livrées avec le launcher 0.7.0 suivent son entrée : Fabric (3.6.0) d'abord, puis la 1.8.9 (2.7.0), même date
-  assert.deepEqual(Array.from(data.CHANGELOG.slice(1, 3), (e) => [e.version, e.date, e.tag]), [
-    ['ATTACK Client 3.6.0', data.CHANGELOG[0].date, 'new'],
-    ['ATTACK Client 2.7.0', data.CHANGELOG[0].date, 'new'],
+  const from070 = data.CHANGELOG.findIndex((e) => e.version === 'Launcher 0.7.0');
+  assert.deepEqual(Array.from(data.CHANGELOG.slice(from070 + 1, from070 + 3), (e) => [e.version, e.date, e.tag]), [
+    ['ATTACK Client 3.6.0', data.CHANGELOG[from070].date, 'new'],
+    ['ATTACK Client 2.7.0', data.CHANGELOG[from070].date, 'new'],
   ]);
   // la page découpe chaque texte en puces (une phrase chacune) : aucun texte n'est un bloc unique
-  for (const entry of data.CHANGELOG.slice(1, 3)) {
+  for (const entry of data.CHANGELOG.slice(0, 1).concat(data.CHANGELOG.slice(from070 + 1, from070 + 3))) {
     for (const lang of ['fr', 'en']) assert.ok(entry[lang].split(/(?<=[.!?])\s+(?=[A-ZÉÈÀ«“"(])/).length >= 3, `${entry.version} (${lang}) : plusieurs phrases`);
   }
 });
 
 test('vitrine : chaque mod des packs figés a sa fiche (icône, catégorie, textes) et chaque licence son nom lisible', () => {
   const categories = new Set(data.CATEGORIES.map((c) => c.id));
-  for (const profile of catalog.list()) {
+  for (const profile of catalog.list().filter(catalog.hasPack)) {
     for (const mod of modpack.loadPack(profile).mods) {
       const info = data.PACK_INFO[mod.slug];
       assert.ok(info, `${profile.id} : fiche de ${mod.slug}`);
@@ -225,4 +230,60 @@ test('« Pourquoi ? » : trois raisons (licence, vérification locale, profils 1
     }
   }
   i18n.setLang('fr');
+});
+
+test('profil 1.7.10 : sa liste de modules ne cite que des modules de la page Mods, sans les modules interdits en classé', () => {
+  const lite = data.MODULES_BY_PROFILE['forge-1.7.10'];
+  const known = new Set(data.MODS.map((m) => m.name));
+  assert.deepEqual(Array.from(lite.names).filter((n) => !known.has(n)), [], 'chaque nom existe dans MODS');
+  assert.equal(new Set(lite.names).size, lite.names.length, 'sans doublon');
+  assert.ok(lite.names.length >= 15 && lite.names.length <= 20, `une quinzaine de modules (${lite.names.length})`);
+  // le menu ATTACK (Personnalisation) et les cosmétiques sont de la partie
+  for (const name of ['Personnalisation', 'Capes ATTACK', 'ToggleSprint', 'Crosshair', 'Block Overlay', 'Zoom', 'Nametags', 'Scoreboard', 'Chat', 'Low Health Warning',
+    'Hit Color', 'Fullbright', 'Item Physics', 'Clear Glass', 'Sound Changer']) assert.ok(lite.names.includes(name), name);
+  // absents exprès : interdits en classé, puis reportés à un patch suivant
+  for (const name of ['No Jump Delay', 'No Hit Delay', 'Snap Tap', 'Perspective', 'Amis', 'Waypoints', 'Minimap', 'Motion Blur', 'FPS Boost']) assert.ok(!lite.names.includes(name), name);
+  for (const [name, text] of Object.entries(lite.overrides)) {
+    assert.ok(lite.names.includes(name), `${name} : texte propre à ce profil pour un module de sa liste`);
+    assert.ok(text.fr && text.en, `${name} : FR et EN`);
+  }
+  // le profil 1.8.9 n'a pas de liste à lui : il garde tous les modules
+  assert.equal(data.MODULES_BY_PROFILE['forge-1.8.9'], undefined);
+  assert.equal(data.MODS.length > lite.names.length, true);
+});
+
+test('profil 1.7.10 : étiquette de carte, textes de profil sans pack et version dans l’aide de mémoire', () => {
+  i18n.setLang('fr');
+  assert.equal(i18n.t('home.tag.forge-1.7.10'), 'PvP 1.7');
+  assert.equal(i18n.t('pc.none'), 'Aucun');
+  assert.equal(i18n.t('settings.ramHelp', { mc: '1.7.10' }), "2 à 3 Go suffisent pour la 1.7.10. Plus n’augmente pas les FPS.");
+  assert.equal(i18n.t('settings.ramHelp', { mc: '1.8.9' }), "2 à 3 Go suffisent pour la 1.8.9. Plus n’augmente pas les FPS.");
+  assert.doesNotMatch(i18n.t('mods.subtitleNoPack', { modules: 18 }), /\b0 mod\b/);
+  assert.match(i18n.t('mods.subtitleNoPack', { modules: 18 }), /18 modules/);
+  assert.match(i18n.t('credits.noPack', { label: '1.7.10' }), /1\.7\.10/);
+  i18n.setLang('en');
+  assert.equal(i18n.t('home.tag.forge-1.7.10'), '1.7 PvP');
+  assert.equal(i18n.t('pc.none'), 'None');
+  assert.equal(i18n.t('settings.ramHelp', { mc: '1.7.10' }), '2 to 3 GB is enough for 1.7.10. More does not raise FPS.');
+  assert.match(i18n.t('mods.subtitleNoPack', { modules: 18 }), /no mod pack/);
+  i18n.setLang('fr');
+  // une étiquette par profil du catalogue, dans les deux langues
+  for (const lang of ['fr', 'en']) {
+    i18n.setLang(lang);
+    for (const profile of catalog.list()) assert.notEqual(i18n.t(`home.tag.${profile.id}`), `home.tag.${profile.id}`, `${lang} : ${profile.id}`);
+  }
+  i18n.setLang('fr');
+});
+
+test('profils : quatre colonnes, le nom du chargeur sous la version, sans débordement (colonne de 484 px, fenêtre minimale de 940 px)', () => {
+  const css = read('styles.css');
+  assert.match(css, /\.profiles \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
+  assert.match(css, /\.profile \{[^}]*min-width: 0;/);
+  assert.match(css, /\.profile \.pv \{ display: flex; flex-direction: column;/);
+  assert.equal(/repeat\(3, 1fr\)/.test(css.slice(css.indexOf('.profiles {'), css.indexOf('.profiles {') + 200)), false);
+  assert.match(css, /\.launch-col \{ width: 484px; max-width: 100%;/);
+  // 940 px de fenêtre : la colonne gauche de l'accueil (940 - 84 de navigation - 282 de rail - 20 d'espace - marges) tient 484 px
+  const main = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
+  assert.match(main, /minWidth: 940/);
+  assert.match(css, /@media \(max-width: 1040px\) \{\s*\.home-grid \{ grid-template-columns: 1fr 282px; gap: 20px; \}/);
 });

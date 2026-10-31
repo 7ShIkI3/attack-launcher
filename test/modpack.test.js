@@ -74,8 +74,13 @@ function groupPack() {
 
 const list = (dir) => fs.readdirSync(path.join(dir, 'mods')).sort();
 
-test('packs figés du dépôt : valides, cdn.modrinth.com, SHA-512, un par profil (Fabric et Forge 1.8.9)', () => {
+test('packs figés du dépôt : valides, cdn.modrinth.com, SHA-512, un par profil (Fabric et Forge 1.8.9) ; le profil 1.7.10 n’en a pas', () => {
   for (const profile of catalog.list()) {
+    if (!catalog.hasPack(profile)) {
+      assert.equal(profile.id, 'forge-1.7.10', 'seul le profil 1.7.10 est sans pack');
+      assert.equal(modpack.loadPack(profile), null);
+      continue;
+    }
     const pack = modpack.loadPack(profile);
     assert.equal(pack.profileId, profile.id);
     assert.equal(pack.mc, profile.mc);

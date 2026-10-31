@@ -11,10 +11,13 @@ flowchart TD
   A["Monter version dans package.json<br>et ajouter l'entrée dans data.js"] --> B["npm test"]
   B --> C["npm run dist"]
   C --> D["dist : Setup.exe, .blockmap,<br>latest.yml, Portable.exe"]
-  D --> E["Créer la release GitHub au tag vX.Y.Z<br>avec tous les fichiers joints :<br>Setup, blockmap, latest.yml, Portable,<br>jar du mod, SHA256SUMS"]
-  E --> F["Publier la release<br>(ni brouillon, ni préversion)"]
+  D --> E["Créer le BROUILLON de la release au tag vX.Y.Z<br>avec tous les fichiers joints :<br>Setup, blockmap, latest.yml, Portable,<br>les 4 jars du mod, SHA256SUMS"]
+  E --> K["npm run check-release -- vX.Y.Z<br>(chaque profil trouve son jar,<br>SHA256SUMS a une ligne par jar)"]
+  K --> J["install-test --tag vX.Y.Z<br>sur chaque profil : jars exacts,<br>mode développeur"]
+  J --> F["Publier la release<br>(ni brouillon, ni préversion)"]
   F --> S["Le workflow Pages relit la release<br>et redéploie le site"]
   F --> G["Les launchers installés lisent latest.yml<br>de la dernière release"]
+  F --> R["install-test --release<br>sur les 4 profils"]
   G --> H["Téléchargement, SHA-512 vérifié,<br>bannière Redémarrer"]
 ```
 
@@ -24,16 +27,38 @@ flowchart TD
    `CHANGELOG` dans `src/renderer/data.js` : c'est l'historique affiché sur la page d'accueil.
 2. Lance `npm test`, puis **`npm run dist`**. Les fichiers sont créés dans `dist/` :
    `ATTACK-Launcher-Setup-<version>.exe`, son `.blockmap`, `latest.yml` et `ATTACK-Launcher-Portable-<version>.exe`.
-3. Crée la release GitHub au tag `v<version>` (par exemple `v0.5.1`) **avec tous ses fichiers déjà joints**, puis publie-la
-   (ni brouillon, ni préversion) : soit `gh release create v<version> <fichiers>` en une commande, soit un **brouillon** auquel
-   tu joins les fichiers avant de cliquer sur « Publier ». La publication lance le workflow du site (étape 6), qui lit la
-   release à ce moment-là : des fichiers joints après coup peuvent arriver trop tard. Joins-y, depuis `dist/` :
+3. Crée un **brouillon** de la release GitHub au tag `v<version>` (par exemple `v0.5.1`) **avec tous ses fichiers déjà joints** :
+   `gh release create v<version> --draft <fichiers>` en une commande, ou un brouillon créé sur le site auquel tu joins les
+   fichiers. Ne la publie pas encore : les étapes 3 bis et 3 ter contrôlent le brouillon. La publication lance le workflow du
+   site (étape 6), qui lit la release à ce moment-là : des fichiers joints après coup peuvent arriver trop tard. Joins-y, depuis `dist/` :
    - `ATTACK-Launcher-Setup-<version>.exe` ;
    - `ATTACK-Launcher-Setup-<version>.exe.blockmap` : permet aux versions suivantes de ne télécharger que ce qui a changé ;
    - `latest.yml` : version, nom et SHA-512 de l'installateur, lus par les launchers déjà installés ;
    - comme avant : `ATTACK-Launcher-Portable-<version>.exe` et `SHA256SUMS` ;
-   - les **jars du mod**, un par profil (voir « Publier le mod » ci-dessous) : `attack-client-<version>.jar` pour la 1.8.9 et
-     `attack-fabric-<version>+mc1.21.1.jar`, `attack-fabric-<version>+mc26.3.jar` pour Fabric.
+   - les **jars du mod**, un par profil (voir « Publier le mod » ci-dessous) : `attack-client-<version>.jar` pour la 1.8.9,
+     `attack-forge-<version>+mc1.7.10.jar` pour la 1.7.10 et `attack-fabric-<version>+mc1.21.1.jar`,
+     `attack-fabric-<version>+mc26.3.jar` pour Fabric. Même quand seul le jar d'un profil change, joins de nouveau ceux des
+     autres : chaque release doit avoir un jar pour **chaque** profil, sinon l'installation du profil qui n'en a pas s'arrête.
+
+   3 bis. **Contrôle le brouillon** : `npm run check-release -- v<version>` (`gh` doit être connecté à GitHub ; sans tag, il
+   lit la dernière release publiée). Le script applique à chaque profil du catalogue la même fonction que le launcher
+   (`mod.parseRelease`) et vérifie que :
+   - chaque profil trouve **son** jar, avec un SHA-256 (champ `digest` de GitHub, ou ligne de `SHA256SUMS`) ;
+   - aucun jar n'est reconnu par deux profils, et aucun profil n'en reconnaît deux. Un jar mal nommé est signalé comme
+     dangereux : `attack-client-1710-1.0.0.jar` (le nom que Gradle donne par défaut au mod 1.7.10) est reconnu par la règle large du
+     profil 1.8.9 (`attack-client*.jar`) et serait installé à sa place ;
+   - `SHA256SUMS` existe, a **une ligne par jar** (`<sha256>  <nom exact>`) et la même valeur que le digest de GitHub ;
+   - les fichiers du launcher (Setup, blockmap, `latest.yml`, Portable) sont là (simple avertissement).
+
+   Il sort en code 1 à la moindre erreur : ne publie pas tant que la sortie n'est pas « OK ». Il ne modifie rien et ne
+   télécharge que `SHA256SUMS`. `--file <release.json>` le fait tourner sur un fichier (sortie de `gh release view <tag> --json
+   tagName,isDraft,isPrerelease,assets`), sans réseau.
+
+   3 ter. **Essaie les jars exacts du brouillon** : `npm run install-test -- <dossier> --profile <id> --tag v<version>` pour
+   chacun des 4 profils (`forge-1.8.9`, `forge-1.7.10`, `fabric-1.21.1`, `fabric-26.3`). `gh` lit la release (brouillon compris :
+   l'API publique ne le montre pas), télécharge le jar du profil, vérifie son SHA-256 puis l'installe en **mode développeur** ; tous
+   les hash sont ensuite recontrôlés. Ce sont les octets que les joueurs recevront, essayés avant que la release soit publique.
+   Puis **publie** le brouillon (ni brouillon, ni préversion).
 4. **Chaque** release doit contenir `latest.yml` et le `Setup.exe` qu'il désigne (avec son `.blockmap`), **même une release
    qui ne change que le mod** (joins alors à nouveau ceux de la version actuelle du launcher) : les launchers lisent la
    **dernière** release. Sans eux, ils notent une erreur dans `updater.log` et ne proposent rien, sans autre conséquence.
@@ -60,8 +85,11 @@ flowchart TD
 - ouvre le site (en français et sous `/en/`) et clique sur le bouton **Télécharger** : il doit mener au fichier de la release que tu
   viens de publier. Si le site ne semble pas à jour, regarde le workflow Pages dans l'onglet Actions de GitHub ;
 - `npm run update-test -- <dossier>` valide la chaîne de mise à jour sur une version de test (sans GitHub) ;
-- `npm run install-test -- <dossier> --release` installe avec le vrai jar de la dernière release et recontrôle tous les hash
-  ; ajoute `--profile fabric-1.21.1` ou `--profile fabric-26.3` pour les profils Fabric ([Développement](Developpement.md)) ;
+- `npm run install-test -- <dossier> --release` installe avec le vrai jar de la dernière release et recontrôle tous les hash.
+  Fais-le sur les **4 profils** : sans option pour la 1.8.9, puis `--profile forge-1.7.10`, `--profile fabric-1.21.1` et
+  `--profile fabric-26.3` ([Développement](Developpement.md)). Chaque profil prend son jar : c'est la preuve que le contrôle
+  du brouillon (étape 3 bis) disait vrai ;
+- `npm run check-release` (sans tag) relit la release publiée : la même sortie « OK » qu'avant la publication ;
 - `node scripts/resolve-pack.js --check` compare les packs figés avec ce que Modrinth publie aujourd'hui.
 
 > La mise à jour automatique existe **depuis la 0.3.0** : une 0.2.0 ou plus ancienne ne la propose pas ; il faut
@@ -77,12 +105,18 @@ Chaque profil prend **son** jar dans la **dernière release** GitHub de ce dép�
 | 1.8.9 (Forge) | `attack-client*.jar` (les jars `-sources`, `-javadoc`, `-dev` et `-deobf` sont ignorés), par exemple `attack-client-2.3.0.jar` |
 | 1.21.1 (Fabric) | `attack-fabric-<version>+mc1.21.1.jar`, par exemple `attack-fabric-3.0.0+mc1.21.1.jar` |
 | 26.3 (Fabric) | `attack-fabric-<version>+mc26.3.jar`, par exemple `attack-fabric-3.0.0+mc26.3.jar` |
+| 1.7.10 (Forge) | `attack-forge-<version>+mc1.7.10.jar`, par exemple `attack-forge-1.0.0+mc1.7.10.jar` |
 
-Un jar Fabric est reconnu seulement s'il suit exactement `^attack-fabric-[0-9.]+\+mc<version de Minecraft>\.jar$` : le jar
-d'une autre version de Minecraft, un `-sources` ou un `attack-client` ne sont jamais installés dans un profil Fabric, et
-deux jars différents pour la même version de Minecraft dans une release sont une **erreur** (jamais un choix au hasard).
-Si la release n'a pas (encore) de jar pour le profil, l'installation de ce profil s'arrête avec un message clair ; les
-autres profils ne sont pas touchés.
+Un jar Fabric est reconnu seulement s'il suit exactement `^attack-fabric-[0-9.]+\+mc<version de Minecraft>\.jar$`, et un jar 1.7.10
+`^attack-forge-[0-9.]+\+mc1\.7\.10\.jar$` : le jar d'une autre version de Minecraft, un `-sources` ou un `attack-client` ne sont
+jamais installés dans un profil Fabric ni dans le profil 1.7.10, et deux jars différents pour la même version de Minecraft dans
+une release sont une **erreur** (jamais un choix au hasard). Seule la règle de la 1.8.9 est large (`attack-client*.jar`,
+héritée des premières versions) : **ne donne jamais à un autre mod un nom qui commence par `attack-client`**, par exemple
+`attack-client-1710-1.0.0.jar`, que Gradle choisirait par défaut pour un dépôt `attack-client-1710` : il serait installé dans le
+profil 1.8.9. C'est pourquoi le jar 1.7.10 s'appelle `attack-forge-…` et son dépôt `attack-forge-1710` ; `npm run check-release`
+refuse une release qui contient un tel nom (étape 3 bis ci-dessus).
+Si la release n'a pas (encore) de jar pour le profil, l'installation de ce profil s'arrête **tout de suite** avec un message
+clair, avant le téléchargement de Minecraft (hors mode développeur) ; les autres profils ne sont pas touchés.
 
 Le launcher exige le **SHA-256** de chaque jar :
 
@@ -91,8 +125,8 @@ Le launcher exige le **SHA-256** de chaque jar :
 
 **Sans SHA-256, l'installation est refusée** (`src/main/mod.js`).
 
-Le mod Forge est construit dans le dépôt `attack-client`, le mod Fabric dans `attack-client-fabric` (un jar par version
-de Minecraft, `versions/<mc>/build/libs`). Comme le launcher réinstalle le mod à chaque installation ou réparation, un
+Le mod Forge 1.8.9 est construit dans le dépôt `attack-client`, le mod Fabric dans `attack-client-fabric` (un jar par version
+de Minecraft, `versions/<mc>/build/libs`), le mod 1.7.10 dans `attack-forge-1710` (`build/libs`). Comme le launcher réinstalle le mod à chaque installation ou réparation, un
 joueur reçoit une nouvelle version du mod en cliquant sur « Vérifier / réparer l'installation ». Tant qu'aucune release du
 mod n'existe, le mode développeur permet de copier un jar local ([Fonctionnalités](Fonctionnalites.md#mode-développeur)).
 

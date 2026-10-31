@@ -43,10 +43,10 @@ réseau ou du chiffrement reçoivent leur dépendance en paramètre (un « trans
 | --- | --- |
 | `main.js` | Fenêtre, canaux IPC, chiffrement des jetons (`safeStorage`), enchaînement installation / lancement / mises à jour |
 | `preload.js` | Pont `contextBridge` : expose `window.attack` avec des appels nommés, sans aucun accès à Node |
-| `catalog.js` | **Catalogue des 3 profils** (Forge 1.8.9, Fabric 1.21.1, Fabric 26.3) : version de Minecraft, chargeur, dossier de jeu, profil officiel, règle exacte du jar ATTACK, pack. Module pur |
+| `catalog.js` | **Catalogue des 4 profils** (Forge 1.8.9, Fabric 1.21.1, Fabric 26.3, Forge 1.7.10) : version de Minecraft, chargeur, dossier de jeu, profil officiel, règle exacte du jar ATTACK (et `suspect()`, qui repère un nom de jar à version douteuse), pack (`null` en 1.7.10). Module pur |
 | `constants.js` | Adresses officielles, **liste des hôtes autorisés** (`ALLOWED_HOSTS`, Fabric et CDN Modrinth compris), URL de connexion ; alias des anciennes constantes du profil 1.8.9 |
 | `http.js` | Téléchargements : hôtes autorisés, redirections vérifiées une à une, fichier `.part`, contrôle du hash |
-| `installer.js` | Installation complète d'un profil (Minecraft, bibliothèques, assets, Forge **ou** Fabric, pack de mods, OptiFine du joueur, réglages de départ d'`options.txt`, configuration de WalksyLib, mod, profil) et état d'installation (`packGroups`, `optifine`) |
+| `installer.js` | Installation complète d'un profil (hors mode développeur : jar du profil cherché dans la release **avant** Minecraft, échec rapide ; puis Minecraft, bibliothèques, assets, Forge **ou** Fabric, pack de mods s'il y en a un, OptiFine du joueur, réglages de départ d'`options.txt`, configuration de WalksyLib, mod, profil) et état d'installation (`packGroups`, `optifine`) |
 | `mojang.js` | Lecture des manifestes Mojang (version, bibliothèques, natives, index d'assets) |
 | `forge.js`, `zip.js` | Lecture de l'installateur Forge **comme une archive ZIP** (jamais exécuté) |
 | `fabric.js` | Profil de version de Fabric Loader : adresse de `meta.fabricmc.net`, validation stricte, plan de téléchargement, JSON de version écrit |
@@ -56,7 +56,7 @@ réseau ou du chiffrement reçoivent leur dépendance en paramètre (un « trans
 | `optifine.js` | **OptiFine du joueur** (profil 1.8.9) : détection de sa copie, validation (manifeste `TweakClass`), copie suivie dans l'état, retrait de la seule copie du launcher. Jamais de téléchargement |
 | `gameoptions.js` | Réglages de départ d'`options.txt` par étapes : vidéo (Fabric), langue du launcher (tous les profils, à la création du fichier seulement) |
 | `maven.js` | Coordonnées Maven vers chemins et URL ; `safeJoin` qui interdit de sortir d'un dossier |
-| `mod.js` | Choix du jar ATTACK du profil dans la dernière release GitHub (règle de nom exacte, SHA-256) ou, en mode développeur, du jar local |
+| `mod.js` | Choix du jar ATTACK du profil dans la dernière release GitHub (règle de nom exacte, SHA-256) ou, en mode développeur, du jar local ; `auditJarNames()` contrôle les noms d'une release (recouvrements, noms dangereux, orphelins) pour `scripts/check-release.js` |
 | `runtime.js` | Installation du Java officiel de Mojang (`jre-legacy`, `java-runtime-delta`, `java-runtime-epsilon`), fichier par fichier, SHA-1 vérifié |
 | `game.js` | Lancement direct : classpath, natives, ligne de commande Java (anciens et nouveaux formats d'arguments), journal, détection d'une partie en cours |
 | `launch.js` | Ouverture du launcher Minecraft officiel (version Xbox / Store ou ancien `.exe`) |
