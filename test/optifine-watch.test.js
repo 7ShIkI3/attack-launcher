@@ -353,7 +353,8 @@ test('fermeture de l’application : dispose arrête les minuteries sans rien pu
 });
 
 test('dossier Téléchargements introuvable : état « error » tout de suite, minuteries arrêtées', async () => {
-  const s = setup({ dir: path.join(tempDir('atk-watch-none-'), 'absent') });
+  const s = setup();
+  fs.rmSync(s.downloads, { recursive: true }); // dossier absent, sans autre dossier temporaire : s.clean() range tout
   const state = await s.watcher.start();
   assert.equal(state.state, 'error');
   assert.equal(state.reason, 'DIR_UNREADABLE');
