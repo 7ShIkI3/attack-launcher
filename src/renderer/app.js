@@ -4,7 +4,7 @@
   'use strict';
   const api = window.attack;
   const { t } = window.I18n;
-  const { CATEGORIES, MODS, CHANGELOG, PACK_INFO, LICENSE_NAMES } = window.AttackData;
+  const { CATEGORIES, MODS, MODULES_BY_PROFILE, CHANGELOG, PACK_INFO, LICENSE_NAMES } = window.AttackData;
   const $ = (id) => document.getElementById(id);
   const NBSP = ' ';
   const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -254,6 +254,18 @@
   const loaderName = (profile) => (profile.loaderType === 'fabric' ? 'Fabric' : 'Forge');
   const isFabric = (profile) => Boolean(profile) && profile.loaderType === 'fabric';
 
+  /**
+   * Modules d'ATTACK Client que la page Mods présente pour ce profil (réglés en jeu, le launcher ne les touche pas) :
+   * tous ceux de la 1.8.9, la liste « lite » de la 1.7.10 (data.js, MODULES_BY_PROFILE), aucun en Fabric (leur mod a ses propres
+   * écrans). La liste d'un profil garde l'ordre de MODS ; un module peut avoir, pour ce profil, un autre texte (`overrides`).
+   */
+  function modulesFor(profile) {
+    if (!profile || isFabric(profile)) return [];
+    const lite = MODULES_BY_PROFILE[profile.id];
+    if (!lite) return MODS;
+    return MODS.filter((m) => lite.names.includes(m.name)).map((m) => (lite.overrides && lite.overrides[m.name] ? { ...m, ...lite.overrides[m.name] } : m));
+  }
+
   /** Sous-titre de l'accueil et cartes de profil (désactivées pendant une installation ou un lancement). */
   function renderProfiles() {
     const profile = currentProfile();
@@ -444,9 +456,11 @@
     const cells = [
       [t('pc.ram'), el('dd', { text: formatRam(settings.ramMb) })],
       ['Java', java],
-      [t('pc.pack'), el('dd', { text: status || !profile.hasOptifine ? modsText(modCount(profile)) : '…' })],
+      // profil sans pack (1.7.10) : « Aucun », jamais « 0 mod » ; le décompte du pack n'attend pas non plus OptiFine
+      [t('pc.pack'), el('dd', { text: !profile.hasPack ? t('pc.none') : status || !profile.hasOptifine ? modsText(modCount(profile)) : '…' })],
     ];
     if (isFabric(profile)) cells.push([t('pc.pvp'), el('dd', { text: settings.pvpMods !== false ? t('pc.on') : t('pc.off') })]);
+    else if (!profile.hasOptifine) cells.push([t('pc.attack'), el('dd', { text: !status ? '…' : status.modVersion ? `v${status.modVersion}` : t('pc.none') })]);
     else cells.push(['OptiFine', el('dd', { text: !status || !status.optifine ? '…' : optifineInGame() ? (status.optifine.version ? status.optifine.version.replace(/_/g, ' ') : t('pc.onOne')) : status.optifine.enabled ? t('optifine.stateMissing') : t('pc.offOne') })]);
     $('pc-grid').replaceChildren(...cells.map(([label, value]) => el('div', {}, [el('dt', { text: label }), value])));
   }
@@ -678,7 +692,8 @@
       name: 'ATTACK Client',
       icon: 'AT',
       cat: 'attack',
-      text: t(isFabric(profile) ? 'mods.attackDesc' : 'mods.attackDescForge', { mc: profile.mc }),
+      // « tous ses modules » seulement quand la page les présente tous (1.8.9) : la 1.7.10 n'en a qu'une partie
+      text: t(modulesFor(profile) === MODS ? 'mods.attackDescForge' : 'mods.attackDesc', { mc: profile.mc }),
       meta: attackInstalled ? t('mods.attackVersion', { version: status.modVersion }) : t('mods.attackMissing'),
       on: attackInstalled ? true : null,
     }];
@@ -716,9 +731,7 @@
         option: group ? { label: t(group.tag), checked: on, change: (value) => save({ [group.setting]: value }), hint: t('mods.linked', { name: t(group.title) }) } : null,
       });
     }
-    if (!isFabric(profile)) {
-      for (const m of MODS) items.push({ key: `module:${m.name}`, name: (lang === 'en' && m.en_name) || m.name, icon: m.icon, cat: m.cat, text: m[lang] || m.fr, meta: '', module: true, on: null });
-    }
+    for (const m of modulesFor(profile)) items.push({ key: `module:${m.name}`, name: (lang === 'en' && m.en_name) || m.name, icon: m.icon, cat: m.cat, text: m[lang] || m.fr, meta: '', module: true, on: null });
     return items;
   }
 
@@ -749,12 +762,17 @@
     const profile = currentProfile();
     if (!profile || !settings) return;
     const fabricMode = isFabric(profile);
-    $('mods-title').textContent = fabricMode ? t('mods.titleFabric', { label: profile.label }) : t('mods.title');
+    // 1.8.9 : « Mods inclus » ; Fabric et 1.7.10 : « Mods du profil <version> » (la 1.7.10 n'a ni pack ni OptiFine)
+    $('mods-title').textContent = fabricMode || !profile.hasPack ? t('mods.titleFabric', { label: profile.label }) : t('mods.title');
     const installed = modCount(profile);
     const off = profile.pack.length - selectedPack(profile).length;
+    const offText = off > 0 ? ` · ${t(off === 1 ? 'mods.off1' : 'mods.off', { n: off })}` : '';
+    const modules = modulesFor(profile).length;
     $('mods-subtitle').textContent = fabricMode
-      ? `${t('mods.subtitleFabric', { n: installed })}${off > 0 ? ` · ${t(off === 1 ? 'mods.off1' : 'mods.off', { n: off })}` : ''}`
-      : `${t('mods.subtitleForge', { modules: MODS.length, n: installed })}${off > 0 ? ` · ${t(off === 1 ? 'mods.off1' : 'mods.off', { n: off })}` : ''}`;
+      ? `${t('mods.subtitleFabric', { n: installed })}${offText}`
+      : !profile.hasPack
+        ? t('mods.subtitleNoPack', { modules })
+        : `${t('mods.subtitleForge', { modules, n: installed })}${offText}`;
     const items = modItems(profile, lang);
     const query = modQuery.trim().toLowerCase();
     // état et recherche d'abord : les compteurs des catégories disent combien de cartes restent dans chacune
@@ -915,7 +933,7 @@
   window.selectSettingsTab = selectTab;
 
   // Mémoire : curseur avec zone recommandée, graduations en Go et raccourcis
-  const RECOMMENDED = { 'forge-1.8.9': [2, 3] };
+  const RECOMMENDED = { 'forge-1.8.9': [2, 3], 'forge-1.7.10': [2, 3] };
   function ramMaxMb() {
     return info ? Math.max(4096, Math.min(16384, Math.floor(info.totalRamMb / 1024) * 1024)) : 8192;
   }
@@ -1178,7 +1196,8 @@
     const profile = currentProfile();
     if (!profile || !settings) return;
     $('settings-profile').textContent = `${profile.label} · ${loaderName(profile)}`;
-    $('ram-help').textContent = isFabric(profile) ? t('settings.ramHelpModern', { mc: profile.mc }) : t('settings.ramHelp');
+    $('ram-help').textContent = isFabric(profile) ? t('settings.ramHelpModern', { mc: profile.mc }) : t('settings.ramHelp', { mc: profile.mc });
+    $('pack-card').classList.toggle('hidden', !profile.hasPack); // 1.7.10 : pas de pack de mods
     $('java-help').textContent = t('settings.javaHelp', { java: profile.javaMajor, mc: profile.mc });
     $('jvm-args-help').textContent = t('settings.jvmArgsHelp', { java: profile.javaMajor });
     $('dev-help').textContent = t('settings.devHelp', { glob: profile.jarGlob });
@@ -1281,16 +1300,19 @@
     const profile = currentProfile();
     if (!profile) return;
     $('credits-dialog-title').textContent = `${t('credits.title')} · ${profile.label}`;
-    $('credits-credit').textContent = t('credits.credit');
+    // profil sans pack (1.7.10) : pas de tableau vide, une phrase qui dit pourquoi
+    $('credits-credit').textContent = t(profile.hasPack ? 'credits.credit' : 'credits.noPack', { label: profile.label });
     const list = $('credits-list');
     list.replaceChildren(
-      el('div', { class: 'credit-section', text: t('credits.packSection', { label: profile.label }) }),
-      el('div', { class: 'credit-row credit-head' }, [el('span', { text: t('credits.mod') }), el('span', { text: t('credits.author') }), el('span', { text: t('credits.license') })]),
-      ...profile.pack.map((mod) => el('div', { class: 'credit-row' }, [
-        el('span', {}, [el('b', { text: mod.name }), el('small', { text: `v${mod.version}` })]),
-        el('span', { text: mod.author || t('credits.unknown') }),
-        el('span', { text: licenseName(mod.license) }),
-      ])),
+      ...(profile.hasPack ? [
+        el('div', { class: 'credit-section', text: t('credits.packSection', { label: profile.label }) }),
+        el('div', { class: 'credit-row credit-head' }, [el('span', { text: t('credits.mod') }), el('span', { text: t('credits.author') }), el('span', { text: t('credits.license') })]),
+        ...profile.pack.map((mod) => el('div', { class: 'credit-row' }, [
+          el('span', {}, [el('b', { text: mod.name }), el('small', { text: `v${mod.version}` })]),
+          el('span', { text: mod.author || t('credits.unknown') }),
+          el('span', { text: licenseName(mod.license) }),
+        ])),
+      ] : []),
       el('div', { class: 'credit-section', text: t('credits.otherSection') }),
       el('div', { class: 'credit-row' }, [el('span', {}, [el('b', { text: 'ATTACK Client' })]), el('span', { text: '7ShIkI3' }), el('span', { text: t('credits.attackLicense') })]),
       ...(profile.hasOptifine ? [el('div', { class: 'credit-row' }, [el('span', {}, [el('b', { text: 'OptiFine' })]), el('span', { text: 'sp614x' }), el('span', { text: t('credits.optifineLicense') })])] : []),

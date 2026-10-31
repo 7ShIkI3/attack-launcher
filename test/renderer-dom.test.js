@@ -857,3 +857,176 @@ test('assistant OptiFine, import réussi sur la page Mods : le focus suit l’as
   assert.equal(document.activeElement.tagName, 'input');
   assert.ok(card.contains(document.activeElement));
 });
+
+// ---------- profil Forge 1.7.10 : quatrième carte, profil sans pack ----------
+
+const OLD = catalog.get('forge-1.7.10');
+
+/** Installation 1.7.10 complète : Minecraft, Forge, jar attack-forge-1.0.0 et profil du launcher, sans pack ni OptiFine. */
+function installed1710() {
+  const root = tempDir('atk-dom-');
+  const put = (rel, content = 'x') => {
+    const file = path.join(root, ...rel.split('/'));
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, content);
+    return file;
+  };
+  const vid = OLD.loader.versionId;
+  put('.minecraft/versions/1.7.10/1.7.10.json', JSON.stringify({ assetIndex: { id: '1.7.10' } }));
+  put('.minecraft/versions/1.7.10/1.7.10.jar');
+  put('.minecraft/assets/indexes/1.7.10.json');
+  put(`.minecraft/versions/${vid}/${vid}.json`, JSON.stringify({ id: vid }));
+  put('.minecraft/libraries/net/minecraftforge/forge/1.7.10-10.13.4.1614-1.7.10/forge-1.7.10-10.13.4.1614-1.7.10.jar');
+  put('.minecraft/launcher_profiles.json', JSON.stringify({ profiles: { [OLD.launcherProfileId]: { name: OLD.name } } }));
+  put('game/mods/attack-forge.jar', 'mod');
+  put('game/attack-launcher.json', JSON.stringify({
+    profileId: 'forge-1.7.10', forge: vid, mod: { version: 'v0.8.0', source: 'release', name: 'attack-forge-1.0.0+mc1.7.10.jar' },
+  }));
+  return { root, minecraftDir: path.join(root, '.minecraft'), gameDir: path.join(root, 'game') };
+}
+
+/** Ce que la page affiche pour l'état réel du profil 1.7.10 ; `lang` : langue du launcher. */
+async function render1710(dirs, { lang = 'fr', ...settings } = {}) {
+  const status = await installer.status({ minecraftDir: dirs.minecraftDir, gameDir: dirs.gameDir, profile: OLD, ...settings });
+  const info = {
+    version: '0.8.0', minecraftDir: dirs.minecraftDir, totalRamMb: 16384, launcherDetected: true,
+    profiles: catalog.list().map((p) => ({ ...catalog.view(p), pack: modpack.view(modpack.loadPack(p)) })),
+  };
+  const page = await boot({
+    info, status,
+    settings: { ramMb: 2048, gameDir: dirs.gameDir, lang, profileId: 'forge-1.7.10', javaPath: '', jvmArgs: '', devMode: false, devJarDir: '', msClientId: '', ...settings },
+  });
+  return { status, page };
+}
+
+/** Les cartes de profil de l'accueil : { id, label, loader, tag, active }. */
+const profileCards = (page) => page.byId('profile-select').children.map((card) => ({
+  id: card.attributes['data-profile'],
+  label: card.children[0].children[0].textContent,
+  loader: card.children[0].children[1].textContent,
+  tag: card.children[1].textContent,
+  active: /\bactive\b/.test(card.className),
+}));
+
+/** Les cases du rail « Profil actuel » : { libellé : valeur }. */
+const railCells = (page) => Object.fromEntries(page.byId('pc-grid').children.map((c) => [c.children[0].textContent, c.children[1].textContent]));
+
+/** Noms des cartes de la page Mods. */
+const modCardNames = (page) => page.byId('mods-grid').children.map((card) => card.children[0].children[1].textContent);
+
+test('accueil : quatre cartes de profil, la 1.7.10 en dernier avec « PvP 1.7 » (« 1.7 PvP » en anglais)', async () => {
+  const dirs = installed1710();
+  const fr = await render1710(dirs);
+  assert.deepEqual(profileCards(fr.page), [
+    { id: 'forge-1.8.9', label: '1.8.9', loader: 'Forge', tag: 'PvP classique', active: false },
+    { id: 'fabric-1.21.1', label: '1.21.1', loader: 'Fabric', tag: 'PvP moderne', active: false },
+    { id: 'fabric-26.3', label: '26.3', loader: 'Fabric', tag: 'Dernière version', active: false },
+    { id: 'forge-1.7.10', label: '1.7.10', loader: 'Forge', tag: 'PvP 1.7', active: true },
+  ]);
+  assert.equal(fr.page.byId('hero-sub').textContent, 'Minecraft 1.7.10 · Forge 10.13.4.1614');
+  const en = await render1710(dirs, { lang: 'en' });
+  assert.deepEqual(profileCards(en.page).map((c) => [c.id, c.tag]), [
+    ['forge-1.8.9', 'Classic PvP'], ['fabric-1.21.1', 'Modern PvP'], ['fabric-26.3', 'Latest version'], ['forge-1.7.10', '1.7 PvP'],
+  ]);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('profil 1.7.10 : installé = « Tout est prêt », aucune ligne « Pack de mods » ni OptiFine, jamais « 0 mod »', async () => {
+  const dirs = installed1710();
+  const { status, page } = await render1710(dirs);
+  assert.equal(status.installed, true);
+  assert.equal(page.byId('ready-main').textContent, 'Tout est prêt');
+  assert.equal(page.byId('play-label').textContent, 'JOUER');
+  const rows = page.byId('ready-pop').children.map((row) => [row.children[1].children[0].textContent, /\bbad\b/.test(row.className)]);
+  assert.deepEqual(rows, [['Minecraft 1.7.10', false], ['Forge 10.13.4.1614', false], ['ATTACK Client', false], ['Profil du launcher', false]]);
+  assert.equal(page.byId('ready-sum').textContent, 'ATTACK Client v1.0.0', 'la version du jar, lue dans son nom, et pas de compteur de mods');
+  // rail « Profil actuel » : la mémoire, Java 8, « Aucun » pack, la version du mod ; pas de case OptiFine
+  assert.deepEqual(railCells(page), { Mémoire: '2 Go', Java: '8 · fourni', 'Pack de mods': 'Aucun', 'ATTACK Client': 'v1.0.0' });
+  assert.ok(!/0 mod/.test(page.byId('pc-grid').textContent));
+  // Réglages : pas de carte « Pack de mods », mémoire conseillée comme en 1.8.9, texte avec la bonne version
+  assert.equal(page.byId('pack-card').classList.contains('hidden'), true);
+  assert.match(page.byId('ram-help').textContent, /^2 à 3 Go suffisent pour la 1\.7\.10\./);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('profil 1.7.10 : jar du mod absent = « À installer : ATTACK Client », et les autres lignes restent prêtes', async () => {
+  const dirs = installed1710();
+  fs.rmSync(path.join(dirs.gameDir, 'mods', 'attack-forge.jar'));
+  const { status, page } = await render1710(dirs);
+  assert.equal(status.installed, false);
+  assert.equal(page.byId('ready-main').textContent, 'À installer : ATTACK Client');
+  assert.equal(page.byId('play-label').textContent, 'INSTALLER');
+  assert.equal(page.byId('pack-card').classList.contains('hidden'), true);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('page Mods du profil 1.7.10 : sa liste « lite », sans les modules interdits en classé, sans OptiFine ni pack', async () => {
+  const data = (() => {
+    const sandbox = { window: {} };
+    vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(path.join(RENDERER, 'data.js'), 'utf8'), sandbox, { filename: 'data.js' });
+    return sandbox.window.AttackData;
+  })();
+  const dirs = installed1710();
+  const { page } = await render1710(dirs);
+  assert.equal(page.byId('mods-title').textContent, 'Mods du profil 1.7.10');
+  const subtitle = page.byId('mods-subtitle').textContent;
+  assert.match(subtitle, /sans pack de mods/);
+  assert.match(subtitle, new RegExp(`${data.MODULES_BY_PROFILE['forge-1.7.10'].names.length} modules`));
+  assert.ok(!/ 0 mod/.test(subtitle), subtitle);
+
+  const names = modCardNames(page);
+  const expected = Array.from(data.MODS).filter((m) => data.MODULES_BY_PROFILE['forge-1.7.10'].names.includes(m.name)).map((m) => m.name);
+  assert.equal(names[0], 'ATTACK Client');
+  assert.deepEqual(names.slice(1), expected, 'les modules de la liste lite, dans l’ordre de la page Mods');
+  assert.equal(names.length, 1 + data.MODULES_BY_PROFILE['forge-1.7.10'].names.length);
+  for (const banned of ['No Jump Delay', 'No Hit Delay', 'Snap Tap', 'Perspective', 'OptiFine']) assert.ok(!names.includes(banned), `${banned} n’est pas dans la liste 1.7.10`);
+  assert.ok(names.includes('Capes ATTACK') && names.includes('ToggleSprint') && names.includes('Zoom'));
+  assert.match(page.byId('mods-count').textContent, new RegExp(`^1 mod · ${expected.length} modules en jeu`));
+  // la carte ATTACK Client dit que ses modules se règlent en jeu, sans promettre « tous » ses modules
+  const attack = page.byId('mods-grid').children[0];
+  assert.ok(!/tous ses modules/.test(attack.textContent), attack.textContent);
+
+  // la 1.8.9 garde sa liste complète, et Fabric n'a aucun module
+  const full = installed189();
+  const view = await render(full, {});
+  assert.ok(modCardNames(view.page).includes('No Jump Delay'), 'la 1.8.9 ne change pas');
+  assert.equal(modCardNames(view.page).filter((n) => data.MODS.some((m) => m.name === n)).length, data.MODS.length);
+  assert.equal(view.page.byId('mods-title').textContent, 'Mods inclus');
+  assert.equal(view.page.byId('pack-card').classList.contains('hidden'), false, 'la 1.8.9 a sa carte « Pack de mods » (Replay Mod)');
+  assert.match(view.page.byId('ram-help').textContent, /^2 à 3 Go suffisent pour la 1\.8\.9\./);
+  for (const d of [dirs, full]) fs.rmSync(d.root, { recursive: true, force: true });
+});
+
+test('profil 1.7.10 en anglais : titre, sous-titre et rail', async () => {
+  const dirs = installed1710();
+  const { page } = await render1710(dirs, { lang: 'en' });
+  assert.equal(page.byId('mods-title').textContent, 'Mods of the 1.7.10 profile');
+  assert.match(page.byId('mods-subtitle').textContent, /no mod pack/);
+  assert.deepEqual(railCells(page), { Memory: '2 GB', Java: '8 · bundled', 'Mod pack': 'None', 'ATTACK Client': 'v1.0.0' });
+  assert.equal(page.byId('ready-sum').textContent, 'ATTACK Client v1.0.0');
+  assert.match(page.byId('ram-help').textContent, /^2 to 3 GB is enough for 1\.7\.10\./);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('profil 1.7.10 : « Mods et licences » ne montre aucun tableau de pack, seulement ATTACK Client', async () => {
+  const dirs = installed1710();
+  const { page } = await render1710(dirs);
+  page.byId('credits-dialog').showModal = () => {};
+  page.byId('credits-open').listeners.click[0]();
+  assert.match(page.byId('credits-credit').textContent, /n’a pas de pack de mods/);
+  const text = page.byId('credits-list').textContent;
+  assert.ok(!/Pack de mods du profil/.test(text), text);
+  assert.ok(!/Modrinth/.test(page.byId('credits-credit').textContent));
+  assert.match(text, /ATTACK Client/);
+  const firstCells = page.byId('credits-list').children.filter((row) => /credit-row/.test(row.className)).map((row) => row.children[0].textContent);
+  assert.ok(!firstCells.includes('OptiFine'), 'pas de ligne OptiFine pour ce profil');
+  assert.ok(firstCells.includes('ATTACK Client'));
+  const full = installed189();
+  const view = await render(full, {});
+  view.page.byId('credits-dialog').showModal = () => {};
+  view.page.byId('credits-open').listeners.click[0]();
+  assert.match(view.page.byId('credits-credit').textContent, /Modrinth/);
+  assert.match(view.page.byId('credits-list').textContent, /Pack de mods du profil 1\.8\.9/);
+  for (const d of [dirs, full]) fs.rmSync(d.root, { recursive: true, force: true });
+});

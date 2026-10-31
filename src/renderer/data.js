@@ -77,7 +77,33 @@
     { name: 'Sound Changer', icon: 'SC', cat: 'utility', fr: 'Volume des coups, pas, explosions, ambiance, XP et arc.', en: 'Volume of hits, steps, explosions, ambience, XP and bow.' },
   ];
 
+  /**
+   * Modules présentés pour un profil Forge qui n'a pas tous ceux de la 1.8.9 (page Mods). Clé : identifiant du profil ; `names` :
+   * les modules de MODS retenus (l'ordre de MODS est gardé) ; `overrides` : texte propre à ce profil quand il diffère.
+   * Le mod ATTACK 1.7.10 est une version « lite » : le menu ATTACK, l'éditeur de HUD, les cosmétiques et ces modules.
+   * Absents exprès : No Jump Delay, No Hit Delay, Snap Tap et Perspective (modules interdits en classé), puis Amis, Waypoints,
+   * Minimap, Motion Blur et FPS Boost, prévus pour un patch suivant.
+   */
+  const MODULES_BY_PROFILE = {
+    'forge-1.7.10': {
+      names: [
+        'ToggleSprint', 'CPS', 'Combo Counter', 'Reach Display', 'Hit Color', 'Low Health Warning', 'Personnalisation',
+        'Zoom', 'Crosshair', 'Block Overlay', 'Clear Glass', 'Fullbright', 'Nametags', 'Capes ATTACK', 'Item Physics',
+        'Scoreboard', 'Chat', 'Sound Changer',
+      ],
+      overrides: {
+        Personnalisation: { fr: 'Thèmes, couleur d’accent, polices et éditeur de HUD.', en: 'Themes, accent colour, fonts and HUD editor.' },
+      },
+    },
+  };
+
   const CHANGELOG = [
+    {
+      version: 'Launcher 0.8.0', date: '2026-10-31',
+      title_fr: 'Le profil 1.7.10', title_en: 'The 1.7.10 profile', tag: 'new',
+      fr: 'Un quatrième profil, « 1.7.10 » (PvP 1.7) : Minecraft 1.7.10 avec Forge 10.13.4.1614 et le mod ATTACK 1.7.10, une version « lite » avec le menu ATTACK, l’éditeur de HUD, tous les cosmétiques et une sélection de modules. Ce profil n’a ni pack de mods ni OptiFine. Il a son dossier de jeu et ses réglages, comme les autres. Si la dernière release n’a pas encore le jar d’un profil, l’installation s’arrête tout de suite avec un message clair, au lieu de le dire après le téléchargement de Minecraft.',
+      en: 'A fourth profile, “1.7.10” (1.7 PvP): Minecraft 1.7.10 with Forge 10.13.4.1614 and the ATTACK 1.7.10 mod, a “lite” version with the ATTACK menu, the HUD editor, every cosmetic and a selection of modules. This profile has no mod pack and no OptiFine. It has its own game folder and settings, like the others. If the latest release does not have a profile’s jar yet, the installation now stops right away with a clear message, instead of saying so after the Minecraft download.',
+    },
     {
       version: 'Launcher 0.7.0', date: '2026-10-30',
       title_fr: 'Assistant OptiFine, interface soignée', title_en: 'OptiFine assistant, refined interface', tag: 'new',
@@ -376,5 +402,5 @@
     'LicenseRef-tr7zw-Protective-License': { fr: 'Licence protectrice de tr7zw', en: 'tr7zw Protective License' },
   };
 
-  window.AttackData = { CATEGORIES, MODS, CHANGELOG, PACK_INFO, LICENSE_NAMES };
+  window.AttackData = { CATEGORIES, MODS, MODULES_BY_PROFILE, CHANGELOG, PACK_INFO, LICENSE_NAMES };
 })();

@@ -493,10 +493,11 @@ test('actualités : les 3 entrées les plus récentes du CHANGELOG, dans la lang
   const en = await miniPage('{{html.news}}', {}, 'en/index.html');
   assert.equal(fr.match(/<article class="news-item">/g).length, 3);
   assert.equal(en.match(/<article class="news-item">/g).length, 3);
+  assert.ok(fr.includes('Launcher 0.8.0') && fr.includes('Le profil 1.7.10') && fr.includes('31 octobre 2026'));
   assert.ok(fr.includes('Launcher 0.7.0') && fr.includes('Assistant OptiFine, interface soignée') && fr.includes('30 octobre 2026'));
-  assert.ok(fr.includes('ATTACK Client 3.6.0') && fr.includes('ATTACK Client 2.7.0'), 'les deux versions du client livrées avec le launcher');
-  assert.ok(en.includes('OptiFine assistant, refined interface') && en.includes('October 30, 2026'));
-  assert.ok(fr.includes('datetime="2026-10-30"') && fr.includes('class="news-tag news-tag-new"'));
+  assert.ok(fr.includes('ATTACK Client 3.6.0'), 'la plus récente version du client livrée avec le launcher précédent');
+  assert.ok(en.includes('The 1.7.10 profile') && en.includes('October 31, 2026') && en.includes('OptiFine assistant, refined interface'));
+  assert.ok(fr.includes('datetime="2026-10-31"') && fr.includes('class="news-tag news-tag-new"'));
 });
 
 test('logos : SVG décoratif, identifiants de dégradés uniques par occurrence', async () => {
