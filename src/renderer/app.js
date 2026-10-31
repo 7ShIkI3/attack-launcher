@@ -116,6 +116,8 @@
     $('ready-btn').setAttribute('aria-expanded', 'false');
   }
   function showPage(page) {
+    // le focus est dans une page qui va être masquée (bouton de l'alerte, lien de l'accueil…) : il ne doit pas retomber sur <body>
+    const leaving = [...document.querySelectorAll('.page')].some((p) => p.id !== `page-${page}` && p.contains(document.activeElement));
     document.querySelectorAll('.nav-item').forEach((b) => {
       const on = b.dataset.page === page;
       b.classList.toggle('active', on);
@@ -123,6 +125,13 @@
       else b.removeAttribute('aria-current');
     });
     document.querySelectorAll('.page').forEach((p) => p.classList.toggle('active', p.id === `page-${page}`));
+    const shown = $(`page-${page}`);
+    const heading = leaving && shown ? shown.querySelector('h1') : null;
+    if (heading) {
+      // le titre de la page affichée reprend le focus (focalisable par programme seulement) ; Tab mène ensuite à sa première commande
+      heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+    }
     closeReady();
     // la vue 3D du skin ne dessine que sur la page Compte (sinon WebGL tourne en continu, même pendant une partie)
     document.dispatchEvent(new CustomEvent('attack:page', { detail: page }));
@@ -192,9 +201,11 @@
    */
   function setMessage(text, kind = '', code = '') {
     const inline = Boolean(text) && kind !== 'ok';
+    const focusInAlert = !inline && $('alert').contains(document.activeElement); // l'alerte se ferme avec le focus dedans (croix, bouton d'action)
     $('message').textContent = inline ? text : '';
     $('alert').classList.toggle('hidden', !inline);
     $('lower').inert = inline; // les commandes recouvertes par l'alerte ne sont plus atteignables au clavier
+    if (focusInAlert) $('ready-btn').focus({ preventScroll: true }); // le bouton disparaît avec l'alerte : la ligne « prêt », qu'elle recouvrait, le reprend
     alertAction = inline ? ALERT_ACTIONS[code] || null : null;
     $('alert-action').classList.toggle('hidden', !alertAction);
     if (alertAction) $('alert-action').textContent = t(alertAction.label);
