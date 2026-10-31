@@ -122,7 +122,9 @@
     // page Mods : la copie est devenue utilisable, la carte OptiFine remplace l'assistant par son interrupteur, qui prend le focus
     if (!next && key.startsWith('assist:mods:')) next = container.querySelector('[data-focus-key="mod:optifine"]');
     const free = (node) => (node && !node.disabled ? node : null); // une commande grisée ne prend pas le focus
-    next = free(next) || (fallback && free(fallback(key))) || [...container.querySelectorAll('button, input')].find((node) => !node.disabled) || null;
+    // jamais une commande destructive (Déconnecter…) : avec Entrée maintenue, la répétition de la touche la déclencherait aussitôt
+    const safe = (node) => !node.disabled && !node.classList.contains('danger');
+    next = free(next) || (fallback && free(fallback(key))) || [...container.querySelectorAll('button, input')].find(safe) || null;
     if (next) next.focus({ preventScroll: true });
     else focusHeading([...document.querySelectorAll('.page')].find((page) => page.contains(container)));
   }
@@ -1344,11 +1346,12 @@
     $('offline-card').classList.toggle('hidden', !view.devMode);
     const active = view.accounts.find((a) => a.active);
     $('skin-offline-actions').classList.toggle('hidden', !active || active.type === 'msa');
-    // « Utiliser » ou « Déconnecter » retire le bouton focalisé : un autre bouton du même compte, sinon le premier compte restant
+    // « Utiliser » ou « Déconnecter » retire le bouton focalisé : le nom du même compte, sinon celui du premier compte restant.
+    // Jamais un autre bouton : posé sur un « Déconnecter », le focus laisserait Entrée maintenue retirer les comptes l'un après l'autre.
     const accountTarget = (key) => {
       const own = key.slice(0, key.lastIndexOf(':') + 1); // « account:<id>: »
-      const buttons = [...$('accounts-list').querySelectorAll('[data-focus-key]')];
-      return (own && buttons.find((button) => button.dataset.focusKey.startsWith(own))) || buttons[0] || null;
+      const names = [...$('accounts-list').querySelectorAll('[data-focus-key]')].filter((node) => node.dataset.focusKey.endsWith(':name'));
+      return (own && names.find((node) => node.dataset.focusKey === `${own}name`)) || names[0] || null;
     };
     replaceKeepingFocus($('accounts-list'), view.accounts.map((account) => {
       const actions = [];
@@ -1373,7 +1376,8 @@
       return el('div', { class: `card account-card${account.active ? ' active' : ''}` }, [
         avatar(account),
         el('div', { class: 'account-info' }, [
-          el('div', { class: 'name', text: account.name }),
+          // cible du focus après « Utiliser » ou « Déconnecter » (focalisable par programme, hors de l'ordre de tabulation)
+          el('div', { class: 'name', text: account.name, tabindex: '-1', 'data-focus-key': `account:${account.id}:name` }),
           el('div', { class: 'badges' }, [
             el('span', { class: 'badge', text: t(account.type === 'msa' ? 'account.msa' : 'account.offline') }),
             ...(account.active ? [el('span', { class: 'badge on', text: t('account.active') })] : []),

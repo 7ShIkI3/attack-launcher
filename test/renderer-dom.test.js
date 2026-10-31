@@ -671,7 +671,7 @@ test('alerte de l’accueil au clavier : fermée ou activée, le focus va à une
   assert.equal(document.activeElement, byId('mods-q'));
 });
 
-test('page Compte au clavier : « Utiliser » ou « Déconnecter » garde le focus sur une commande du compte, ou à défaut le titre de la page, jamais <body>', async (t) => {
+test('page Compte au clavier : « Utiliser » ou « Déconnecter » met le focus sur le nom d’un compte, jamais sur un bouton ni sur <body>', async (t) => {
   const dirs = installed189();
   t.after(() => fs.rmSync(dirs.root, { recursive: true, force: true }));
   const accounts = {
@@ -692,17 +692,25 @@ test('page Compte au clavier : « Utiliser » ou « Déconnecter » garde le foc
   const button = (key) => nodesOf(byId('accounts-list')).find((n) => dataKey(n) === key);
   assert.deepEqual(keys(), ['account:a:remove', 'account:b:use', 'account:b:remove', 'account:c:use', 'account:c:remove']);
 
-  // « Utiliser » : ce compte devient actif, son bouton disparaît ; son autre bouton reprend le focus
+  // la touche Entrée maintenue répète l'activation sur l'élément focalisé : il ne doit jamais être un bouton (surtout pas « Déconnecter »)
+  const inert = () => {
+    assert.notEqual(document.activeElement, document.body);
+    assert.notEqual(document.activeElement.tagName, 'button');
+    assert.equal(document.activeElement.listeners.click, undefined, 'Entrée répétée sur la cible du focus ne déclenche rien');
+    assert.equal(document.activeElement.attributes.tabindex, '-1', 'focalisable par programme, hors de l’ordre de tabulation');
+  };
+
+  // « Utiliser » : ce compte devient actif, son bouton disparaît ; le nom du même compte prend le focus
   await pressKey(page, button('account:b:use'));
   assert.deepEqual(keys(), ['account:a:use', 'account:a:remove', 'account:b:remove', 'account:c:use', 'account:c:remove']);
-  assert.notEqual(document.activeElement, document.body);
-  assert.equal(dataKey(document.activeElement), 'account:b:remove', 'le compte Bravo garde le focus sur « Déconnecter »');
+  assert.equal(dataKey(document.activeElement), 'account:b:name', 'le compte Bravo garde le focus, sur son nom');
+  inert();
 
-  // « Déconnecter » : la carte part ; le premier compte restant reprend le focus
+  // « Déconnecter » : la carte part ; le nom du premier compte restant prend le focus
   await pressKey(page, button('account:b:remove'));
   assert.deepEqual(keys(), ['account:a:remove', 'account:c:use', 'account:c:remove']);
-  assert.notEqual(document.activeElement, document.body);
-  assert.equal(dataKey(document.activeElement), 'account:a:remove');
+  assert.equal(dataKey(document.activeElement), 'account:a:name');
+  inert();
 
   // dernier compte retiré : plus aucune commande dans la liste, le titre de la page Compte prend le focus
   await pressKey(page, button('account:c:remove'));
