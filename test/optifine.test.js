@@ -391,11 +391,15 @@ test('réglages OptiFine du profil 1.8.9 : interrupteur par défaut vrai, fichie
 test('suffixe « (n) » du navigateur : versionOf et destName l’ignorent, un nom étranger reste ramené à OptiFine-1.8.9_<variante>.jar', () => {
   assert.equal(optifine.versionOf('OptiFine_1.8.9_HD_U_M5 (1).jar'), 'HD_U_M5');
   assert.equal(optifine.versionOf('OptiFine_1.8.9_HD_U_M5 (12).jar'), 'HD_U_M5');
+  assert.equal(optifine.versionOf('OptiFine_1.8.9_HD_U_M5(1).jar'), 'HD_U_M5', 'Firefox : « (1) » collé');
   assert.equal(optifine.versionOf('preview_OptiFine_1.8.9_HD_U_M6_pre2.jar'), 'HD_U_M6_pre2');
   assert.equal(optifine.stripCopySuffix('OptiFine_1.8.9_HD_U_M5 (1).jar'), 'OptiFine_1.8.9_HD_U_M5.jar');
+  assert.equal(optifine.stripCopySuffix('OptiFine_1.8.9_HD_U_M5(1).jar'), 'OptiFine_1.8.9_HD_U_M5.jar');
+  assert.equal(optifine.stripCopySuffix('OptiFine_1.8.9_HD_U_M5(12).JAR'), 'OptiFine_1.8.9_HD_U_M5.JAR');
   assert.equal(optifine.stripCopySuffix('mon OptiFine (copie).jar'), 'mon OptiFine (copie).jar', 'seul un nombre entre parenthèses est retiré');
   assert.equal(optifine.destName({ name: 'OptiFine_1.8.9_HD_U_M5 (1).jar', version: 'HD_U_M5' }), 'OptiFine_1.8.9_HD_U_M5.jar');
   assert.equal(optifine.destName({ name: 'OptiFine_1.8.9_HD_U_M5 (3).jar', version: 'HD_U_M5' }), 'OptiFine_1.8.9_HD_U_M5.jar');
+  assert.equal(optifine.destName({ name: 'OptiFine_1.8.9_HD_U_M5(1).jar', version: 'HD_U_M5' }), 'OptiFine_1.8.9_HD_U_M5.jar');
   assert.equal(optifine.destName({ name: 'OptiFine_1.8.9_HD_U_M5.jar', version: 'HD_U_M5' }), 'OptiFine_1.8.9_HD_U_M5.jar');
   assert.equal(optifine.destName({ name: 'mon OptiFine 1.8.9 (copie).jar', version: null }), 'OptiFine-1.8.9_custom.jar');
 });

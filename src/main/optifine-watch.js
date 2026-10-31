@@ -16,7 +16,10 @@ const optifine = require('./optifine');
 
 const POLL_MS = 1000;
 const TIMEOUT_MS = 10 * 60 * 1000;
-/** Nom accepté une fois le suffixe « (n) » du navigateur retiré : OptiFine_1.8.9_HD_U_M5.jar, preview_OptiFine_1.8.9_HD_U_M6_pre2.jar… */
+/**
+ * Nom accepté une fois le suffixe « (n) » du navigateur retiré (« M5 (1).jar » de Chrome/Edge, « M5(1).jar » collé de Firefox) :
+ * OptiFine_1.8.9_HD_U_M5.jar, preview_OptiFine_1.8.9_HD_U_M6_pre2.jar…
+ */
 const ACCEPTED_NAME = /^(preview_)?optifine[_-]1\.8\.9[_-][\w.+-]+\.jar$/i;
 /** Fichiers temporaires des navigateurs : jamais pris pour un jar fini. */
 const TEMPORARY = /\.(crdownload|part|tmp)$/i;

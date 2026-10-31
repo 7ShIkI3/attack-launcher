@@ -79,11 +79,12 @@ test('noms acceptés : OptiFine 1.8.9, preview_, suffixe « (n) » retiré, inse
   for (const ok of [
     'OptiFine_1.8.9_HD_U_M5.jar', 'OptiFine-1.8.9-HD_U_M5.jar', 'preview_OptiFine_1.8.9_HD_U_M6_pre2.jar',
     'OptiFine_1.8.9_HD_U_M5 (1).jar', 'OptiFine_1.8.9_HD_U_M5 (12).jar', 'PREVIEW_OPTIFINE_1.8.9_HD_U_M6_PRE2.JAR', 'optifine_1.8.9_hd_u_l5.jar',
+    'OptiFine_1.8.9_HD_U_M5(1).jar', // Firefox : « (1) » collé
   ]) assert.equal(watch.acceptedName(ok), true, ok);
   for (const bad of [
     'OptiFine_1.8.8_HD_U_I7.jar', 'OptiFine_1.12.2_HD_U_G5.jar', 'OptiFine_1.8.9.jar', 'OptiFine_1.8.9_HD_U_M5.jar.crdownload',
     'OptiFine_1.8.9_HD_U_M5.jar.part', 'OptiFine_1.8.9_HD_U_M5.tmp', 'OptiFine_1.8.9_HD_U_M5.zip', 'OptiFine_1.8.9_HD_U_M5 (copie).jar',
-    'OptiFine_1.8.9_HD_U_M5(1).jar', 'mon OptiFine_1.8.9_HD_U_M5.jar', 'Unconfirmed 123456.crdownload', 'autre-mod-1.8.9.jar', '',
+    'OptiFine_1.8.9_HD_U_M5(copie).jar', 'mon OptiFine_1.8.9_HD_U_M5.jar', 'Unconfirmed 123456.crdownload', 'autre-mod-1.8.9.jar', '',
   ]) assert.equal(watch.acceptedName(bad), false, bad);
 });
 
@@ -220,6 +221,20 @@ test('suffixe « (1) » : OptiFine_1.8.9_HD_U_M5 (1).jar est repris et rangé sa
   assert.equal(s.states().at(-1), 'imported');
   assert.equal(s.events.at(-1).version, 'HD_U_M5');
   assert.deepEqual(fs.readdirSync(path.join(s.userData, 'optifine')), [NAME]);
+  s.clean();
+});
+
+test('suffixe « (1) » collé de Firefox : le retéléchargement d’un jar déjà présent est repris et rangé sans le suffixe', async () => {
+  const s = setup();
+  s.put(NAME, optifineJar('ancien'));
+  assert.equal((await s.watcher.start()).state, 'seen', 'l’ancien jar est seulement proposé');
+  const source = s.put('OptiFine_1.8.9_HD_U_M5(1).jar', optifineJar('firefox'));
+  await s.clock.advance(2000, s.watcher);
+  assert.deepEqual(s.states(), ['waiting', 'seen', 'checking', 'imported']);
+  assert.equal(s.events.at(-1).file, 'OptiFine_1.8.9_HD_U_M5(1).jar');
+  assert.equal(s.events.at(-1).version, 'HD_U_M5');
+  assert.deepEqual(fs.readdirSync(path.join(s.userData, 'optifine')), [NAME]);
+  assert.ok(fs.readFileSync(path.join(s.userData, 'optifine', NAME)).equals(fs.readFileSync(source)), 'le nouveau fichier, pas l’ancien');
   s.clean();
 });
 

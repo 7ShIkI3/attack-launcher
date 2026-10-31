@@ -26,9 +26,12 @@ const FILENAME = /^[\w.+-]+\.jar$/;
 /** Nom qui désigne un OptiFine 1.8.9 (OptiFine-1.8.9_HD_U_M5.jar, OptiFine_1.8.9_HD_U_M5.jar…). */
 const NAME = /optifine.*1\.8\.9/i;
 
-/** Retire le suffixe « (1) » que le navigateur ajoute à un fichier déjà téléchargé : « OptiFine_1.8.9_HD_U_M5 (1).jar » -> « OptiFine_1.8.9_HD_U_M5.jar ». */
+/**
+ * Retire le suffixe « (1) » que le navigateur ajoute à un fichier déjà téléchargé : Chrome/Edge « OptiFine_1.8.9_HD_U_M5 (1).jar »,
+ * Firefox « OptiFine_1.8.9_HD_U_M5(1).jar » (collé) -> « OptiFine_1.8.9_HD_U_M5.jar ».
+ */
 function stripCopySuffix(name) {
-  return String(name).replace(/ \(\d+\)(?=\.jar$)/i, '');
+  return String(name).replace(/\s?\(\d+\)(?=\.jar$)/i, '');
 }
 
 /** Variante dans le nom (« HD_U_M5 »), ou null. Tolère le suffixe « (n) » d'un téléchargement répété. */
