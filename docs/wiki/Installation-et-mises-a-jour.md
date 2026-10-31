@@ -77,7 +77,7 @@ flowchart TD
 ```
 
 1. **Minecraft** : le manifeste des versions (`piston-meta.mojang.com`) donne l'adresse et le SHA-1 du JSON de la
-   version du profil (1.8.9, 1.21.1 ou 26.3) ; ce JSON est vérifié, puis le jar client (SHA-1 et taille) et la
+   version du profil (1.8.9, 1.21.1, 26.3 ou 1.7.10) ; ce JSON est vérifié, puis le jar client (SHA-1 et taille) et la
    configuration log4j.
 2. **Bibliothèques** : chaque fichier a son SHA-1 dans le JSON ; le chemin annoncé doit être celui que calcule le
    launcher à partir du nom Maven (sinon : « Chemin inattendu », `mojang.js:56-61`). Les natives Windows sont incluses.
