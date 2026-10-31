@@ -33,7 +33,7 @@ ta place :
   Client, dans un dossier de jeu séparé de ton `.minecraft`. Chaque fichier téléchargé est vérifié par son empreinte (hash).
 - **Un pack de mods par profil, réglable** : trois profils ont un pack figé (Phosphor Legacy et Client Side Sounds en
   1.8.9 ; Fabric API, Sodium, Lithium et d'autres en 1.21.1 et 26.3) ; le profil 1.7.10 n'a ni pack ni OptiFine, seulement le
-  mod ATTACK 1.7.10 (une version « lite »). Des groupes s'activent ou se coupent dans les
+  mod ATTACK 1.7.10 (tout le contenu du mod 1.8.9, sauf OptiFine). Des groupes s'activent ou se coupent dans les
   Réglages : **Mods PvP (latence)** et **Packs OptiFine** (activés par défaut, profils Fabric), **Replay Mod** (coupé, les
   trois profils) et **Shaders (Iris)** (coupé, profils Fabric). Ils s'appliquent à la prochaine installation.
 - **OptiFine en 1.8.9, avec ta propre copie** : le launcher repère l'OptiFine que tu as téléchargé (ou celui que tu

@@ -26,9 +26,9 @@ première lecture de `settings.json` (migration automatique).
 
 Le profil **1.7.10** (étiquette « PvP 1.7 ») a le même installateur Forge « legacy » que la 1.8.9 (`install_profile.json` lu comme
 une archive, rien d'exécuté) et le même format de JSON de version : aucun code propre au chargeur. Il n'a **ni pack de mods ni
-OptiFine** : seul le mod ATTACK 1.7.10, une version « lite » (menu ATTACK, éditeur de HUD, cosmétiques et une partie des
-modules). Les modules interdits en classé (No Jump Delay, No Hit Delay, Snap Tap, Perspective) n'y sont pas. Sa page Mods a donc sa
-propre liste de modules, et la carte « Pack de mods » des Réglages est masquée pour lui.
+OptiFine** : seul le mod ATTACK 1.7.10, qui reprend tout le contenu du mod 1.8.9 sauf OptiFine (menu ATTACK, écran titre, éditeur
+de HUD, 61 modules, tous les cosmétiques). Seuls Mouse Delay Fix (sans objet en 1.7.10) et Titles (impossible en 1.7.10) n'y sont pas :
+sa page Mods montre donc les modules de la vitrine moins ces deux-là, et la carte « Pack de mods » des Réglages est masquée pour lui.
 
 ## Ce qui est installé, et où
 

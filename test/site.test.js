@@ -1289,6 +1289,24 @@ test('captures : plus de recadrage CSS, et la commande site:images exige --sourc
   assert.doesNotThrow(() => images.checkSource(account, { width: 1120, height: 618 }));
 });
 
+test('profil 1.7.10 : le mod a tout le contenu du mod 1.8.9 sauf OptiFine, plus de « lite » ni de modules interdits en classé absents, l’avertissement Snap Tap reste', { skip: NEED_SRC }, async () => {
+  const result = await generated();
+  for (const [file, lang] of [['index.html', 'fr'], ['en/index.html', 'en']]) {
+    const html = result.read(file);
+    const last = html.slice(html.indexOf('id="profiles"'), html.indexOf('id="client"'));
+    const card = last.slice(last.lastIndexOf('<article class="card profile">'));
+    assert.ok(card.includes(lang === 'fr' ? 'tout le contenu du mod 1.8.9' : 'all the content of the 1.8.9 mod'), `${lang} : la carte 1.7.10 dit qu’elle a tout le mod 1.8.9`);
+    assert.ok(card.includes('61 modules') && card.includes('Minimap'), `${lang} : 61 modules, dont la Minimap`);
+    assert.ok(card.includes(lang === 'fr' ? 'pas d’OptiFine' : 'no OptiFine'), `${lang} : pas d’OptiFine`);
+    assert.ok(!/lite|classé|ranked|une partie des modules|part of the modules|plus légère|lighter/i.test(html), `${lang} : plus de « lite » ni de modules interdits en classé absents`);
+    const client = html.slice(html.indexOf('id="client"'));
+    assert.ok(client.includes('Titles') && client.includes('Mouse Delay Fix'), `${lang} : les deux seuls modules qui n’existent pas en 1.7.10`);
+    // l'avertissement Snap Tap vaut aussi pour la 1.7.10, et la mise en garde sur No Jump Delay / No Hit Delay la cite
+    assert.ok(client.includes('Snap Tap') && client.includes(lang === 'fr' ? 'coupé par défaut' : 'off by default'), `${lang} : avertissement Snap Tap`);
+    assert.ok(client.includes(lang === 'fr' ? 'En 1.8.9 et en 1.7.10' : 'On 1.8.9 and on 1.7.10'), `${lang} : No Jump Delay et No Hit Delay actifs par défaut aussi en 1.7.10`);
+  }
+});
+
 test('profils : quatre cartes dont la 1.7.10 (Forge 10.13.4.1614, Java 8, son dossier), les textes ne parlent plus de trois profils', { skip: NEED_SRC }, async () => {
   const result = await generated();
   for (const [file, lang] of [['index.html', 'fr'], ['en/index.html', 'en']]) {
