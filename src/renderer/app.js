@@ -95,11 +95,20 @@
   }
   const isActive = (button) => button.classList.contains('active');
 
+  /** Le titre d'une page prend le focus (focalisable par programme seulement, hors de l'ordre de tabulation) : Tab mène ensuite à sa première commande. */
+  function focusHeading(page) {
+    const heading = page && page.querySelector('h1');
+    if (!heading) return;
+    heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
+  }
+
   /**
    * Remplace le contenu d'un conteneur en gardant le focus clavier : si l'élément qui l'a (un bouton, un interrupteur) est recréé, le
    * nouvel élément de même `data-focus-key` le reprend. Sans cela le focus retombait sur <body> après chaque interrupteur ou puce.
-   * Si l'élément a disparu (carte sortie du filtre, bouton sans clé…), `fallback()` donne une cible stable de la page qui prend le focus à
-   * sa place ; le focus n'est jamais touché quand il n'était pas dans le conteneur.
+   * Si l'élément a disparu (carte sortie du filtre, compte retiré, bouton sans clé…), `fallback(clé)` donne une cible stable de la page ;
+   * à défaut, la première commande du conteneur, puis le titre de la page : le focus ne retombe jamais sur <body>.
+   * Il n'est jamais touché quand il n'était pas dans le conteneur.
    */
   function replaceKeepingFocus(container, nodes, fallback) {
     const active = document.activeElement;
@@ -112,8 +121,10 @@
     if (!next && key.startsWith('assist:')) next = container.querySelector(`[data-focus-key="${key.split(':', 2).join(':')}:title"]`);
     // page Mods : la copie est devenue utilisable, la carte OptiFine remplace l'assistant par son interrupteur, qui prend le focus
     if (!next && key.startsWith('assist:mods:')) next = container.querySelector('[data-focus-key="mod:optifine"]');
-    if (!next && fallback) next = fallback();
-    if (next && !next.disabled) next.focus({ preventScroll: true });
+    const free = (node) => (node && !node.disabled ? node : null); // une commande grisée ne prend pas le focus
+    next = free(next) || (fallback && free(fallback(key))) || [...container.querySelectorAll('button, input')].find((node) => !node.disabled) || null;
+    if (next) next.focus({ preventScroll: true });
+    else focusHeading([...document.querySelectorAll('.page')].find((page) => page.contains(container)));
   }
 
   // --- navigation ---
@@ -131,13 +142,7 @@
       else b.removeAttribute('aria-current');
     });
     document.querySelectorAll('.page').forEach((p) => p.classList.toggle('active', p.id === `page-${page}`));
-    const shown = $(`page-${page}`);
-    const heading = leaving && shown ? shown.querySelector('h1') : null;
-    if (heading) {
-      // le titre de la page affichée reprend le focus (focalisable par programme seulement) ; Tab mène ensuite à sa première commande
-      heading.tabIndex = -1;
-      heading.focus({ preventScroll: true });
-    }
+    if (leaving) focusHeading($(`page-${page}`)); // le titre de la page affichée reprend le focus
     closeReady();
     // la vue 3D du skin ne dessine que sur la page Compte (sinon WebGL tourne en continu, même pendant une partie)
     document.dispatchEvent(new CustomEvent('attack:page', { detail: page }));
@@ -208,6 +213,7 @@
   function setMessage(text, kind = '', code = '') {
     const inline = Boolean(text) && kind !== 'ok';
     const focusInAlert = !inline && $('alert').contains(document.activeElement); // l'alerte se ferme avec le focus dedans (croix, bouton d'action)
+    const focusInLower = inline && $('lower').contains(document.activeElement); // l'alerte s'ouvre sur la commande qui a le focus (Dossier de jeu, Journaux…)
     $('message').textContent = inline ? text : '';
     $('alert').classList.toggle('hidden', !inline);
     $('lower').inert = inline; // les commandes recouvertes par l'alerte ne sont plus atteignables au clavier
@@ -215,6 +221,8 @@
     alertAction = inline ? ALERT_ACTIONS[code] || null : null;
     $('alert-action').classList.toggle('hidden', !alertAction);
     if (alertAction) $('alert-action').textContent = t(alertAction.label);
+    // ces commandes viennent de devenir inertes avec le focus dedans : l'alerte, annoncée aux lecteurs d'écran, le prend au lieu de <body>
+    if (focusInLower) (alertAction ? $('alert-action') : $('alert-copy')).focus({ preventScroll: true });
     if (text && kind === 'ok') showToast(text);
     if (!text) $('toast').classList.remove('show');
   }
@@ -1336,6 +1344,12 @@
     $('offline-card').classList.toggle('hidden', !view.devMode);
     const active = view.accounts.find((a) => a.active);
     $('skin-offline-actions').classList.toggle('hidden', !active || active.type === 'msa');
+    // « Utiliser » ou « Déconnecter » retire le bouton focalisé : un autre bouton du même compte, sinon le premier compte restant
+    const accountTarget = (key) => {
+      const own = key.slice(0, key.lastIndexOf(':') + 1); // « account:<id>: »
+      const buttons = [...$('accounts-list').querySelectorAll('[data-focus-key]')];
+      return (own && buttons.find((button) => button.dataset.focusKey.startsWith(own))) || buttons[0] || null;
+    };
     replaceKeepingFocus($('accounts-list'), view.accounts.map((account) => {
       const actions = [];
       if (!account.active) {
@@ -1368,7 +1382,7 @@
         ]),
         el('div', { class: 'setup-actions' }, actions),
       ]);
-    }));
+    }), accountTarget);
     renderNavAccount();
     document.dispatchEvent(new CustomEvent('attack:accounts', { detail: view }));
   }
