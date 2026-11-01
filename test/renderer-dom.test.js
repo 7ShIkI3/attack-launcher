@@ -1112,3 +1112,264 @@ test('profil 1.7.10 avec la copie du joueur : OptiFine HD U E7 compté dans le j
   assert.ok(modCardNames(page).includes('OptiFine'));
   fs.rmSync(dirs.root, { recursive: true, force: true });
 });
+
+// ---------- L3 : textes d'OptiFine par profil ({mc}, {edition}), lignes modOutdated et étrangère, assistants isolés ----------
+
+/** Tous les textes d'OptiFine de la page : carte Réglages, carte de la page Mods, zone aria-live, raisons du « Pourquoi ? ». */
+function optifineTexts(page) {
+  const { byId } = page;
+  const modsCard = byId('mods-grid').children.find((card) => /OptiFine/.test(card.textContent) && /wide/.test(card.className));
+  return [byId('optifine-assist').textContent, byId('optifine-text').textContent, byId('optifine-warn').textContent, byId('optifine-why2').textContent,
+    byId('optifine-live').textContent, modsCard ? modsCard.textContent : ''];
+}
+/** Une accolade de variable ({mc}, {edition}, {names}…) restée dans un texte = une variable oubliée. */
+const unresolved = (texts) => texts.filter((text) => /\{\w+\}/.test(text));
+
+/** Un OptiFine factice dans libraries (même disposition que l'installateur d'OptiFine), pour la version de Minecraft donnée. */
+function putOptifine(dirs, mc, edition) {
+  const jar = path.join(dirs.minecraftDir, 'libraries', 'optifine', 'OptiFine', `${mc}_${edition}`, `OptiFine-${mc}_${edition}.jar`);
+  fs.mkdirSync(path.dirname(jar), { recursive: true });
+  fs.writeFileSync(jar, makeZip({ 'META-INF/MANIFEST.MF': MANIFEST, 'optifine/OptiFineForgeTweaker.class': 'classe' }));
+  return jar;
+}
+
+for (const [mc, other, edition, editionOther] of [['1.7.10', '1.8.9', 'HD U E7', 'M5'], ['1.8.9', '1.7.10', 'HD U M5', 'E7']]) {
+  test(`OptiFine ${mc} : la carte, l’assistant et les refus disent la version et l’édition du profil (fr et en), jamais une variable oubliée`, async () => {
+    for (const lang of ['fr', 'en']) {
+      const dirs = mc === '1.7.10' ? installed1710() : installed189();
+      if (dirs.source) fs.rmSync(dirs.source); // aucune copie : l'assistant est en jeu
+      const { page } = mc === '1.7.10' ? await render1710(dirs, { lang }) : await render(dirs, { lang });
+      const { byId } = page;
+      assert.equal(byId('optifine-card').classList.contains('hidden'), false);
+      // carte au repos : la version du profil et l'édition à récupérer (HD U E7 ou HD U M5), pas celle de l'autre profil
+      assert.match(byId('optifine-text').textContent, new RegExp(`OptiFine ${mc.replaceAll('.', '\\.')}`));
+      assert.match(byId('optifine-text').textContent, new RegExp(edition));
+      assert.match(byId('optifine-why2').textContent, new RegExp(`Forge ${mc.replaceAll('.', '\\.')}`));
+      const seen = [];
+      const collect = () => seen.push(...optifineTexts(page));
+      collect();
+      // étapes : section « Minecraft <mc> », première ligne (l'édition), « Show all versions » et « + More » de optifine.net
+      await page.emitAssist({ state: 'waiting', downloadsDir: 'D:\\Dl' });
+      const steps = byId('optifine-assist').textContent;
+      assert.match(steps, /Show all versions/);
+      assert.match(steps, new RegExp(`Minecraft ${mc.replaceAll('.', '\\.')}`));
+      assert.match(steps, new RegExp(`OptiFine ${edition}`));
+      assert.match(steps, /\+ More/);
+      assert.match(steps, /\(Mirror\)/);
+      assert.doesNotMatch(steps, new RegExp(`${other.replaceAll('.', '\\.')}|${editionOther}`), `${lang} : rien de l’autre profil dans les étapes`);
+      collect();
+      for (const reason of ['WRONG_NAME', 'NO_TWEAK', 'NOT_JAR', 'BAD_ZIP', 'TOO_BIG', 'UNREADABLE']) {
+        await page.emitAssist({ state: 'refused', file: 'x.jar', reason, downloadsDir: 'D:\\Dl' });
+        collect();
+        if (reason === 'WRONG_NAME') assert.match(byId('optifine-assist').textContent, new RegExp(mc.replaceAll('.', '\\.')));
+        if (reason === 'NO_TWEAK') assert.match(byId('optifine-assist').textContent, new RegExp(`Forge ${mc.replaceAll('.', '\\.')}`));
+      }
+      await page.emitAssist({ state: 'timeout', downloadsDir: 'D:\\Dl' });
+      assert.match(byId('optifine-assist').textContent, new RegExp(`OptiFine ${mc.replaceAll('.', '\\.')}`));
+      collect();
+      for (const state of ['seen', 'checking', 'imported', 'cancelled', 'error']) {
+        await page.emitAssist({ state, file: 'x.jar', version: `HD_U_${editionOther}`, reason: 'ENOSPC', downloadsDir: 'D:\\Dl' });
+        collect();
+      }
+      assert.deepEqual(unresolved(seen), [], `${lang} : aucune variable {…} restée dans les textes d’OptiFine`);
+      fs.rmSync(dirs.root, { recursive: true, force: true });
+    }
+  });
+}
+
+test('assistants OptiFine isolés : l’état reçu pour un profil reste rangé sous lui et s’affiche en revenant sur ce profil', async () => {
+  const dirs = installed1710();
+  const { page } = await render1710(dirs);
+  const { byId } = page;
+  const settingsCard = () => byId('optifine-assist');
+  // le 1.8.9 attend un OptiFine pendant que la 1.7.10 est affichée : rien dans la carte, rien d'annoncé
+  await page.emitAssist({ profileId: 'forge-1.8.9', mc: '1.8.9', state: 'waiting', downloadsDir: 'D:\\Dl' });
+  assert.equal(settingsCard().children.length, 0, 'la carte de la 1.7.10 reste au repos');
+  assert.equal(byId('optifine-live').textContent, '', 'pas d’annonce pour un profil qui n’est pas affiché');
+  // la 1.7.10 a son propre état
+  await page.emitAssist({ profileId: 'forge-1.7.10', mc: '1.7.10', state: 'seen', file: 'OptiFine_1.7.10_HD_U_E7.jar', version: 'HD_U_E7', downloadsDir: 'D:\\Dl' });
+  assert.match(settingsCard().textContent, /Fichier repéré/);
+  assert.match(byId('optifine-live').textContent, /Fichier repéré/);
+  // on passe sur la 1.8.9 : son état (en attente, avec SES étapes) remplace celui de la 1.7.10
+  const card189 = byId('profile-select').children.find((card) => card.attributes['data-profile'] === 'forge-1.8.9');
+  await card189.listeners.click[0]();
+  for (let i = 0; i < 6; i++) await page.tick();
+  assert.match(settingsCard().textContent, /En attente de ton téléchargement/);
+  assert.match(settingsCard().textContent, /Minecraft 1\.8\.9/);
+  assert.match(settingsCard().textContent, /OptiFine HD U M5/);
+  assert.doesNotMatch(settingsCard().textContent, /E7|Fichier repéré/);
+  // et de retour sur la 1.7.10 : « Fichier repéré » est toujours là
+  const card1710 = byId('profile-select').children.find((card) => card.attributes['data-profile'] === 'forge-1.7.10');
+  await card1710.listeners.click[0]();
+  for (let i = 0; i < 6; i++) await page.tick();
+  assert.match(settingsCard().textContent, /Fichier repéré/);
+  assert.match(settingsCard().textContent, /OptiFine_1\.7\.10_HD_U_E7\.jar/);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('assistant OptiFine : un OptiFine d’une autre version arrivé dans Téléchargements est signalé sous l’état (annoncé), au singulier et au pluriel', async () => {
+  const dirs = installed1710();
+  const { page } = await render1710(dirs);
+  const { byId } = page;
+  const noteOf = () => nodesOf(byId('optifine-assist')).filter((n) => /assist-note/.test(n.className || '')).map((n) => n.textContent);
+  await page.emitAssist({ state: 'waiting', downloadsDir: 'D:\\Dl' });
+  assert.deepEqual(noteOf(), [], 'rien tant qu’aucun fichier étranger n’est arrivé');
+  await page.emitAssist({ state: 'waiting', downloadsDir: 'D:\\Dl', foreign: ['OptiFine_1.8.9_HD_U_M5.jar'] });
+  assert.equal(noteOf().length, 1);
+  assert.match(noteOf()[0], /OptiFine_1\.8\.9_HD_U_M5\.jar/);
+  assert.match(noteOf()[0], /pas pour ce profil/);
+  assert.match(noteOf()[0], /OptiFine 1\.7\.10/);
+  assert.match(noteOf()[0], /ce fichier est donc ignoré/);
+  assert.match(byId('optifine-live').textContent, /OptiFine_1\.8\.9_HD_U_M5\.jar/, 'le signalement est annoncé aux lecteurs d’écran');
+  await page.emitAssist({ state: 'waiting', downloadsDir: 'D:\\Dl', foreign: ['OptiFine_1.8.9_HD_U_M5.jar', 'OptiFine_1.12.2_HD_U_G5.jar'] });
+  assert.match(noteOf()[0], /OptiFine_1\.8\.9_HD_U_M5\.jar, OptiFine_1\.12\.2_HD_U_G5\.jar/);
+  assert.match(noteOf()[0], /ces fichiers sont donc ignorés/);
+  // en anglais
+  const en = await render1710(dirs, { lang: 'en' });
+  await en.page.emitAssist({ state: 'waiting', downloadsDir: 'D:\\Dl', foreign: ['OptiFine_1.8.9_HD_U_M5.jar'] });
+  const enNote = nodesOf(en.page.byId('optifine-assist')).filter((n) => /assist-note/.test(n.className || '')).map((n) => n.textContent);
+  assert.match(enNote[0], /not for this profile/);
+  assert.match(enNote[0], /expects OptiFine 1\.7\.10/);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('profil 1.7.10 avec OptiFine et le mod 1.0.0 : « Mettre à jour le mod ATTACK (compatibilité OptiFine) » partout, une seule action à faire', async () => {
+  for (const lang of ['fr', 'en']) {
+    const dirs = installed1710();
+    putOptifine(dirs, '1.7.10', 'HD_U_E7');
+    await installer.installOptifine(dirs.gameDir, dirs.minecraftDir, {}, OLD);
+    const { status, page } = await render1710(dirs, { lang });
+    const { byId } = page;
+    assert.equal(status.optifine.modOutdated, true);
+    const rows = byId('ready-pop').children.map((row) => ({ label: row.children[1].children[0].textContent, detail: row.children[1].children[1].textContent, bad: /\bbad\b/.test(row.className) }));
+    const attack = rows.find((r) => r.label === 'ATTACK Client');
+    assert.equal(attack.bad, true, 'seule la ligne du mod est à refaire');
+    assert.deepEqual(rows.filter((r) => r.bad).map((r) => r.label), ['ATTACK Client']);
+    assert.match(attack.detail, lang === 'fr' ? /^v1\.0\.0 · à mettre à jour \(compatibilité OptiFine\)$/ : /^v1\.0\.0 · to update \(OptiFine compatibility\)$/);
+    assert.equal(byId('ready-main').textContent, lang === 'fr' ? 'À installer\u00a0: ATTACK Client' : 'To install: ATTACK Client');
+    assert.equal(byId('play-label').textContent, lang === 'fr' ? 'INSTALLER' : 'INSTALL');
+    // la ligne OptiFine elle-même reste « prête », avec son libellé inchangé
+    assert.deepEqual(rows.find((r) => r.label === 'OptiFine'), { label: 'OptiFine', detail: 'OptiFine HD U E7', bad: false });
+    // carte Réglages : l'avertissement dit quoi faire et quelle version est demandée
+    assert.equal(byId('optifine-warn').classList.contains('hidden'), false);
+    assert.match(byId('optifine-warn').textContent, lang === 'fr' ? /Mettre à jour le mod ATTACK \(compatibilité OptiFine\)/ : /Update the ATTACK mod \(OptiFine compatibility\)/);
+    assert.match(byId('optifine-warn').textContent, lang === 'fr' ? /OptiFine 1\.7\.10, il faut ATTACK Client 1\.1\.0 ou plus/ : /OptiFine 1\.7\.10, ATTACK Client 1\.1\.0 or newer/);
+    // page Mods : le bandeau « à appliquer » parle du mod, pas du pack
+    assert.equal(byId('mods-pending').classList.contains('hidden'), false);
+    assert.match(byId('mods-pending').textContent, lang === 'fr' ? /Le mod ATTACK doit être mis à jour pour fonctionner avec OptiFine/ : /The ATTACK mod must be updated to work with OptiFine/);
+    assert.doesNotMatch(byId('mods-pending').textContent, /pack de mods|mod pack/i);
+    assert.deepEqual(unresolved([byId('optifine-warn').textContent, byId('mods-pending').textContent, attack.detail]), []);
+    fs.rmSync(dirs.root, { recursive: true, force: true });
+  }
+});
+
+test('profil 1.7.10 avec OptiFine et le mod 1.1.0 : tout est prêt, « 1 mod » (OptiFine) et jamais « 0 mod », aucun avertissement', async () => {
+  const dirs = installed1710();
+  putOptifine(dirs, '1.7.10', 'HD_U_E7');
+  await installer.installOptifine(dirs.gameDir, dirs.minecraftDir, {}, OLD);
+  const state = JSON.parse(fs.readFileSync(path.join(dirs.gameDir, 'attack-launcher.json'), 'utf8'));
+  state.mod.name = 'attack-forge-1.1.0+mc1.7.10.jar';
+  fs.writeFileSync(path.join(dirs.gameDir, 'attack-launcher.json'), JSON.stringify(state));
+  const { status, page } = await render1710(dirs);
+  assert.deepEqual([status.optifine.modOutdated, status.installed], [false, true]);
+  assert.equal(page.byId('ready-main').textContent, 'Tout est prêt');
+  assert.equal(page.byId('play-label').textContent, 'JOUER');
+  assert.equal(page.byId('ready-sum').textContent, '1 mod · ATTACK Client v1.1.0', 'OptiFine est compté, ATTACK Client a sa version à part');
+  assert.deepEqual(railCells(page), { Mémoire: '2 Go', Java: '8 · fourni', 'Pack de mods': 'Aucun', 'ATTACK Client': 'v1.1.0', OptiFine: 'HD U E7' });
+  assert.equal(page.byId('optifine-warn').classList.contains('hidden'), true);
+  assert.equal(page.byId('mods-pending').classList.contains('hidden'), true);
+  assert.ok(!/0 mod/.test(page.byId('ready-sum').textContent + page.byId('pc-grid').textContent + page.byId('mods-count').textContent));
+  assert.match(page.byId('mods-count').textContent, /^2 mods · /);
+  // l'interrupteur de la carte OptiFine de la page Mods cite le profil 1.7.10
+  const card = page.byId('mods-grid').children.find((c) => c.children[0].children[1].textContent === 'OptiFine');
+  const label = nodesOf(card).find((n) => n.tagName === 'label');
+  assert.match(label.attributes.title, /^Réglage\s«\sOptiFine\s»\sdu profil 1\.7\.10$/);
+  // OptiFine coupé : le rail et le compteur n'en parlent plus comme d'un mod du jeu
+  const off = await render1710(dirs, { optifine: false });
+  assert.ok(!/ 0 mod/.test(off.page.byId('ready-sum').textContent), off.page.byId('ready-sum').textContent);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('OptiFine d’une autre version dans mods (1.8.9 dans le profil 1.7.10) : ligne d’information et avertissement, jamais un travail à faire, le fichier reste', async () => {
+  const dirs = installed1710();
+  const foreign = path.join(dirs.gameDir, 'mods', 'OptiFine_1.8.9_HD_U_M5.jar');
+  fs.writeFileSync(foreign, 'jar du joueur');
+  const { status, page } = await render1710(dirs);
+  assert.deepEqual(Array.from(status.optifine.foreign), ['OptiFine_1.8.9_HD_U_M5.jar']);
+  const rows = page.byId('ready-pop').children.map((row) => ({ label: row.children[1].children[0].textContent, detail: row.children[1].children[1].textContent, cls: row.className }));
+  const row = rows.find((r) => r.label === 'OptiFine (autre version)');
+  assert.ok(row, 'ligne dédiée, le libellé « OptiFine » reste celui de l’OptiFine du profil');
+  assert.equal(row.detail, 'OptiFine_1.8.9_HD_U_M5.jar');
+  assert.match(row.cls, /\binfo\b/);
+  assert.equal(rows.filter((r) => r.label === 'OptiFine').length, 1);
+  assert.equal(page.byId('ready-main').textContent, 'Tout est prêt', 'information seulement : rien à installer');
+  assert.match(page.byId('optifine-warn').textContent, /OptiFine_1\.8\.9_HD_U_M5\.jar/);
+  assert.match(page.byId('optifine-warn').textContent, /C’est un OptiFine pour une autre version de Minecraft/);
+  assert.match(page.byId('optifine-warn').textContent, /Le launcher n’y touche pas, à toi de le retirer/);
+  // deux fichiers : le pluriel
+  fs.writeFileSync(path.join(dirs.gameDir, 'mods', 'OptiFine_1.12.2_HD_U_G5.jar'), 'autre');
+  const two = await render1710(dirs);
+  assert.match(two.page.byId('optifine-warn').textContent, /Ce sont des OptiFine pour une autre version de Minecraft/);
+  assert.match(two.page.byId('optifine-warn').textContent, /à toi de les retirer/);
+  assert.equal(fs.existsSync(foreign), true, 'jamais supprimé par le launcher');
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('édition d’OptiFine qui n’est pas celle vérifiée avec le mod : acceptée, signalée « non testée » (ligne en information, carte), sans rien bloquer', async () => {
+  const dirs = installed1710();
+  putOptifine(dirs, '1.7.10', 'HD_U_E8');
+  await installer.installOptifine(dirs.gameDir, dirs.minecraftDir, {}, OLD);
+  const state = JSON.parse(fs.readFileSync(path.join(dirs.gameDir, 'attack-launcher.json'), 'utf8'));
+  state.mod.name = 'attack-forge-1.1.0+mc1.7.10.jar';
+  fs.writeFileSync(path.join(dirs.gameDir, 'attack-launcher.json'), JSON.stringify(state));
+  const { status, page } = await render1710(dirs);
+  assert.equal(status.optifine.untested, true);
+  assert.equal(status.installed, true, 'non bloquant');
+  const row = page.byId('ready-pop').children.find((r) => r.children[1].children[0].textContent === 'OptiFine');
+  assert.equal(row.children[1].children[1].textContent, 'OptiFine HD U E8 · non testée');
+  assert.match(row.className, /\binfo\b/);
+  assert.equal(page.byId('ready-main').textContent, 'Tout est prêt');
+  assert.match(page.byId('optifine-text').textContent, /Cette édition n’est pas celle testée avec ATTACK Client \(OptiFine HD U E7\)/);
+  // l'édition vérifiée n'est pas signalée
+  const dirsOk = installed1710();
+  putOptifine(dirsOk, '1.7.10', 'HD_U_E7');
+  await installer.installOptifine(dirsOk.gameDir, dirsOk.minecraftDir, {}, OLD);
+  const ok = await render1710(dirsOk);
+  assert.doesNotMatch(ok.page.byId('optifine-text').textContent, /testée/);
+  for (const d of [dirs, dirsOk]) fs.rmSync(d.root, { recursive: true, force: true });
+});
+
+test('profil 1.7.10 : « Mods et licences » dit que seuls ATTACK Client et la copie d’OptiFine du joueur sont installés (fr et en)', async () => {
+  for (const [lang, pattern] of [['fr', /seuls le mod ATTACK Client et ta propre copie d’OptiFine y sont installés/], ['en', /only the ATTACK Client mod and your own copy of OptiFine are installed/]]) {
+    const dirs = installed1710();
+    const { page } = await render1710(dirs, { lang });
+    page.byId('credits-dialog').showModal = () => {};
+    page.byId('credits-open').listeners.click[0]();
+    assert.match(page.byId('credits-credit').textContent, pattern);
+    assert.ok(page.byId('credits-list').children.some((row) => /credit-row/.test(row.className) && row.children[0].textContent === 'OptiFine'));
+    fs.rmSync(dirs.root, { recursive: true, force: true });
+  }
+});
+
+test('refus d’un fichier choisi : le message cite la version du profil (celle de la réponse, sinon celle du profil affiché)', async () => {
+  const dirs = installed1710();
+  const { page } = await render1710(dirs);
+  const lines = [];
+  const saved = page.byId('saved-text');
+  for (const [reply, expected] of [
+    [{ ok: false, code: 'OPTIFINE_WRONG_NAME', mc: '1.7.10', profileId: 'forge-1.7.10' }, /ne contient pas 1\.7\.10 \(ce n.est pas OptiFine pour Minecraft 1\.7\.10\)/],
+    [{ ok: false, code: 'OPTIFINE_NO_TWEAK', profileId: 'forge-1.7.10' }, /pas OptiFine pour Forge 1\.7\.10/],
+    [{ ok: false, code: 'NO_OPTIFINE', profileId: 'fabric-26.3' }, /profils 1\.8\.9 et 1\.7\.10 seulement/],
+  ]) {
+    page.window.attack.pickOptifine = async () => reply;
+    await byIdClick(page, 'optifine-pick');
+    lines.push([saved.textContent, expected]);
+  }
+  for (const [text, expected] of lines) assert.match(text, expected);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+/** Clic sur un bouton de la page, puis attente des rendus qu'il déclenche. */
+async function byIdClick(page, id) {
+  await page.byId(id).listeners.click[0]();
+  for (let i = 0; i < 5; i++) await page.tick();
+}

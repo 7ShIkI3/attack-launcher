@@ -519,12 +519,14 @@ test('actualités : les 3 entrées les plus récentes du CHANGELOG, dans la lang
   const en = await miniPage('{{html.news}}', {}, 'en/index.html');
   assert.equal(fr.match(/<article class="news-item">/g).length, 3);
   assert.equal(en.match(/<article class="news-item">/g).length, 3);
-  assert.ok(fr.includes('Launcher 0.8.1') && fr.includes('Le design ATTACK') && fr.includes('1er novembre 2026'));
-  assert.ok(fr.includes('ATTACK Client 3.7.0') && fr.includes('Le menu au design ATTACK'), 'le mod Fabric livré avec le launcher 0.8.1 est la deuxième entrée');
-  assert.ok(fr.includes('ATTACK Client 2.8.0') && fr.includes('Le même menu en 1.8.9'), 'puis le mod 1.8.9');
+  // les trois plus récentes : le launcher 0.8.2 (OptiFine en 1.7.10), le mod 1.7.10 1.1.0 qu'il exige avec OptiFine, puis la 0.8.1
+  assert.ok(fr.includes('Launcher 0.8.2') && fr.includes('OptiFine en 1.7.10') && fr.includes('1er novembre 2026'));
+  assert.ok(fr.includes('ATTACK Client 1.7.10 1.1.0') && fr.includes('Le mod 1.7.10 s’entend avec OptiFine'), 'le mod 1.7.10 1.1.0 est la deuxième entrée');
+  assert.ok(fr.includes('Launcher 0.8.1') && fr.includes('Le design ATTACK'), 'puis la refonte du design');
+  assert.ok(!fr.includes('ATTACK Client 3.7.0') && !fr.includes('ATTACK Client 2.8.0'), 'les mods livrés avec la 0.8.1 sortent des 3 plus récentes');
   assert.ok(!fr.includes('Launcher 0.8.0') && !fr.includes('ATTACK Client 1.7.10 1.0.0'), 'les entrées du launcher précédent sortent des 3 plus récentes');
-  assert.ok(en.includes('The ATTACK design') && en.includes('November 1, 2026') && en.includes('The menu in the ATTACK design'));
-  assert.ok(en.includes('ATTACK Client 2.8.0') && en.includes('The same menu on 1.8.9'));
+  assert.ok(en.includes('OptiFine on 1.7.10') && en.includes('November 1, 2026') && en.includes('The 1.7.10 mod works with OptiFine'));
+  assert.ok(en.includes('The ATTACK design'));
   assert.ok(!/\blite\b/i.test(fr) && !/\blite\b/i.test(en), 'plus de version « lite »');
   assert.ok(fr.includes('datetime="2026-11-01"') && fr.includes('class="news-tag news-tag-new"'));
 });

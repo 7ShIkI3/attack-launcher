@@ -83,7 +83,7 @@
    * les modules de MODS que ce profil n'a pas (tous les autres sont présentés, dans l'ordre de MODS) ; `overrides` : texte propre
    * à ce profil quand celui de MODS (écrit pour la 1.8.9) y serait faux. Pas de liste « à garder » : un nouveau module de MODS
    * arrive tout seul dans ce profil, il suffit de l'exclure ici s'il n'existe pas là-bas.
-   * Le mod ATTACK 1.7.10 reprend tout le contenu du mod 1.8.9 sauf OptiFine (qui n'est pas un module de MODS). Deux modules de MODS
+   * Le mod ATTACK 1.7.10 reprend tout le contenu du mod 1.8.9 (OptiFine est le jar du joueur, pas un module de MODS). Deux modules de MODS
    * n'y existent pas : Mouse Delay Fix (sans objet, le jeu 1.7.10 vise déjà là où l'on regarde) et Titles (les titres sont une
    * fonction du 1.8, impossibles en 1.7.10). Animations : la 1.7.10 règle la position, le style et la vitesse du coup, et propose
    * plusieurs styles de blocage ; la pose 1.7 d'origine est celle du jeu. Le reste (22 polices, 37 capes, 9 ailes, 6 auréoles, 6 effets) est identique.
@@ -101,6 +101,18 @@
   };
 
   const CHANGELOG = [
+    {
+      version: 'Launcher 0.8.2', date: '2026-11-01',
+      title_fr: 'OptiFine en 1.7.10', title_en: 'OptiFine on 1.7.10', tag: 'new',
+      fr: 'Le profil 1.7.10 peut maintenant utiliser OptiFine, comme la 1.8.9, avec ta propre copie : le launcher ne la télécharge toujours pas, sa licence l’interdit. L’assistant « Obtenir OptiFine » ouvre optifine.net, repère OptiFine HD U E7 dans ton dossier Téléchargements, le vérifie et en garde une copie privée. Chaque profil a son assistant et ses réglages : un OptiFine 1.8.9 déposé pour la 1.7.10 n’est jamais pris, il est signalé. Le réglage « Utiliser OptiFine » est activé par défaut en 1.7.10, comme en 1.8.9, et ne fait rien tant que tu n’as pas de copie. Si tu as déjà un OptiFine 1.7.10 dans ton dossier .minecraft, le launcher affichera « À installer » une fois pour l’ajouter au jeu. Avec OptiFine, il faut le mod ATTACK Client 1.7.10 1.1.0 ou plus récent : l’installation le met à jour. Les textes, les crédits et les contrôles d’OptiFine suivent la version du profil.',
+      en: 'The 1.7.10 profile can now use OptiFine, like 1.8.9, with your own copy: the launcher still does not download it, its license forbids it. The “Get OptiFine” assistant opens optifine.net, spots OptiFine HD U E7 in your Downloads folder, checks it and keeps a private copy. Each profile has its own assistant and settings: an OptiFine 1.8.9 dropped for 1.7.10 is never taken, it is flagged. The “Use OptiFine” setting is on by default on 1.7.10, as on 1.8.9, and does nothing until you have a copy. If you already have an OptiFine 1.7.10 in your .minecraft folder, the launcher will show “To install” once to add it to the game. With OptiFine, ATTACK Client 1.7.10 1.1.0 or newer is needed: the installation updates it. OptiFine texts, credits and checks follow the profile’s version.',
+    },
+    {
+      version: 'ATTACK Client 1.7.10 1.1.0', date: '2026-11-01',
+      title_fr: 'Le mod 1.7.10 s’entend avec OptiFine', title_en: 'The 1.7.10 mod works with OptiFine', tag: 'new',
+      fr: 'En 1.7.10 : le mod ATTACK Client fonctionne avec OptiFine HD U E7, la copie que tu as récupérée toi-même. Le zoom d’ATTACK garde la touche C : tant que le module Zoom est activé, la touche de zoom d’OptiFine reste sur « Aucune » en jeu, et ton choix est gardé dans options.txt. Le module Animations marche avec OptiFine. Les adaptations propres à OptiFine ne s’appliquent qu’à cette édition : une autre édition démarre, mais n’est pas testée. Sans OptiFine, le mod se comporte comme en 1.0.0.',
+      en: 'On 1.7.10: the ATTACK Client mod works with OptiFine HD U E7, the copy you got yourself. ATTACK’s zoom keeps the C key: while the Zoom module is on, OptiFine’s zoom key stays on “None” in game, and your choice is kept in options.txt. The Animations module works with OptiFine. The OptiFine-specific adaptations only apply to this edition: another edition starts, but is not tested. Without OptiFine, the mod behaves as in 1.0.0.',
+    },
     {
       version: 'Launcher 0.8.1', date: '2026-11-01',
       title_fr: 'Le design ATTACK', title_en: 'The ATTACK design', tag: 'new',

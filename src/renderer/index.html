@@ -246,7 +246,7 @@
                   <button class="btn" id="java-browse" data-i18n="common.browse">Parcourir</button>
                 </div>
               </section>
-              <!-- Profil 1.8.9 : l'OptiFine du joueur (jamais téléchargé par le launcher) -->
+              <!-- Profils 1.8.9 et 1.7.10 : l'OptiFine du joueur (jamais téléchargé par le launcher). La 2e raison de « Pourquoi ? » porte la version du profil : app.js l'écrit (renderOptifine), pas data-i18n -->
               <section class="card setting hidden" id="optifine-card" aria-labelledby="optifine-title">
                 <div class="pack-head"><h3 id="optifine-title">OptiFine</h3><span class="badge" id="optifine-badge"></span></div>
                 <p class="help" id="optifine-text"></p>
@@ -257,7 +257,7 @@
                   <summary data-i18n="optifine.why">Pourquoi ?</summary>
                   <ul>
                     <li data-i18n="optifine.why1">La licence d’OptiFine interdit de le redistribuer sans l’autorisation écrite de son auteur.</li>
-                    <li data-i18n="optifine.why2">Ta copie est vérifiée sur ton PC puis utilisée telle quelle.</li>
+                    <li id="optifine-why2">Ta copie est vérifiée sur ton PC puis utilisée telle quelle.</li>
                     <li data-i18n="optifine.why3">Les profils 1.21.1 et 26.3 n’en ont pas besoin.</li>
                   </ul>
                 </details>
