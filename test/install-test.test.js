@@ -423,6 +423,18 @@ test('--optifine : refusé pour un profil sans OptiFine, une racine hors du doss
   await assert.rejects(it.checkOptifineArgs(args({ root: outside })), /racine d'essai doit être sous le dossier temporaire/);
   await assert.rejects(it.checkOptifineArgs(args({ root: tmp })), /racine d'essai doit être sous le dossier temporaire/);
   await assert.rejects(it.checkOptifineArgs(args({ root: path.join(tmp, '..', 'ailleurs') })), /racine d'essai doit être sous le dossier temporaire/);
+  // racine qui paraît sous le dossier temporaire mais en sort par une jonction (ou un lien symbolique) : refusée sur le chemin RÉEL.
+  // Sans la seconde condition de la garde (chemins réels), cette racine serait acceptée et l'essai écrirait hors du dossier temporaire.
+  const link = path.join(tmp, 'lien');
+  fs.symlinkSync(outside, link, 'junction');
+  assert.equal(it.isInside(path.join(link, 'racine'), tmp), true, 'lexicalement, la racine est bien sous le dossier temporaire');
+  await assert.rejects(it.checkOptifineArgs(args({ root: path.join(link, 'racine') })), /racine d'essai doit être sous le dossier temporaire/, 'racine à créer sous la jonction');
+  fs.mkdirSync(path.join(outside, 'existante'));
+  await assert.rejects(it.checkOptifineArgs(args({ root: path.join(link, 'existante') })), /racine d'essai doit être sous le dossier temporaire/, 'racine existante sous la jonction');
+  assert.equal(fs.existsSync(path.join(outside, 'racine')), false, 'rien n’a été créé hors du dossier temporaire');
+  // un vrai sous-dossier du dossier temporaire reste accepté
+  assert.equal((await it.checkOptifineArgs(args({ root: path.join(tmp, 'vraie-racine') }))).ok, true);
+  fs.unlinkSync(link); // une jonction se retire comme un lien : le dossier visé (outside) n'est pas touché
   // jar du cache de Lunar : refusé même s'il est parfaitement valide
   const lunar = path.join(tmp, '.lunarclient', 'offline', 'multiver');
   fs.mkdirSync(lunar, { recursive: true });
@@ -443,6 +455,60 @@ test('--optifine : refusé pour un profil sans OptiFine, une racine hors du doss
   assert.equal(it.isInside(tmp, tmp), false);
   assert.equal(it.isInside(path.join(tmp, '..'), tmp), false);
   for (const dir of [tmp, outside]) fs.rmSync(dir, { recursive: true, force: true });
+});
+
+/** status() d'une installation de test complète, sauf le mod : version `modVersion` avec OptiFine actif (spec de la 1.7.10, minMod 1.1.0). */
+const statusWith = (modVersion, over = {}) => {
+  const optifineView = { ...over.optifine, minMod: '1.1.0', modOutdated: mod.olderThan(modVersion, '1.1.0'), pending: false };
+  return { minecraft: true, loader: true, pack: null, mod: true, profile: true, modVersion, ...over, optifine: optifineView, installed: !optifineView.modOutdated };
+};
+
+test('contrôle final : le mod plus ancien que minMod avec OptiFine actif n’est toléré qu’avec le jar factice', () => {
+  // jar factice 0.0.0 : la mise à jour du mod est demandée, c'est attendu
+  const dummy = it.judgeStatus({ status: statusWith('0.0.0'), dummy: true });
+  assert.equal(dummy.failure, undefined);
+  assert.ok(dummy.note.includes('mod 0.0.0 plus ancien que 1.1.0 avec OptiFine actif') && dummy.note.includes('attendu avec le jar factice'), dummy.note);
+  // le même état avec le jar d'une release (--tag, --release) ou d'un vrai build, resté en 1.0.0 : ÉCHEC
+  for (const modVersion of ['1.0.0', '0.0.0', '1.0.9']) {
+    const verdict = it.judgeStatus({ status: statusWith(modVersion), dummy: false });
+    assert.equal(verdict.note, undefined, modVersion);
+    assert.ok(verdict.failure.includes(`mod ${modVersion} plus ancien que 1.1.0 avec OptiFine actif`), verdict.failure);
+    assert.ok(verdict.failure.includes('ne pourrait pas jouer') && verdict.failure.includes('mod 1.1.0 au moins'), verdict.failure);
+  }
+  assert.equal(it.judgeStatus({ status: statusWith('1.0.0') }).failure !== undefined, true, 'sans l’option dummy : un échec');
+  // mod à jour : installé, rien à dire (jar factice ou non)
+  for (const modVersion of ['1.1.0', '1.2.3']) {
+    assert.deepEqual(it.judgeStatus({ status: statusWith(modVersion), dummy: false }), {}, modVersion);
+  }
+  // incohérent : installé alors que modOutdated est vrai
+  const incoherent = { ...statusWith('1.1.0'), optifine: { modOutdated: true, minMod: '1.1.0' }, installed: true };
+  assert.match(it.judgeStatus({ status: incoherent }).failure, /modOutdated alors que installed est vrai/);
+  // le mod trop ancien ne cache jamais un autre manque : Minecraft ou un OptiFine à copier encore en attente = échec, même avec le jar factice
+  for (const over of [{ minecraft: false }, { loader: false }, { mod: false }, { profile: false }, { pack: false }, { optifine: { pending: true } }]) {
+    const status = statusWith('0.0.0', over);
+    if (over.optifine) status.optifine.pending = true;
+    const verdict = it.judgeStatus({ status, dummy: true });
+    assert.ok(verdict.failure.startsWith('status() incomplet'), `${JSON.stringify(over)} : ${verdict.failure}`);
+  }
+  // sans OptiFine (profil Fabric, ou interrupteur coupé) : pas installé = incomplet, jamais « attendu »
+  assert.ok(it.judgeStatus({ status: { minecraft: true, loader: true, pack: true, mod: false, profile: true, installed: false }, dummy: true }).failure.startsWith('status() incomplet'));
+});
+
+test('--cycle sans rien à cycler : le script le dit au lieu de ne rien faire en silence', () => {
+  const message = (id, source) => it.noCycleMessage(catalog.get(id), source);
+  // Forge 1.7.10 et 1.8.9 : pas de mod optionnel de pack ; sans --optifine, pas de cycle OptiFine non plus
+  for (const id of ['forge-1.7.10', 'forge-1.8.9']) {
+    assert.ok(message(id, null).startsWith(`--cycle : rien à cycler pour le profil ${id} (`), message(id, null));
+    assert.ok(message(id, null).includes('pas de mod optionnel de pack'));
+    assert.ok(message(id, null).includes('pas de --optifine <jar>'));
+  }
+  // Fabric : le cycle des shaders existe (Iris est optionnel), mais le profil n'a pas OptiFine
+  assert.match(message('fabric-1.21.1', null), /n'a pas OptiFine/);
+  assert.doesNotMatch(message('fabric-1.21.1', null), /pas de mod optionnel/);
+  // le script affiche ce message quand aucun des deux cycles n'a tourné
+  const source = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'install-test.js'), 'utf8');
+  const block = source.slice(source.indexOf('if (cycle && !cycled) {'));
+  assert.ok(block.startsWith('if (cycle && !cycled) {') && block.slice(0, 300).includes('noCycleMessage(profile, optifineSource)') && block.slice(0, 300).includes('console.log(notice)'));
 });
 
 for (const spec of optifineSpecs) {

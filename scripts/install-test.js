@@ -353,6 +353,38 @@ async function optifineCycle({ profile, gameDir, minecraftDir, source, run, sett
   return `cycle OptiFine ${mc} OK (copie retirée puis remise, jar OptiFine et mod du joueur intacts, OptiFine de l'autre version ignoré)`;
 }
 
+/**
+ * Verdict sur le status() final d'une installation de test : { note, failure } (au plus l'un des deux).
+ *   - installé : correct (un `modOutdated` encore vrai serait incohérent) ;
+ *   - pas installé alors que tout le reste est en place, parce qu'OptiFine est actif et que le mod ATTACK installé est plus ancien que
+ *     `minMod` de la spec : toléré UNIQUEMENT avec le jar factice (version 0.0.0, il n'aura jamais les adaptations pour OptiFine).
+ *     Avec le jar d'une release (--tag, --release) ou d'un vrai build, c'est un échec : un joueur qui a OptiFine ne pourrait pas jouer
+ *     (JOUER bloqué, INSTALLER sans fin), exactement ce que la preuve « OptiFine marche avec le mod publié » doit exclure ;
+ *   - toute autre raison de ne pas être installé : échec.
+ * `dummy` : le mod installé est le jar factice fabriqué par ce script.
+ */
+function judgeStatus({ status, dummy = false }) {
+  const outdated = Boolean(status.optifine?.modOutdated);
+  if (status.installed) return outdated ? { failure: 'status() : modOutdated alors que installed est vrai' } : {};
+  const restReady = status.minecraft && status.loader && status.pack !== false && status.mod && status.profile && !status.optifine?.pending;
+  if (outdated && restReady) {
+    const detail = `mod ${status.modVersion || '?'} plus ancien que ${status.optifine.minMod} avec OptiFine actif`;
+    return dummy
+      ? { note: `status : ${detail}, mise à jour du mod demandée (attendu avec le jar factice)` }
+      : { failure: `status() : ${detail} : le joueur qui a OptiFine ne pourrait pas jouer (INSTALLER sans fin). La release ou le build doit embarquer le mod ${status.optifine.minMod} au moins` };
+  }
+  return { failure: `status() incomplet : ${JSON.stringify(status)}` };
+}
+
+/** Texte affiché quand --cycle est demandé mais qu'aucun cycle ne s'applique à ce profil avec ces options. */
+function noCycleMessage(profile, optifineSource) {
+  const reasons = [];
+  if (!profile.pack || !modpack.loadPack(profile).mods.some((m) => m.optional)) reasons.push("ce profil n'a pas de mod optionnel de pack à couper (shaders)");
+  if (!catalog.hasOptifine(profile)) reasons.push("ce profil n'a pas OptiFine");
+  else if (!optifineSource) reasons.push('pas de --optifine <jar> : aucun cycle OptiFine sans jar à copier');
+  return `--cycle : rien à cycler pour le profil ${profile.id} (${reasons.join(' ; ')})`;
+}
+
 /** Options de la ligne de commande : { profile, useRelease, tag, shaders, replay, cycle, optifine, positional }. */
 function parseArgs(args) {
   const option = (name) => {
@@ -474,6 +506,7 @@ async function main() {
     await check(path.join(minecraftDir, 'libraries', artifact.path), 'sha1', artifact.sha1, artifact.path);
   }
   const extra = [];
+  let cycled = false; // un cycle (shaders ou OptiFine) a-t-il tourné ? sinon --cycle ne fait rien et il faut le dire
   if (profile.loader.type === 'forge') {
     if (loaderJson.inheritsFrom !== mc || loaderJson.mainClass !== 'net.minecraft.launchwrapper.Launch') failures.push('JSON Forge inattendu');
     extra.push(await verifyForgeLibraries({ profile, minecraftDir, loaderJson, check, fail: (message) => failures.push(message) }));
@@ -512,6 +545,7 @@ async function main() {
     extra.push(`pack de ${wanted.length} mods (${wanted.map((m) => `${m.slug} ${m.version}`).join(', ')})`);
 
     if (cycle && iris) {
+      cycled = true;
       // shaders coupés puis réactivés ; un jar du joueur ne doit jamais être touché (profils Fabric : le pack Forge 1.8.9 n'a pas de mod optionnel)
       const own = path.join(gameDir, 'mods', 'mon-mod-perso.jar');
       fs.writeFileSync(own, 'jar du joueur');
@@ -541,12 +575,18 @@ async function main() {
       // un seul OptiFine dans mods, celui de cette version (la racine .minecraft peut aussi porter celui de l'autre profil)
       const jars = fs.readdirSync(path.join(gameDir, 'mods')).filter((name) => /optifine/i.test(name));
       if (jars.length !== 1 || !optifine.nameMatches(jars[0], profile.mc)) failures.push(`OptiFine : mods contient ${JSON.stringify(jars)} au lieu du seul OptiFine ${profile.mc}`);
+      if (cycle) cycled = true;
       if (cycle) extra.push(await optifineCycle({ profile, gameDir, minecraftDir, source: optifineCopy, run, settings, check, fail: (message) => failures.push(message) }));
     } else if (state.optifine || fs.readdirSync(path.join(gameDir, 'mods')).some((f) => /optifine/i.test(f))) {
       failures.push('OptiFine : un jar a été copié alors que le joueur n’en a pas fourni');
     } else {
       extra.push('aucun OptiFine fourni : rien copié, rien téléchargé');
     }
+  }
+  if (cycle && !cycled) {
+    const notice = noCycleMessage(profile, optifineSource);
+    console.log(notice);
+    extra.push(notice);
   }
   // options.txt : langue du launcher écrite (fr_FR en 1.8.9, fr_fr en Fabric)
   const optionsText = fs.existsSync(path.join(gameDir, 'options.txt')) ? fs.readFileSync(path.join(gameDir, 'options.txt'), 'latin1') : '';
@@ -585,13 +625,9 @@ async function main() {
   if (!fs.existsSync(`${profilesFile}.bak`)) failures.push('sauvegarde .bak absente');
 
   const status = await installer.status({ minecraftDir, gameDir, profile, shaders: cycle ? true : shaders, replayMod: replay });
-  // OptiFine actif + mod ATTACK plus ancien que la version minimale de la spec (le jar factice 0.0.0, un build antérieur à la 1.1.0) :
-  // status() demande la mise à jour du mod. C'est le comportement voulu, pas un échec : tout le reste doit être en place.
-  const restReady = status.minecraft && status.loader && status.pack !== false && status.mod && status.profile && !status.optifine?.pending;
-  if (!status.installed && status.optifine?.modOutdated && restReady) {
-    extra.push(`status : mod ${status.modVersion || '?'} plus ancien que ${status.optifine.minMod} avec OptiFine actif, mise à jour du mod demandée (attendu)`);
-  } else if (!status.installed) failures.push(`status() incomplet : ${JSON.stringify(status)}`);
-  else if (status.optifine?.modOutdated) failures.push('status() : modOutdated alors que installed est vrai');
+  const verdict = judgeStatus({ status, dummy });
+  if (verdict.note) extra.push(verdict.note);
+  if (verdict.failure) failures.push(verdict.failure);
 
   console.log(`Vérifié : client.jar, ${vanillaLibs.length} fichiers de bibliothèques Mojang, ${objects.length} assets, ` +
     `${extra.join(', ')}, mod ${profile.modFile} (${summary.mod.source} ${summary.mod.version}${dummy ? ', JAR FACTICE' : ''}, ` +
@@ -612,5 +648,5 @@ if (require.main === module) {
 
 module.exports = {
   gameDirFor, makeDummyFabricJar, makeDummyForgeJar, makeDummyJar, allowsDummyJar, dummyModClass, forgeLibraryExpectations, verifyForgeLibraries, expectedSha256, fetchTagJar,
-  parseArgs, isInside, checkOptifineArgs, optifineCycle,
+  parseArgs, isInside, checkOptifineArgs, optifineCycle, judgeStatus, noCycleMessage,
 };
