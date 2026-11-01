@@ -103,20 +103,42 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     assert.ok(entry.date === '' || /^\d{4}-\d{2}-\d{2}$/.test(entry.date), `${entry.version} : date`);
   }
   assert.equal(new Set(data.CHANGELOG.map((e) => e.version)).size, data.CHANGELOG.length, 'versions uniques');
+  // 0.8.0 : le profil 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.0.0 qu'il installe (même date), puis de la 0.7.0
+  assert.equal(data.CHANGELOG[0].tag, 'new');
+  assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 3), (e) => e.version), ['Launcher 0.8.0', 'ATTACK Client 1.7.10 1.0.0', 'Launcher 0.7.0']);
+  for (const lang of ['fr', 'en']) assert.match(data.CHANGELOG[0][lang], /1\.7\.10/, `0.8.0 (${lang}) : le profil 1.7.10`);
+  // le mod 1.7.10 a toutes les fonctions du mod 1.8.9 sauf OptiFine : ni « lite » ni « sélection de modules »
+  for (const lang of ['fr', 'en']) {
+    assert.match(data.CHANGELOG[0][lang], /1\.8\.9/, `0.8.0 (${lang}) : le contenu du mod 1.8.9`);
+    assert.match(data.CHANGELOG[0][lang], /OptiFine/, `0.8.0 (${lang}) : sauf OptiFine`);
+    assert.equal(/\blite\b|sélection|selection of/i.test(data.CHANGELOG[0][lang]), false, `0.8.0 (${lang}) : plus de version « lite »`);
+  }
+  const mod = data.CHANGELOG[1];
+  assert.deepEqual([mod.date, mod.tag, mod.date === data.CHANGELOG[0].date], ['2026-10-31', 'new', true]);
+  for (const lang of ['fr', 'en']) {
+    const text = mod[lang];
+    for (const needle of ['1.7.10', '1.8.9', 'OptiFine', '61', '37', 'Minimap', 'Waypoints', 'Titles', 'Mouse Delay Fix', 'Perspective']) assert.ok(text.includes(needle), `mod 1.7.10 (${lang}) : ${needle}`);
+    assert.match(text, lang === 'fr' ? /Amis/ : /Friends/);
+    assert.match(text, /\b9 (ailes|wings)/);
+    assert.match(text, /6 (auréoles|halos)/);
+    assert.match(text, /6 (effets|effects)/);
+    assert.equal(/\blite\b|sélection|selection of/i.test(text), false, `mod 1.7.10 (${lang}) : pas de « lite »`);
+  }
   // les deux versions d'ATTACK Client livrées avec le launcher 0.7.0 suivent son entrée : Fabric (3.6.0) d'abord, puis la 1.8.9 (2.7.0), même date
-  assert.deepEqual(Array.from(data.CHANGELOG.slice(1, 3), (e) => [e.version, e.date, e.tag]), [
-    ['ATTACK Client 3.6.0', data.CHANGELOG[0].date, 'new'],
-    ['ATTACK Client 2.7.0', data.CHANGELOG[0].date, 'new'],
+  const from070 = data.CHANGELOG.findIndex((e) => e.version === 'Launcher 0.7.0');
+  assert.deepEqual(Array.from(data.CHANGELOG.slice(from070 + 1, from070 + 3), (e) => [e.version, e.date, e.tag]), [
+    ['ATTACK Client 3.6.0', data.CHANGELOG[from070].date, 'new'],
+    ['ATTACK Client 2.7.0', data.CHANGELOG[from070].date, 'new'],
   ]);
   // la page découpe chaque texte en puces (une phrase chacune) : aucun texte n'est un bloc unique
-  for (const entry of data.CHANGELOG.slice(1, 3)) {
+  for (const entry of data.CHANGELOG.slice(0, 2).concat(data.CHANGELOG.slice(from070 + 1, from070 + 3))) {
     for (const lang of ['fr', 'en']) assert.ok(entry[lang].split(/(?<=[.!?])\s+(?=[A-ZÉÈÀ«“"(])/).length >= 3, `${entry.version} (${lang}) : plusieurs phrases`);
   }
 });
 
 test('vitrine : chaque mod des packs figés a sa fiche (icône, catégorie, textes) et chaque licence son nom lisible', () => {
   const categories = new Set(data.CATEGORIES.map((c) => c.id));
-  for (const profile of catalog.list()) {
+  for (const profile of catalog.list().filter(catalog.hasPack)) {
     for (const mod of modpack.loadPack(profile).mods) {
       const info = data.PACK_INFO[mod.slug];
       assert.ok(info, `${profile.id} : fiche de ${mod.slug}`);
@@ -225,4 +247,79 @@ test('« Pourquoi ? » : trois raisons (licence, vérification locale, profils 1
     }
   }
   i18n.setLang('fr');
+});
+
+test('profil 1.7.10 : tous les modules de la page Mods sauf Mouse Delay Fix et Titles (liste d’exclusion, jamais une liste « lite » à garder)', () => {
+  const own = data.MODULES_BY_PROFILE['forge-1.7.10'];
+  const known = new Set(data.MODS.map((m) => m.name));
+  // le mod 1.7.10 reprend tout le contenu du mod 1.8.9 sauf OptiFine : l'entrée ne porte qu'`exclude` et `overrides`, aucune liste de modules retenus
+  assert.deepEqual(Object.keys(own).sort(), ['exclude', 'overrides'], 'ni `names` ni autre liste de modules à garder');
+  assert.equal(own.names, undefined, 'plus de liste « lite »');
+  // deux modules seulement : Mouse Delay Fix (sans objet, natif en 1.7.10) et Titles (impossible en 1.7.10)
+  assert.deepEqual(Array.from(own.exclude), ['Mouse Delay Fix', 'Titles']);
+  assert.deepEqual(Array.from(own.exclude).filter((n) => !known.has(n)), [], 'chaque exclu existe dans MODS');
+  const shown = data.MODS.filter((m) => !own.exclude.includes(m.name)).map((m) => m.name);
+  assert.equal(shown.length, data.MODS.length - 2, 'tout MODS, moins ces deux-là');
+  // les modules interdits en classé, les Amis, la Minimap et les autres de la liste d'avant sont bien présents
+  for (const name of ['No Jump Delay', 'No Hit Delay', 'Perspective', 'Amis', 'Minimap', 'Waypoints', 'Motion Blur', 'FPS Boost', 'Personnalisation', 'Capes ATTACK', 'ToggleSprint',
+    'Hitboxes', 'Enchant Glint', 'Environment Changer', 'Container Blur', 'Color Saturation', 'Tab List', 'Auto Text', 'Boss Bar']) assert.ok(shown.includes(name), name);
+  for (const name of ['Mouse Delay Fix', 'Titles', 'OptiFine']) assert.ok(!shown.includes(name), `${name} n’est pas dans la liste 1.7.10`);
+  // textes propres à ce profil : seulement pour un module qui y est présenté, et là où le texte écrit pour la 1.8.9 y serait faux
+  assert.deepEqual(Object.keys(own.overrides), ['Animations 1.7'], 'seule Animations a un texte à elle (position, style et vitesse du coup ; blocage et pose natifs)');
+  for (const [name, text] of Object.entries(own.overrides)) {
+    assert.ok(shown.includes(name), `${name} : texte propre à ce profil pour un module de sa liste`);
+    assert.ok(text.fr && text.en, `${name} : FR et EN`);
+    assert.notEqual(text.fr, data.MODS.find((m) => m.name === name).fr, `${name} : texte différent de celui de la 1.8.9`);
+  }
+  assert.match(own.overrides['Animations 1.7'].fr, /vitesse du coup/);
+  assert.match(own.overrides['Animations 1.7'].en, /swing/);
+  // les chiffres de la vitrine sont ceux du mod 1.7.10 (37 capes, 9 ailes, 6 auréoles, 6 effets, 22 polices) : aucun autre texte propre
+  const capes = data.MODS.find((m) => m.name === 'Capes ATTACK');
+  assert.match(capes.fr, /37 capes.*9 paires d’ailes, 6 auréoles et 6 effets/);
+  assert.match(data.MODS.find((m) => m.name === 'Personnalisation').fr, /^22 polices/);
+  // le profil 1.8.9 n'a pas d'entrée à lui : il garde tous les modules
+  assert.equal(data.MODULES_BY_PROFILE['forge-1.8.9'], undefined);
+});
+
+test('profil 1.7.10 : plus aucun texte ne parle d’une version « lite » ni de modules absents parce qu’interdits en classé', () => {
+  const lite = /\blite\b|sélection de modules|selection of modules|une partie des modules|part of the modules|interdits en classé|banned in ranked|plus légère|is lighter/i;
+  for (const file of ['data.js', 'app.js']) assert.equal(lite.test(read(file)), false, `${file} : texte « lite » restant`);
+  assert.equal(lite.test(fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'catalog.js'), 'utf8')), false, 'catalog.js : texte « lite » restant');
+  for (const entry of data.CHANGELOG) for (const lang of ['fr', 'en']) assert.equal(lite.test(entry[lang]), false, `${entry.version} (${lang}) : texte « lite »`);
+});
+
+test('profil 1.7.10 : étiquette de carte, textes de profil sans pack et version dans l’aide de mémoire', () => {
+  i18n.setLang('fr');
+  assert.equal(i18n.t('home.tag.forge-1.7.10'), 'PvP 1.7');
+  assert.equal(i18n.t('pc.none'), 'Aucun');
+  assert.equal(i18n.t('settings.ramHelp', { mc: '1.7.10' }), "2 à 3 Go suffisent pour la 1.7.10. Plus n’augmente pas les FPS.");
+  assert.equal(i18n.t('settings.ramHelp', { mc: '1.8.9' }), "2 à 3 Go suffisent pour la 1.8.9. Plus n’augmente pas les FPS.");
+  assert.doesNotMatch(i18n.t('mods.subtitleNoPack', { modules: 18 }), /\b0 mod\b/);
+  assert.match(i18n.t('mods.subtitleNoPack', { modules: 18 }), /18 modules/);
+  assert.match(i18n.t('credits.noPack', { label: '1.7.10' }), /1\.7\.10/);
+  i18n.setLang('en');
+  assert.equal(i18n.t('home.tag.forge-1.7.10'), '1.7 PvP');
+  assert.equal(i18n.t('pc.none'), 'None');
+  assert.equal(i18n.t('settings.ramHelp', { mc: '1.7.10' }), '2 to 3 GB is enough for 1.7.10. More does not raise FPS.');
+  assert.match(i18n.t('mods.subtitleNoPack', { modules: 18 }), /no mod pack/);
+  i18n.setLang('fr');
+  // une étiquette par profil du catalogue, dans les deux langues
+  for (const lang of ['fr', 'en']) {
+    i18n.setLang(lang);
+    for (const profile of catalog.list()) assert.notEqual(i18n.t(`home.tag.${profile.id}`), `home.tag.${profile.id}`, `${lang} : ${profile.id}`);
+  }
+  i18n.setLang('fr');
+});
+
+test('profils : quatre colonnes, le nom du chargeur sous la version, sans débordement (colonne de 484 px, fenêtre minimale de 940 px)', () => {
+  const css = read('styles.css');
+  assert.match(css, /\.profiles \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
+  assert.match(css, /\.profile \{[^}]*min-width: 0;/);
+  assert.match(css, /\.profile \.pv \{ display: flex; flex-direction: column;/);
+  assert.equal(/repeat\(3, 1fr\)/.test(css.slice(css.indexOf('.profiles {'), css.indexOf('.profiles {') + 200)), false);
+  assert.match(css, /\.launch-col \{ width: 484px; max-width: 100%;/);
+  // 940 px de fenêtre : la colonne gauche de l'accueil (940 - 84 de navigation - 282 de rail - 20 d'espace - marges) tient 484 px
+  const main = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'main.js'), 'utf8');
+  assert.match(main, /minWidth: 940/);
+  assert.match(css, /@media \(max-width: 1040px\) \{\s*\.home-grid \{ grid-template-columns: 1fr 282px; gap: 20px; \}/);
 });

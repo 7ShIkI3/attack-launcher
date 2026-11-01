@@ -81,7 +81,8 @@ function profilesView() {
   return catalog.list().map((profile) => {
     let pack = [];
     try {
-      pack = modpack.view(modpack.loadPack(profile));
+      // un profil sans pack (Forge 1.7.10) n'a aucun mod à lister
+      if (catalog.hasPack(profile)) pack = modpack.view(modpack.loadPack(profile));
     } catch {
       pack = [];
     }

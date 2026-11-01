@@ -1,6 +1,6 @@
 'use strict';
-// Installation complète d'un profil : Minecraft (JSON, jar, bibliothèques, assets), son chargeur de mods (Forge 1.8.9 ou
-// Fabric Loader, sans jamais exécuter d'installateur), le pack de mods figé du profil, la copie d'OptiFine du joueur (1.8.9)
+// Installation complète d'un profil : Minecraft (JSON, jar, bibliothèques, assets), son chargeur de mods (Forge 1.8.9 / 1.7.10 ou
+// Fabric Loader, sans jamais exécuter d'installateur), le pack de mods figé du profil (sauf en 1.7.10), la copie d'OptiFine du joueur (1.8.9)
 // et les réglages de départ d'options.txt (vidéo en Fabric, langue partout), le jar
 // ATTACK dans le dossier de jeu séparé du profil, puis le profil du launcher officiel.
 const fs = require('node:fs');
@@ -390,11 +390,39 @@ async function installWalksyLibConfig(gameDir) {
 }
 
 /**
- * Jar ATTACK -> <gameDir>/mods/<profile.modFile>, depuis la release GitHub (jar du profil, choisi par sa règle exacte)
- * ou le build local (mode développeur). `appVersion` : version du launcher ; une préversion (0.5.0-beta.1) prend la
- * dernière release publiée, préversion comprise, au lieu de la dernière release stable.
+ * Jar du profil dans la dernière release GitHub : { version, name, url, size, sha256, sha256Url } (voir mod.parseRelease).
+ * Sans jar pour ce profil : NO_PROFILE_JAR ; sans release : NO_RELEASE ; limite de l'API : GITHUB_RATE_LIMIT.
+ * `appVersion` : version du launcher ; une préversion (0.5.0-beta.1) prend la dernière release publiée, préversion comprise,
+ * au lieu de la dernière release stable.
  */
-async function installMod(gameDir, settings, report, net, profile = catalog.get(), appVersion) {
+async function findReleaseAsset(net, profile, appVersion) {
+  let release;
+  try {
+    release = await mod.fetchRelease(appVersion, (url) => http.fetchJson(url, { ...net, headers: { Accept: 'application/vnd.github+json' } }));
+  } catch (error) {
+    if (error.status === 404 || error.code === 'NO_RELEASE') {
+      throw new InstallError('NO_RELEASE', "Aucune release d'ATTACK Client n'est encore publiée sur GitHub.");
+    }
+    if (error.rateLimited) {
+      const minutes = error.retryAfterMs ? Math.max(1, Math.ceil(error.retryAfterMs / 60000)) : 60;
+      throw new InstallError('GITHUB_RATE_LIMIT', `GitHub limite les requêtes depuis ta connexion : réessaie dans ${minutes} min.`);
+    }
+    throw error;
+  }
+  try {
+    return mod.parseRelease(release, profile);
+  } catch (error) {
+    if (error.code === 'NO_JAR') throw new InstallError('NO_PROFILE_JAR', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Jar ATTACK -> <gameDir>/mods/<profile.modFile>, depuis la release GitHub (jar du profil, choisi par sa règle exacte)
+ * ou le build local (mode développeur). `appVersion` : version du launcher (voir findReleaseAsset). `found` : le jar de la
+ * release déjà trouvé par install() avant le téléchargement de Minecraft ; sans lui, la release est lue ici.
+ */
+async function installMod(gameDir, settings, report, net, profile = catalog.get(), appVersion, found = null) {
   const dest = path.join(gameDir, 'mods', profile.modFile);
   await fsp.mkdir(path.dirname(dest), { recursive: true });
   let info;
@@ -407,26 +435,7 @@ async function installMod(gameDir, settings, report, net, profile = catalog.get(
     info = { source: 'dev', version: mod.versionFromJarName(jar.name, profile), file: jar.file };
   } else {
     report('mod', 0, 1, 'Dernière release GitHub');
-    let release;
-    try {
-      release = await mod.fetchRelease(appVersion, (url) => http.fetchJson(url, { ...net, headers: { Accept: 'application/vnd.github+json' } }));
-    } catch (error) {
-      if (error.status === 404 || error.code === 'NO_RELEASE') {
-        throw new InstallError('NO_RELEASE', "Aucune release d'ATTACK Client n'est encore publiée sur GitHub.");
-      }
-      if (error.rateLimited) {
-        const minutes = error.retryAfterMs ? Math.max(1, Math.ceil(error.retryAfterMs / 60000)) : 60;
-        throw new InstallError('GITHUB_RATE_LIMIT', `GitHub limite les requêtes depuis ta connexion : réessaie dans ${minutes} min.`);
-      }
-      throw error;
-    }
-    let asset;
-    try {
-      asset = mod.parseRelease(release, profile);
-    } catch (error) {
-      if (error.code === 'NO_JAR') throw new InstallError('NO_PROFILE_JAR', error.message);
-      throw error;
-    }
+    const asset = found || await findReleaseAsset(net, profile, appVersion);
     const sha256 = asset.sha256 || mod.sha256For(await http.fetchText(asset.sha256Url, net), asset.name);
     await http.downloadFile(asset.url, dest, { sha256, size: asset.size }, net);
     info = { source: 'release', version: asset.version, file: asset.url, name: asset.name };
@@ -446,14 +455,17 @@ async function installProfile(mcDir, gameDir, settings, icon, report, profile = 
 /**
  * L'état lu dans un dossier de jeu désigne-t-il un autre profil que `profile` ? Un état sans profileId (ancien launcher,
  * installation interrompue) se reconnaît à ses champs : `pack.id` est l'identifiant du profil qui a posé le pack (Forge 1.8.9
- * comme Fabric), `forge` vient du profil 1.8.9 ; un `pack` sans identifiant date d'avant les packs Forge : il vient d'un profil Fabric.
+ * comme Fabric), `forge` est l'identifiant de version Forge du profil 1.8.9 ; un `pack` sans identifiant date d'avant les packs
+ * Forge : il vient d'un profil Fabric.
  */
 function gameDirConflict(state, profile) {
   if (!state || typeof state !== 'object') return false;
   if (typeof state.profileId === 'string') return state.profileId !== profile.id;
   const pack = state.pack && typeof state.pack === 'object' ? state.pack : null;
   if (pack && typeof pack.id === 'string' && pack.id !== '') return pack.id !== profile.id;
-  if (state.forge) return profile.loader.type !== 'forge';
+  // ancien état Forge (le champ `forge` est la version Forge du profil qui l'a écrit) : il y a maintenant deux profils Forge
+  // (1.8.9 et 1.7.10), le type du chargeur ne suffit plus
+  if (state.forge) return state.forge !== profile.loader.versionId;
   if (pack) return !catalog.isFabric(profile);
   return false;
 }
@@ -473,6 +485,14 @@ async function install(options) {
   if (gameDirConflict(await readState(gameDir), profile)) {
     throw new InstallError('GAMEDIR_IN_USE', 'Ce dossier de jeu est déjà utilisé par un autre profil. Choisis un autre dossier dans Réglages.');
   }
+  // Échec rapide : hors mode développeur, le jar du profil est cherché dans la release AVANT de télécharger Minecraft (~180 Mo).
+  // Sans jar pour ce profil (ou sans release), le joueur le sait tout de suite au lieu de l'apprendre à la fin de l'installation.
+  // Le mode développeur n'en a pas besoin : son jar vient du dossier local.
+  let releaseAsset = null;
+  if (!settings.devMode) {
+    report('minecraft', 0, 3, 'Release GitHub (jar du profil)');
+    releaseAsset = await findReleaseAsset(net, profile, options.appVersion);
+  }
   await fsp.mkdir(gameDir, { recursive: true });
 
   const versionJson = await installMinecraft(minecraftDir, report, net, profile.mc);
@@ -491,7 +511,7 @@ async function install(options) {
   const walksylib = packResult?.info.mods.some((m) => m.slug === 'walksylib') ? await installWalksyLibConfig(gameDir) : undefined;
   if (catalog.hasOptifine(profile)) optifineResult = await installOptifine(gameDir, minecraftDir, settings);
   const gameOptions = await installGameOptions(gameDir, profile, settings.lang);
-  const modInfo = await installMod(gameDir, settings, report, net, profile, options.appVersion);
+  const modInfo = await installMod(gameDir, settings, report, net, profile, options.appVersion, releaseAsset);
   await installProfile(minecraftDir, gameDir, settings, icon, report, profile);
 
   const previous = await readState(gameDir);
@@ -616,5 +636,5 @@ async function status({
 
 module.exports = {
   STEPS, STEPS_FORGE, STEPS_FABRIC, stepsFor, InstallError, install, status, progressReporter,
-  installMinecraft, installForge, installFabric, installPack, installGameOptions, installOptifine, installWalksyLibConfig, WALKSYLIB_CONFIG, installMod, readState, gameDirConflict, packOptions,
+  installMinecraft, installForge, installFabric, installPack, installGameOptions, installOptifine, installWalksyLibConfig, WALKSYLIB_CONFIG, installMod, findReleaseAsset, readState, gameDirConflict, packOptions,
 };

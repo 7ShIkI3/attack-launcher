@@ -1,8 +1,9 @@
 'use strict';
 // Source du jar ATTACK : dernière release GitHub (avec SHA-256), ou, en mode développeur, le dernier jar compilé
 // localement. Chaque profil a sa propre règle de nom (catalog.js) : attack-client*.jar pour Forge 1.8.9,
-// attack-fabric-<version>+mc<mc>.jar pour Fabric. Le jar est choisi par cette règle exacte, jamais « le premier
-// qui ressemble » : un jar d'une autre version de Minecraft n'est jamais installé par erreur.
+// attack-forge-<version>+mc1.7.10.jar pour Forge 1.7.10, attack-fabric-<version>+mc<mc>.jar pour Fabric. Le jar est choisi
+// par cette règle exacte, jamais « le premier qui ressemble » : un jar d'une autre version de Minecraft n'est jamais
+// installé par erreur.
 const fs = require('node:fs');
 const path = require('node:path');
 const catalog = require('./catalog');
@@ -59,11 +60,13 @@ function parseRelease(release, profileOrId) {
   const assets = Array.isArray(release?.assets) ? release.assets : [];
   const found = matchingAssets(assets, profile);
   if (found.length === 0) {
-    // un jar attack-fabric* qui ne suit pas la règle (préversion, autre version de Minecraft) est cité pour aider à comprendre
-    const ignored = assets.map((a) => a?.name).filter((n) => typeof n === 'string' && /^attack-fabric/i.test(n) && !/\.sha256$/i.test(n));
-    throw Object.assign(new Error(catalog.isFabric(profile)
-      ? `La dernière release ne contient pas de jar attack-fabric pour Minecraft ${profile.mc}${ignored.length > 0 ? ` (jars attack-fabric ignorés : ${ignored.join(', ')})` : ''}`
-      : 'La dernière release ne contient pas de jar attack-client'), { code: 'NO_JAR' });
+    // un jar de la même famille (attack-fabric*, attack-forge*, attack-client*) qui ne suit pas la règle (préversion, autre
+    // version de Minecraft…) est cité pour aider à comprendre ; le nom attendu vient du `glob` du profil
+    const family = catalog.jarFamily(profile);
+    const ignored = assets.map((a) => a?.name).filter((n) => typeof n === 'string' && n.toLowerCase().startsWith(family) && !/\.sha256$/i.test(n));
+    throw Object.assign(new Error(
+      `La dernière release ne contient pas de jar ${profile.attackJar.glob} pour Minecraft ${profile.mc}${ignored.length > 0 ? ` (jars ${family} ignorés : ${ignored.join(', ')})` : ''}`,
+    ), { code: 'NO_JAR' });
   }
   if (found.length > 1 && profile.attackJar.unique) {
     throw Object.assign(new Error(`La dernière release contient plusieurs jars ATTACK pour Minecraft ${profile.mc} : ${found.map((a) => a.name).join(', ')}`), { code: 'AMBIGUOUS_JAR' });
@@ -94,6 +97,33 @@ function sha256For(text, jarName) {
   const hashed = lines.filter((l) => SHA256.test(l));
   if (hashed.length > 1) throw new Error(`Aucun SHA-256 pour ${jarName} dans le fichier de sommes`);
   return parseSha256File(hashed[0] || '');
+}
+
+/**
+ * Contrôle des noms de jars d'une release (scripts/check-release.js) : quel profil reconnaît quel fichier ?
+ *   byProfile  { identifiant de profil : [noms reconnus] }
+ *   overlaps   les jars reconnus par PLUSIEURS profils (jamais permis : un profil prendrait le jar d'un autre)
+ *   dangerous  les jars qu'une règle accepte sans que le nom ait une version propre (voir catalog.jarRule) :
+ *              attack-client-1710-1.0.0.jar est pris pour le mod 1.8.9 par sa règle large attack-client*.jar
+ *   orphans    les jars qu'aucun profil ne reconnaît (jamais installés)
+ * Les jars -sources, -javadoc, -dev et -deobf sont ignorés, comme à l'installation.
+ */
+function auditJarNames(names) {
+  const profiles = catalog.list().map((profile) => ({ profile, rule: catalog.jarRule(profile) }));
+  const result = { byProfile: {}, overlaps: [], dangerous: [], orphans: [] };
+  for (const { profile } of profiles) result.byProfile[profile.id] = [];
+  const jars = (Array.isArray(names) ? names : []).filter((n) => typeof n === 'string' && /\.jar$/i.test(n) && !EXCLUDED.test(n));
+  for (const name of jars) {
+    const hits = profiles.filter(({ rule }) => rule.matches(name));
+    if (hits.length === 0) result.orphans.push(name);
+    if (hits.length > 1) result.overlaps.push({ name, profiles: hits.map(({ profile }) => profile.id) });
+    for (const { profile, rule } of hits) {
+      result.byProfile[profile.id].push(name);
+      const reason = rule.suspect(name);
+      if (reason) result.dangerous.push({ name, profile: profile.id, reason });
+    }
+  }
+  return result;
 }
 
 /** Dernier jar du profil dans un dossier (le plus récent), ou null. */
@@ -139,4 +169,6 @@ function installedVersion(info) {
   return version ? String(version).replace(/^v(?=\d)/i, '') : null;
 }
 
-module.exports = { parseSha256File, isPrereleaseVersion, fetchRelease, parseRelease, sha256For, findDevJar, versionFromJarName, installedVersion };
+module.exports = {
+  EXCLUDED, parseSha256File, isPrereleaseVersion, fetchRelease, parseRelease, sha256For, auditJarNames, findDevJar, versionFromJarName, installedVersion,
+};

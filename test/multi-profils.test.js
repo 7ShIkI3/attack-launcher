@@ -21,10 +21,16 @@ const GAME_121 = path.join(ENV.APPDATA, '.attack', 'profiles', 'fabric-1.21.1');
 test('réglages par défaut : un dossier de jeu par profil, shaders coupés et mods PvP activés sur Fabric seulement', () => {
   const base = settings.defaults(ENV);
   assert.equal(base.profileId, 'forge-1.8.9');
-  assert.deepEqual(Object.keys(base.profiles), ['forge-1.8.9', 'fabric-1.21.1', 'fabric-26.3']);
+  assert.deepEqual(Object.keys(base.profiles), ['forge-1.8.9', 'fabric-1.21.1', 'fabric-26.3', 'forge-1.7.10']);
   assert.equal(settings.forProfile(base).gameDir, path.join(ENV.APPDATA, '.attack'));
   assert.equal(settings.forProfile(base, 'fabric-1.21.1').gameDir, GAME_121);
   assert.equal(settings.forProfile(base, 'fabric-26.3').gameDir, path.join(ENV.APPDATA, '.attack', 'profiles', 'fabric-26.3'));
+  // profil 1.7.10 : son dossier, son dossier de jars de développement, ni shaders ni mods PvP ni OptiFine
+  const old = base.profiles['forge-1.7.10'];
+  assert.equal(old.gameDir, path.join(ENV.APPDATA, '.attack', 'profiles', 'forge-1.7.10'));
+  assert.equal(old.devJarDir, path.join(require('node:os').homedir(), 'Documents', 'attack-forge-1710', 'build', 'libs'));
+  for (const key of ['shaders', 'pvpMods', 'optifinePacks', 'optifine', 'optifineJar']) assert.equal(key in old, false, key);
+  assert.equal(settings.forProfile(base, 'forge-1.7.10').gameDir, old.gameDir);
   assert.equal('shaders' in base.profiles['forge-1.8.9'], false);
   assert.equal(base.profiles['fabric-1.21.1'].shaders, false);
   assert.equal(settings.forProfile(base).shaders, false);
@@ -32,7 +38,7 @@ test('réglages par défaut : un dossier de jeu par profil, shaders coupés et m
   assert.equal('optifinePacks' in base.profiles['forge-1.8.9'], false, 'packs OptiFine : Fabric seulement');
   assert.equal(base.profiles['fabric-1.21.1'].optifinePacks, true);
   assert.equal(base.profiles['fabric-26.3'].optifinePacks, true);
-  assert.deepEqual(Object.keys(base.profiles).map((id) => base.profiles[id].replayMod), [false, false, false], 'Replay Mod : coupé partout');
+  assert.deepEqual(Object.keys(base.profiles).map((id) => base.profiles[id].replayMod), [false, false, false, false], 'Replay Mod : coupé partout');
   assert.equal(base.profiles['fabric-1.21.1'].pvpMods, true);
   assert.equal(base.profiles['fabric-26.3'].pvpMods, true);
   assert.equal(settings.forProfile(base, 'fabric-1.21.1').pvpMods, true);
@@ -213,7 +219,10 @@ test('profils du launcher officiel : un profil par version, chacun avec son id, 
   });
   let data = { profiles: { autre: { name: 'Autre', type: 'custom' } }, settings: { keepLauncherOpen: true }, version: 3 };
   for (const profile of catalog.list()) data = profiles.mergeProfile(data, options(profile));
-  assert.deepEqual(Object.keys(data.profiles), ['autre', 'attack-client', 'attack-fabric-1.21.1', 'attack-fabric-26.3']);
+  assert.deepEqual(Object.keys(data.profiles), ['autre', 'attack-client', 'attack-fabric-1.21.1', 'attack-fabric-26.3', 'attack-forge-1.7.10']);
+  assert.equal(data.profiles['attack-forge-1.7.10'].name, 'ATTACK 1.7.10');
+  assert.equal(data.profiles['attack-forge-1.7.10'].lastVersionId, '1.7.10-Forge10.13.4.1614-1.7.10');
+  assert.equal(data.profiles['attack-forge-1.7.10'].gameDir, 'C:\\jeu\\forge-1.7.10');
   assert.equal(data.profiles.autre.name, 'Autre');
   assert.equal(data.profiles['attack-client'].name, 'ATTACK Client');
   assert.equal(data.profiles['attack-client'].lastVersionId, '1.8.9-forge1.8.9-11.15.1.2318-1.8.9');

@@ -255,18 +255,19 @@ input[type='text']:focus-visible { outline: 2px solid var(--accent); outline-off
 .hero-title span { color: var(--accent); }
 .hero-sub { margin-top: 8px; color: var(--muted); letter-spacing: 0.04em; font-size: var(--fs-base); }
 .launch-col { width: 484px; max-width: 100%; display: flex; flex-direction: column; align-items: stretch; }
-/* trois cartes de profil, avec une phrase qui aide à choisir ; la sélection est teintée, JOUER reste le seul aplat rouge */
-.profiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+/* quatre cartes de profil, avec une phrase qui aide à choisir ; la sélection est teintée, JOUER reste le seul aplat rouge.
+   La colonne fait 484 px au plus : chaque carte ~110 px, d'où le nom du chargeur sous la version */
+.profiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
 .profile {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 10px 14px 11px; border-radius: var(--r-md);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 10px 12px 11px; border-radius: var(--r-md); min-width: 0;
   border: 1px solid var(--border); background: var(--card); text-align: left; transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 .profile:disabled { cursor: default; }
 .profile:disabled:not(.active) { background: transparent; }
-.profile .pv { display: flex; align-items: baseline; gap: 8px; width: 100%; }
+.profile .pv { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; }
 .profile .pv b { font-family: 'Montserrat'; font-size: var(--fs-xl); letter-spacing: 0.01em; }
-.profile .pv em { font-style: normal; font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-left: auto; }
-.profile .ps { font-size: var(--fs-sm); color: var(--muted); }
+.profile .pv em { font-style: normal; font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.profile .ps { font-size: var(--fs-sm); line-height: 1.25; color: var(--muted); }
 .profile:hover:not(:disabled) { background: var(--card-hover); border-color: var(--border-strong); }
 .profile.active {
   background: linear-gradient(180deg, rgba(229, 57, 53, 0.20), rgba(229, 57, 53, 0.07)); border-color: var(--accent-line);

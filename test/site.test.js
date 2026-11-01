@@ -493,10 +493,14 @@ test('actualités : les 3 entrées les plus récentes du CHANGELOG, dans la lang
   const en = await miniPage('{{html.news}}', {}, 'en/index.html');
   assert.equal(fr.match(/<article class="news-item">/g).length, 3);
   assert.equal(en.match(/<article class="news-item">/g).length, 3);
+  assert.ok(fr.includes('Launcher 0.8.0') && fr.includes('Le profil 1.7.10') && fr.includes('31 octobre 2026'));
   assert.ok(fr.includes('Launcher 0.7.0') && fr.includes('Assistant OptiFine, interface soignée') && fr.includes('30 octobre 2026'));
-  assert.ok(fr.includes('ATTACK Client 3.6.0') && fr.includes('ATTACK Client 2.7.0'), 'les deux versions du client livrées avec le launcher');
-  assert.ok(en.includes('OptiFine assistant, refined interface') && en.includes('October 30, 2026'));
-  assert.ok(fr.includes('datetime="2026-10-30"') && fr.includes('class="news-tag news-tag-new"'));
+  assert.ok(fr.includes('ATTACK Client 1.7.10 1.0.0') && fr.includes('Le mod ATTACK arrive en 1.7.10'), 'le mod 1.7.10 livré avec le launcher 0.8.0 est la deuxième entrée');
+  assert.ok(!fr.includes('ATTACK Client 3.6.0'), 'les versions du client livrées avec le launcher précédent sortent des 3 plus récentes');
+  assert.ok(en.includes('The 1.7.10 profile') && en.includes('October 31, 2026') && en.includes('OptiFine assistant, refined interface'));
+  assert.ok(en.includes('ATTACK Client 1.7.10 1.0.0') && en.includes('The ATTACK mod comes to 1.7.10'));
+  assert.ok(!/lite/i.test(fr) && !/lite/i.test(en), 'plus de version « lite »');
+  assert.ok(fr.includes('datetime="2026-10-31"') && fr.includes('class="news-tag news-tag-new"'));
 });
 
 test('logos : SVG décoratif, identifiants de dégradés uniques par occurrence', async () => {
@@ -1283,4 +1287,59 @@ test('captures : plus de recadrage CSS, et la commande site:images exige --sourc
   const account = { origin: 'sources/launcher-account-fr.png', widths: images.LAUNCHER_WIDTHS, cropHeight: images.KEYS['launcher-account'].cropHeight };
   assert.throws(() => images.checkSource(account, { width: 1120, height: 617 }), /moins que la coupe prévue \(618 px\)/);
   assert.doesNotThrow(() => images.checkSource(account, { width: 1120, height: 618 }));
+});
+
+test('profil 1.7.10 : le mod a tout le contenu du mod 1.8.9 sauf OptiFine, plus de « lite » ni de modules interdits en classé absents, l’avertissement Snap Tap reste', { skip: NEED_SRC }, async () => {
+  const result = await generated();
+  for (const [file, lang] of [['index.html', 'fr'], ['en/index.html', 'en']]) {
+    const html = result.read(file);
+    const last = html.slice(html.indexOf('id="profiles"'), html.indexOf('id="client"'));
+    const card = last.slice(last.lastIndexOf('<article class="card profile">'));
+    assert.ok(card.includes(lang === 'fr' ? 'tout le contenu du mod 1.8.9' : 'all the content of the 1.8.9 mod'), `${lang} : la carte 1.7.10 dit qu’elle a tout le mod 1.8.9`);
+    assert.ok(card.includes('61 modules') && card.includes('Minimap'), `${lang} : 61 modules, dont la Minimap`);
+    assert.ok(card.includes(lang === 'fr' ? 'pas d’OptiFine' : 'no OptiFine'), `${lang} : pas d’OptiFine`);
+    assert.ok(!/lite|classé|ranked|une partie des modules|part of the modules|plus légère|lighter/i.test(html), `${lang} : plus de « lite » ni de modules interdits en classé absents`);
+    const client = html.slice(html.indexOf('id="client"'));
+    assert.ok(client.includes('Titles') && client.includes('Mouse Delay Fix'), `${lang} : les deux seuls modules qui n’existent pas en 1.7.10`);
+    // l'avertissement Snap Tap vaut aussi pour la 1.7.10, et la mise en garde sur No Jump Delay / No Hit Delay la cite
+    assert.ok(client.includes('Snap Tap') && client.includes(lang === 'fr' ? 'coupé par défaut' : 'off by default'), `${lang} : avertissement Snap Tap`);
+    assert.ok(client.includes(lang === 'fr' ? 'En 1.8.9 et en 1.7.10' : 'On 1.8.9 and on 1.7.10'), `${lang} : No Jump Delay et No Hit Delay actifs par défaut aussi en 1.7.10`);
+  }
+});
+
+test('FAQ « mods PvP autorisés ? » et README : No Jump Delay / No Hit Delay actifs par défaut en 1.8.9 ET en 1.7.10, jamais « le mod 1.7.10 n’en a aucun »', { skip: NEED_SRC }, async () => {
+  const result = await generated();
+  for (const [file, lang] of [['index.html', 'fr'], ['en/index.html', 'en']]) {
+    const html = result.read(file);
+    const faq = html.slice(html.indexOf('id="faq"'));
+    const answer = faq.slice(faq.indexOf('No Jump Delay') - 200, faq.indexOf('Perspective') + 200);
+    assert.ok(answer.includes('No Hit Delay'), `${lang} : la réponse de la FAQ sur les mods PvP cite No Jump Delay et No Hit Delay`);
+    assert.ok(answer.includes(lang === 'fr' ? 'En 1.8.9 et en 1.7.10,' : 'On 1.8.9 and on 1.7.10,'), `${lang} : la FAQ dit que ces deux modules sont actifs par défaut aussi en 1.7.10`);
+    // le mod 1.7.10 a No Jump Delay, No Hit Delay et Perspective : aucune page ne dit le contraire
+    assert.ok(!/aucun de ces|n’a aucun|none of these|has none/i.test(html), `${lang} : aucune phrase ne dit que le mod 1.7.10 n’a pas ces modules`);
+  }
+  const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8').replace(/\s+/g, ' ');
+  assert.ok(readme.includes('En 1.8.9 et en 1.7.10, **Saut sans délai** (No Jump Delay) et **Coups sans délai** (No Hit Delay) sont actifs par défaut'), 'README : même avertissement que le site');
+  assert.ok(!readme.includes('En 1.8.9, **Saut sans délai**'), 'README : plus de « En 1.8.9 » seul devant Saut sans délai');
+});
+
+test('profils : quatre cartes dont la 1.7.10 (Forge 10.13.4.1614, Java 8, son dossier), les textes ne parlent plus de trois profils', { skip: NEED_SRC }, async () => {
+  const result = await generated();
+  for (const [file, lang] of [['index.html', 'fr'], ['en/index.html', 'en']]) {
+    const html = result.read(file);
+    const section = html.slice(html.indexOf('id="profiles"'), html.indexOf('id="client"'));
+    const cards = section.match(/<article class="card profile">/g) || [];
+    assert.equal(cards.length, 4, `${lang} : quatre cartes de profil`);
+    assert.match(section, /<div class="grid grid-4">/, `${lang} : grille à 4 colonnes`);
+    const titles = [...section.matchAll(/<div class="profile-head"><h3>([^<]+)<\/h3><span class="badge">([A-Z]+)<\/span>/g)].map((m) => [m[1], m[2]]);
+    assert.deepEqual(titles, [['1.8.9', 'FORGE'], ['1.21.1', 'FABRIC'], ['26.3', 'FABRIC'], ['1.7.10', 'FORGE']], `${lang} : versions et chargeurs`);
+    const last = section.slice(section.lastIndexOf('<article class="card profile">'));
+    assert.ok(last.includes('Forge 10.13.4.1614') && last.includes('<dd>8</dd>'), `${lang} : chargeur et Java de la 1.7.10`);
+    assert.ok(last.includes('profiles\\<wbr>forge-1.7.10'), `${lang} : dossier de jeu de la 1.7.10`);
+    assert.ok(last.includes(lang === 'fr' ? 'PvP 1.7' : '1.7 PvP'), `${lang} : étiquette de la carte`);
+    assert.ok(!/Trois profils|Three independent profiles|garder les trois|keep all three/.test(html), `${lang} : plus de « trois profils »`);
+    assert.ok(html.includes(lang === 'fr' ? 'Quatre profils' : 'Four independent profiles'), `${lang} : titre de la section`);
+    assert.ok(html.includes('1.7.10, 1.8.9, 1.21.1'), `${lang} : titre et description citent la 1.7.10`);
+    assert.ok(html.includes(lang === 'fr' ? 'sauf en 1.7.10' : 'except on 1.7.10'), `${lang} : le pack de mods n’existe pas en 1.7.10`);
+  }
 });

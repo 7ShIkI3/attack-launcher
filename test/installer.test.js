@@ -9,8 +9,10 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const http = require('node:http');
 const path = require('node:path');
-const { tempDir } = require('./helpers');
+const { tempDir, makeZip } = require('./helpers');
+const C = require('../src/main/constants');
 const catalog = require('../src/main/catalog');
+const forge = require('../src/main/forge');
 const installer = require('../src/main/installer');
 const mod = require('../src/main/mod');
 const { mavenPath } = require('../src/main/maven');
@@ -205,6 +207,19 @@ test('dossier de jeu : l’état d’un autre profil (profileId, ancien champ fo
   assert.equal(conflict({ pack: { id: 'fabric-1.21.1', managed: [] } }, forge), true);
   assert.equal(conflict({ pack: { managed: [] } }, f121), false, 'pack sans identifiant : on ne peut pas dire à qui il est');
   assert.equal(conflict({ pack: { managed: [] } }, forge), true);
+
+  // deux profils Forge : le type du chargeur ne suffit plus, l'identifiant de version Forge de l'ancien état décide
+  const old = catalog.get('forge-1.7.10');
+  assert.equal(conflict({ profileId: 'forge-1.7.10', forge: old.loader.versionId }, old), false);
+  assert.equal(conflict({ profileId: 'forge-1.7.10', forge: old.loader.versionId }, forge), true);
+  assert.equal(conflict({ profileId: 'forge-1.8.9', forge: forge.loader.versionId }, old), true);
+  assert.equal(conflict({ profileId: 'fabric-26.3' }, old), true);
+  assert.equal(conflict({ minecraft: '1.8.9', forge: forge.loader.versionId, mod: {} }, old), true, 'ancien état Forge 1.8.9 sans profileId : pas pour la 1.7.10');
+  assert.equal(conflict({ minecraft: '1.7.10', forge: old.loader.versionId, mod: {} }, old), false);
+  assert.equal(conflict({ minecraft: '1.7.10', forge: old.loader.versionId, mod: {} }, forge), true);
+  assert.equal(conflict({ pack: { id: 'forge-1.8.9', managed: [] } }, old), true, 'le pack de la 1.8.9 n’est pas celui de la 1.7.10');
+  assert.equal(conflict({ pack: { id: 'fabric-1.21.1', managed: [] } }, old), true);
+  assert.equal(conflict({ pack: { managed: [] } }, old), true, 'pack sans identifiant : celui d’un profil Fabric, jamais de la 1.7.10');
 });
 
 test('install : dossier de jeu déjà utilisé par un autre profil = GAMEDIR_IN_USE avant tout téléchargement, dossier intact', async () => {
@@ -214,6 +229,10 @@ test('install : dossier de jeu déjà utilisé par un autre profil = GAMEDIR_IN_
     ['Fabric déjà installé, on installe Forge', { profileId: 'fabric-26.3' }, 'forge-1.8.9'],
     ['ancien état Forge sans profileId, on installe Fabric', { minecraft: '1.8.9', forge: '1.8.9-forge', mod: {} }, 'fabric-1.21.1'],
     ['ancien état Fabric sans profileId, on installe Forge', { pack: { id: 'fabric-1.21.1', managed: ['sodium.jar'] } }, 'forge-1.8.9'],
+    ['Forge 1.8.9 déjà installé, on installe la 1.7.10', { profileId: 'forge-1.8.9', forge: catalog.get('forge-1.8.9').loader.versionId }, 'forge-1.7.10'],
+    ['1.7.10 déjà installée, on installe la 1.8.9', { profileId: 'forge-1.7.10', forge: catalog.get('forge-1.7.10').loader.versionId }, 'forge-1.8.9'],
+    ['ancien état Forge 1.8.9 sans profileId, on installe la 1.7.10', { minecraft: '1.8.9', forge: catalog.get('forge-1.8.9').loader.versionId, mod: {} }, 'forge-1.7.10'],
+    ['Fabric déjà installé, on installe la 1.7.10', { profileId: 'fabric-1.21.1' }, 'forge-1.7.10'],
   ];
   for (const [label, state, profileId] of states) {
     const gameDir = tempDir();
@@ -232,8 +251,14 @@ test('install : dossier de jeu déjà utilisé par un autre profil = GAMEDIR_IN_
 });
 
 test('install : le même profil, ou un dossier neuf, n’est pas bloqué par le contrôle du dossier de jeu', async () => {
-  // le faux serveur ne connaît pas le manifeste Mojang : l'installation échoue plus loin (HTTP 404), jamais en GAMEDIR_IN_USE
-  for (const [state, profileId] of [[null, 'fabric-26.3'], [{ profileId: 'fabric-26.3' }, 'fabric-26.3'], [{ forge: '1.8.9-forge' }, 'forge-1.8.9']]) {
+  // la release a le jar de chaque profil, mais le faux serveur ne connaît pas le manifeste Mojang : l'installation échoue plus loin
+  // (HTTP 404), jamais en GAMEDIR_IN_USE ni en NO_PROFILE_JAR
+  const forgeId = catalog.get('forge-1.8.9').loader.versionId;
+  for (const [state, profileId] of [
+    [null, 'fabric-26.3'], [{ profileId: 'fabric-26.3' }, 'fabric-26.3'], [{ forge: forgeId }, 'forge-1.8.9'],
+    [null, 'forge-1.7.10'], [{ profileId: 'forge-1.7.10', forge: catalog.get('forge-1.7.10').loader.versionId }, 'forge-1.7.10'],
+  ]) {
+    routes.set(RELEASE_URL, releaseJson());
     const gameDir = tempDir();
     if (state) fs.writeFileSync(path.join(gameDir, 'attack-launcher.json'), JSON.stringify(state));
     await assert.rejects(installer.install({ minecraftDir: tempDir(), settings: { gameDir }, profile: profileId }), (error) => error.code !== 'GAMEDIR_IN_USE' && /HTTP 404/.test(error.message));
@@ -247,6 +272,18 @@ test('install : le même profil, ou un dossier neuf, n’est pas bloqué par le 
 
 const RELEASE_URL = 'https://api.github.com/repos/7ShIkI3/attack-launcher/releases/latest';
 const asset = (name, extra = {}) => ({ name, size: 1, browser_download_url: `https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.0/${name}`, ...extra });
+/** Le jar de chaque profil dans une release, avec le nom que sa règle exige. */
+const JAR_NAMES = {
+  'forge-1.8.9': 'attack-client-2.7.0.jar',
+  'fabric-1.21.1': 'attack-fabric-3.6.0+mc1.21.1.jar',
+  'fabric-26.3': 'attack-fabric-3.6.0+mc26.3.jar',
+  'forge-1.7.10': 'attack-forge-1.0.0+mc1.7.10.jar',
+};
+/** Réponse de l'API GitHub : la release avec le jar des profils demandés (tous par défaut). */
+const releaseJson = (ids = Object.keys(JAR_NAMES)) => JSON.stringify({
+  tag_name: 'v0.8.0',
+  assets: ids.map((id) => asset(JAR_NAMES[id], { digest: `sha256:${hash('sha256', `jar ${id}`)}`, size: `jar ${id}`.length })),
+});
 
 test('release GitHub : le jar Fabric du profil est téléchargé et vérifié (SHA-256), celui de l’autre version est ignoré', async () => {
   const jar121 = Buffer.from('attack fabric 1.21.1');
@@ -381,6 +418,205 @@ test('mode développeur : le jar du dossier du profil, jamais celui d’un autre
     (error) => error.code === 'NO_DEV_JAR' && /attack-fabric-\*\+mc26\.3\.jar/.test(error.message));
   fs.rmSync(dir, { recursive: true, force: true });
   fs.rmSync(jars, { recursive: true, force: true });
+});
+
+// ---------- profil Forge 1.7.10 : installation factice et échec rapide ----------
+
+/**
+ * Monde factice pour installer le profil 1.7.10 de bout en bout, sans réseau : manifeste Mojang, version 1.7.10 réduite à une
+ * bibliothèque et un asset, installateur Forge fabriqué avec le VRAI install_profile.json de Forge 1.7.10-10.13.4.1614 (fixture,
+ * telle quelle) dont les checksums sont recalculés pour les faux jars (comme fabricWorld), et release GitHub avec le jar du profil.
+ */
+function forge1710World() {
+  const profile = catalog.get('forge-1.7.10');
+  const forgeProfile = fixture('forge-1.7.10-install_profile.json');
+  const universal = Buffer.from('faux jar universal de Forge 1.7.10 '.repeat(20));
+  const libraries = new Map();
+  for (const lib of forgeProfile.versionInfo.libraries) {
+    if (lib.name === forgeProfile.install.path) continue;
+    const body = Buffer.from(`faux jar ${lib.name}`);
+    libraries.set(lib.name, body);
+    // le vrai profil donne un ou deux SHA-1 (jar et pack.xz) ; on garde le même nombre, un seul est celui du faux jar
+    if (lib.checksums) lib.checksums = lib.checksums.map((_, i, all) => (i === all.length - 1 ? hash('sha1', body) : 'f'.repeat(40)));
+  }
+  const installerJar = makeZip({ 'META-INF/MANIFEST.MF': 'Manifest-Version: 1.0\n', 'install_profile.json': JSON.stringify(forgeProfile), [forgeProfile.install.filePath]: universal });
+  const installerUrl = forge.installerUrl(profile);
+  routes.set(installerUrl, installerJar);
+  routes.set(`${installerUrl}.sha1`, hash('sha1', installerJar));
+  for (const lib of forge.clientLibraries(forgeProfile.versionInfo)) {
+    const plan = forge.libraryPlan(lib, forgeProfile.install.path);
+    if (plan.forge) continue;
+    routes.set(plan.url, libraries.get(lib.name));
+    if (plan.sha1s.length === 0) routes.set(`${plan.url}.sha1`, hash('sha1', libraries.get(lib.name))); // sans checksum : le .sha1 du serveur Maven
+  }
+
+  const clientJar = Buffer.from('faux jar client 1.7.10');
+  const lwjgl = Buffer.from('faux lwjgl 2.9.1');
+  const assetBody = Buffer.from('faux asset');
+  const assetIndex = JSON.stringify({ objects: { 'icons/icon_16x16.png': { hash: hash('sha1', assetBody), size: assetBody.length } } });
+  const versionJson = JSON.stringify({
+    id: '1.7.10',
+    type: 'release',
+    assets: '1.7.10',
+    mainClass: 'net.minecraft.client.main.Main',
+    minecraftArguments: '--username ${auth_player_name} --version ${version_name} --gameDir ${game_directory}',
+    assetIndex: { id: '1.7.10', url: 'https://piston-meta.mojang.com/v1/packages/aaa/1.7.10.json', sha1: hash('sha1', assetIndex), size: assetIndex.length },
+    downloads: { client: { url: 'https://launcher.mojang.com/v1/objects/bbb/client.jar', sha1: hash('sha1', clientJar), size: clientJar.length } },
+    libraries: [{
+      name: 'org.lwjgl.lwjgl:lwjgl:2.9.1',
+      downloads: { artifact: { path: 'org/lwjgl/lwjgl/lwjgl/2.9.1/lwjgl-2.9.1.jar', url: 'https://libraries.minecraft.net/org/lwjgl/lwjgl/lwjgl/2.9.1/lwjgl-2.9.1.jar', sha1: hash('sha1', lwjgl), size: lwjgl.length } },
+    }],
+  });
+  routes.set(C.VERSION_MANIFEST_URL, JSON.stringify({ versions: [{ id: '1.7.10', type: 'release', url: 'https://piston-meta.mojang.com/v1/packages/ccc/1.7.10.json', sha1: hash('sha1', versionJson) }] }));
+  routes.set('https://piston-meta.mojang.com/v1/packages/ccc/1.7.10.json', versionJson);
+  routes.set('https://piston-meta.mojang.com/v1/packages/aaa/1.7.10.json', assetIndex);
+  routes.set('https://launcher.mojang.com/v1/objects/bbb/client.jar', clientJar);
+  routes.set('https://libraries.minecraft.net/org/lwjgl/lwjgl/lwjgl/2.9.1/lwjgl-2.9.1.jar', lwjgl);
+  routes.set(`${C.RESOURCES_URL}${hash('sha1', assetBody).slice(0, 2)}/${hash('sha1', assetBody)}`, assetBody);
+
+  const jar = Buffer.from('jar forge-1.7.10');
+  routes.set(RELEASE_URL, JSON.stringify({ tag_name: 'v0.8.0', assets: [asset(JAR_NAMES['forge-1.7.10'], { digest: `sha256:${hash('sha256', jar)}`, size: jar.length })] }));
+  routes.set(`https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.0/${JAR_NAMES['forge-1.7.10']}`, jar);
+  return { profile, forgeProfile, universal, libraries, jar, clientJar };
+}
+
+const install1710 = (settings, extra = {}) => installer.install({
+  minecraftDir: extra.minecraftDir, settings: { ramMb: 2048, lang: 'fr', ...settings }, profile: 'forge-1.7.10', icon: 'data:image/png;base64,AAAA', appVersion: '0.8.0',
+});
+
+test('installation factice Forge 1.7.10 : vrai install_profile.json, bibliothèques vérifiées, jar de la release, état sans pack', async () => {
+  const world = forge1710World();
+  const minecraftDir = tempDir();
+  const gameDir = path.join(tempDir(), 'jeu');
+  const progress = [];
+  const result = await installer.install({
+    minecraftDir, settings: { gameDir, ramMb: 2048, lang: 'fr', devMode: false }, profile: 'forge-1.7.10', icon: 'data:image/png;base64,AAAA', appVersion: '0.8.0',
+    onProgress: (p) => progress.push(p),
+  });
+  const id = '1.7.10-Forge10.13.4.1614-1.7.10';
+
+  // JSON de version Forge : celui de l'installateur, avec des bibliothèques au format downloads.artifact et leurs vrais fichiers
+  const written = JSON.parse(fs.readFileSync(path.join(minecraftDir, 'versions', id, `${id}.json`), 'utf8'));
+  assert.equal(written.id, id);
+  assert.equal(written.inheritsFrom, '1.7.10');
+  assert.equal(written.mainClass, 'net.minecraft.launchwrapper.Launch');
+  assert.match(written.minecraftArguments, /--tweakClass cpw\.mods\.fml\.common\.launcher\.FMLTweaker/);
+  assert.equal(written.libraries.length, forge.clientLibraries(world.forgeProfile.versionInfo).length);
+  for (const lib of written.libraries) {
+    const file = path.join(minecraftDir, 'libraries', ...lib.downloads.artifact.path.split('/'));
+    const body = lib.name === world.forgeProfile.install.path ? world.universal : world.libraries.get(lib.name);
+    assert.deepEqual(fs.readFileSync(file), body, lib.name);
+    assert.equal(lib.downloads.artifact.sha1, hash('sha1', body), lib.name);
+  }
+  assert.equal(result.loaderLibraries, written.libraries.length);
+  assert.equal(result.forgeLibraries, written.libraries.length);
+
+  // jar ATTACK de la release, dans le dossier de jeu du profil ; ni pack, ni OptiFine
+  assert.deepEqual(fs.readFileSync(path.join(gameDir, 'mods', 'attack-forge.jar')), world.jar);
+  assert.deepEqual(fs.readdirSync(path.join(gameDir, 'mods')), ['attack-forge.jar']);
+  const state = JSON.parse(fs.readFileSync(path.join(gameDir, 'attack-launcher.json'), 'utf8'));
+  assert.equal(state.profileId, 'forge-1.7.10');
+  assert.equal(state.minecraft, '1.7.10');
+  assert.equal(state.loader, id);
+  assert.equal(state.forge, id);
+  assert.equal(state.mod.source, 'release');
+  assert.equal(state.mod.name, 'attack-forge-1.0.0+mc1.7.10.jar');
+  assert.equal('pack' in state, false);
+  assert.equal(result.pack, undefined);
+  assert.equal(result.optifine, undefined);
+  assert.equal(result.walksylib, undefined);
+  assert.equal(installer.gameDirConflict(state, catalog.get('forge-1.7.10')), false);
+  assert.equal(installer.gameDirConflict(state, catalog.get('forge-1.8.9')), true, 'le dossier de la 1.7.10 n’est pas utilisable par la 1.8.9');
+  assert.match(fs.readFileSync(path.join(gameDir, 'options.txt'), 'latin1'), /^lang:fr_FR$/m);
+
+  // profil du launcher officiel
+  const launcherProfile = JSON.parse(fs.readFileSync(path.join(minecraftDir, 'launcher_profiles.json'), 'utf8')).profiles['attack-forge-1.7.10'];
+  assert.equal(launcherProfile.name, 'ATTACK 1.7.10');
+  assert.equal(launcherProfile.lastVersionId, id);
+  assert.equal(launcherProfile.gameDir, gameDir);
+
+  // état affiché : installé, version du jar lue dans son nom, aucun pack à attendre
+  const status = await installer.status({ minecraftDir, gameDir, profile: 'forge-1.7.10' });
+  assert.equal(status.installed, true);
+  assert.equal(status.profileId, 'forge-1.7.10');
+  assert.equal(status.pack, null);
+  assert.equal(status.packGroups, null);
+  assert.equal(status.forge, true);
+  assert.equal(status.modVersion, '1.0.0');
+  assert.equal(status.optifine, undefined);
+
+  // échec rapide : la release est lue UNE fois, avant tout téléchargement de Minecraft
+  assert.equal(requested[0], RELEASE_URL);
+  assert.equal(requested.filter((u) => u === RELEASE_URL).length, 1);
+  assert.ok(requested.indexOf(RELEASE_URL) < requested.findIndex((u) => u.includes('version_manifest')));
+  assert.ok(!requested.some((u) => /modrinth/.test(u)), 'aucun pack de mods à télécharger');
+  assert.equal(progress[0].step, 'minecraft');
+  assert.ok(progress.every((p) => p.percent <= 100));
+  assert.equal(progress.at(-1).percent, 100);
+  fs.rmSync(minecraftDir, { recursive: true, force: true });
+  fs.rmSync(path.dirname(gameDir), { recursive: true, force: true });
+});
+
+test('échec rapide : sans jar du profil dans la release, NO_PROFILE_JAR arrive avant tout téléchargement de Minecraft', async () => {
+  forge1710World();
+  const minecraftDir = tempDir();
+  const gameDir = tempDir();
+  // la release a les trois autres jars, un jar 1.7.10 en préversion (hors règle) et le nom que Gradle donnerait
+  routes.set(RELEASE_URL, JSON.stringify({
+    tag_name: 'v0.8.0',
+    assets: [
+      ...['forge-1.8.9', 'fabric-1.21.1', 'fabric-26.3'].map((id) => asset(JAR_NAMES[id], { digest: `sha256:${hash('sha256', id)}` })),
+      asset('attack-forge-1.0.0-beta.1+mc1.7.10.jar', { digest: `sha256:${'a'.repeat(64)}` }),
+      asset('attack-client-1710-1.0.0.jar', { digest: `sha256:${'b'.repeat(64)}` }),
+    ],
+  }));
+  requested = [];
+  await assert.rejects(install1710({ gameDir, devMode: false }, { minecraftDir }),
+    (error) => error instanceof installer.InstallError && error.code === 'NO_PROFILE_JAR'
+      && /attack-forge-\*\+mc1\.7\.10\.jar/.test(error.message) && /attack-forge-1\.0\.0-beta\.1\+mc1\.7\.10\.jar/.test(error.message) && !/attack-client/.test(error.message));
+  assert.deepEqual(requested, [RELEASE_URL], 'la release seule a été lue : ni Mojang, ni Forge');
+  assert.deepEqual(fs.readdirSync(minecraftDir), [], 'rien d’écrit dans .minecraft');
+  assert.deepEqual(fs.readdirSync(gameDir), [], 'rien d’écrit dans le dossier de jeu');
+
+  // les autres profils trouvent leur jar dans cette même release : l'échec ne concerne que le profil sans jar
+  for (const id of ['forge-1.8.9', 'fabric-1.21.1', 'fabric-26.3']) {
+    requested = [];
+    // le faux manifeste Mojang ne connaît que la 1.7.10 : ces installations échouent là, donc APRÈS la lecture de la release
+    await assert.rejects(installer.install({ minecraftDir: tempDir(), settings: { gameDir: tempDir() }, profile: id }), /absente du manifeste Mojang/);
+    assert.ok(requested.some((u) => u.includes('version_manifest')), `${id} : l’installation démarre`);
+  }
+
+  // aucune release, ou limite de l'API : même échec rapide, avec le bon code
+  requested = [];
+  routes.delete(RELEASE_URL);
+  await assert.rejects(install1710({ gameDir, devMode: false }, { minecraftDir }), (error) => error.code === 'NO_RELEASE');
+  routes.set(RELEASE_URL, () => new Response('{"message":"API rate limit exceeded"}', { status: 403, headers: { 'x-ratelimit-remaining': '0' } }));
+  await assert.rejects(install1710({ gameDir, devMode: false }, { minecraftDir }), (error) => error.code === 'GITHUB_RATE_LIMIT');
+  assert.ok(requested.every((u) => u === RELEASE_URL), 'toujours avant Minecraft');
+  fs.rmSync(minecraftDir, { recursive: true, force: true });
+  fs.rmSync(gameDir, { recursive: true, force: true });
+});
+
+test('mode développeur : pas de lecture de la release, le jar du dossier local ; un dossier sans jar échoue comme avant', async () => {
+  const world = forge1710World();
+  routes.delete(RELEASE_URL); // la release n'est pas lue : sa disparition ne change rien
+  const jars = tempDir();
+  fs.writeFileSync(path.join(jars, 'attack-forge-0.0.1+mc1.7.10.jar'), 'jar local 1.7.10');
+  fs.writeFileSync(path.join(jars, 'attack-client-1710-1.0.0.jar'), 'mauvais jar');
+  const minecraftDir = tempDir();
+  const gameDir = tempDir();
+  const result = await install1710({ gameDir, devMode: true, devJarDir: jars }, { minecraftDir });
+  assert.equal(fs.readFileSync(path.join(gameDir, 'mods', 'attack-forge.jar'), 'utf8'), 'jar local 1.7.10');
+  assert.equal(result.mod.source, 'dev');
+  assert.equal(result.mod.version, '0.0.1');
+  assert.ok(!requested.includes(RELEASE_URL) && !requested.some((u) => u.includes('api.github.com')), 'mode développeur : GitHub n’est pas contacté');
+  assert.ok(world.libraries.size > 0);
+
+  // dossier sans le bon jar : NO_DEV_JAR (les jars des autres profils ne comptent pas), comme avant
+  const empty = tempDir();
+  fs.writeFileSync(path.join(empty, 'attack-client-2.7.0.jar'), 'jar 1.8.9');
+  await assert.rejects(install1710({ gameDir: tempDir(), devMode: true, devJarDir: empty }, { minecraftDir }), (error) => error.code === 'NO_DEV_JAR');
+  for (const dir of [minecraftDir, gameDir, jars, empty]) fs.rmSync(dir, { recursive: true, force: true });
 });
 
 // ---------- pack de mods et fichier d'état ----------
