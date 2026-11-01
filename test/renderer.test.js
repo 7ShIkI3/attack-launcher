@@ -103,18 +103,32 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     assert.ok(entry.date === '' || /^\d{4}-\d{2}-\d{2}$/.test(entry.date), `${entry.version} : date`);
   }
   assert.equal(new Set(data.CHANGELOG.map((e) => e.version)).size, data.CHANGELOG.length, 'versions uniques');
+  // 0.8.1 : la refonte du design ; son entrée est suivie des deux versions d'ATTACK Client qu'elle livre (même date) :
+  // Fabric (3.7.0) d'abord, puis la 1.8.9 (2.8.0). Le mod 1.7.10 n'a pas changé : il n'a pas d'entrée.
+  assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 4), (e) => [e.version, e.date, e.tag]), [
+    ['Launcher 0.8.1', '2026-11-01', 'new'],
+    ['ATTACK Client 3.7.0', '2026-11-01', 'new'],
+    ['ATTACK Client 2.8.0', '2026-11-01', 'new'],
+    ['Launcher 0.8.0', '2026-10-31', 'new'],
+  ]);
+  for (const lang of ['fr', 'en']) {
+    assert.match(data.CHANGELOG[1][lang], /1\.21\.1 (et|and) 26\.3/, `3.7.0 (${lang}) : les deux versions Fabric`);
+    assert.match(data.CHANGELOG[2][lang], /1\.8\.9/, `2.8.0 (${lang}) : la 1.8.9`);
+    for (const entry of data.CHANGELOG.slice(0, 3)) assert.equal(/1\.7\.10/.test(entry[lang]), false, `${entry.version} (${lang}) : la 1.7.10 n'a pas la refonte`);
+  }
   // 0.8.0 : le profil 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.0.0 qu'il installe (même date), puis de la 0.7.0
-  assert.equal(data.CHANGELOG[0].tag, 'new');
-  assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 3), (e) => e.version), ['Launcher 0.8.0', 'ATTACK Client 1.7.10 1.0.0', 'Launcher 0.7.0']);
-  for (const lang of ['fr', 'en']) assert.match(data.CHANGELOG[0][lang], /1\.7\.10/, `0.8.0 (${lang}) : le profil 1.7.10`);
+  const from080 = data.CHANGELOG.findIndex((e) => e.version === 'Launcher 0.8.0');
+  const v080 = data.CHANGELOG[from080];
+  assert.deepEqual(Array.from(data.CHANGELOG.slice(from080, from080 + 3), (e) => e.version), ['Launcher 0.8.0', 'ATTACK Client 1.7.10 1.0.0', 'Launcher 0.7.0']);
+  for (const lang of ['fr', 'en']) assert.match(v080[lang], /1\.7\.10/, `0.8.0 (${lang}) : le profil 1.7.10`);
   // le mod 1.7.10 a toutes les fonctions du mod 1.8.9 sauf OptiFine : ni « lite » ni « sélection de modules »
   for (const lang of ['fr', 'en']) {
-    assert.match(data.CHANGELOG[0][lang], /1\.8\.9/, `0.8.0 (${lang}) : le contenu du mod 1.8.9`);
-    assert.match(data.CHANGELOG[0][lang], /OptiFine/, `0.8.0 (${lang}) : sauf OptiFine`);
-    assert.equal(/\blite\b|sélection|selection of/i.test(data.CHANGELOG[0][lang]), false, `0.8.0 (${lang}) : plus de version « lite »`);
+    assert.match(v080[lang], /1\.8\.9/, `0.8.0 (${lang}) : le contenu du mod 1.8.9`);
+    assert.match(v080[lang], /OptiFine/, `0.8.0 (${lang}) : sauf OptiFine`);
+    assert.equal(/\blite\b|sélection|selection of/i.test(v080[lang]), false, `0.8.0 (${lang}) : plus de version « lite »`);
   }
-  const mod = data.CHANGELOG[1];
-  assert.deepEqual([mod.date, mod.tag, mod.date === data.CHANGELOG[0].date], ['2026-10-31', 'new', true]);
+  const mod = data.CHANGELOG[from080 + 1];
+  assert.deepEqual([mod.date, mod.tag, mod.date === v080.date], ['2026-10-31', 'new', true]);
   for (const lang of ['fr', 'en']) {
     const text = mod[lang];
     for (const needle of ['1.7.10', '1.8.9', 'OptiFine', '61', '37', 'Minimap', 'Waypoints', 'Titles', 'Mouse Delay Fix', 'Perspective']) assert.ok(text.includes(needle), `mod 1.7.10 (${lang}) : ${needle}`);
@@ -131,7 +145,7 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     ['ATTACK Client 2.7.0', data.CHANGELOG[from070].date, 'new'],
   ]);
   // la page découpe chaque texte en puces (une phrase chacune) : aucun texte n'est un bloc unique
-  for (const entry of data.CHANGELOG.slice(0, 2).concat(data.CHANGELOG.slice(from070 + 1, from070 + 3))) {
+  for (const entry of data.CHANGELOG.slice(0, 3).concat(data.CHANGELOG.slice(from080, from080 + 2), data.CHANGELOG.slice(from070 + 1, from070 + 3))) {
     for (const lang of ['fr', 'en']) assert.ok(entry[lang].split(/(?<=[.!?])\s+(?=[A-ZÉÈÀ«“"(])/).length >= 3, `${entry.version} (${lang}) : plusieurs phrases`);
   }
 });

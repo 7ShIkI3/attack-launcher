@@ -102,6 +102,24 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.8.1', date: '2026-11-01',
+      title_fr: 'Le design ATTACK', title_en: 'The ATTACK design', tag: 'new',
+      fr: 'Le launcher adopte le design ATTACK : fonds graphite teintés de rouge, titres, boutons et chiffres en Barlow Condensed, et coins biseautés. Le bouton JOUER a deux coins coupés, et la carte du profil choisi porte l’entaille rouge ATTACK. Les interrupteurs et les champs sont plus contrastés, et les puces choisies (mémoire, filtres) sont cernées de rouge. Le site a été refait dans le même style, avec des pages Télécharger et Guide en français et en anglais.',
+      en: 'The launcher takes on the ATTACK design: graphite backgrounds tinted with red, titles, buttons and numbers in Barlow Condensed, and bevelled corners. The PLAY button has two cut corners, and the selected profile card carries the red ATTACK notch. Switches and fields have more contrast, and selected chips (memory, filters) are outlined in red. The website was redone in the same style, with Download and Guide pages in French and English.',
+    },
+    {
+      version: 'ATTACK Client 3.7.0', date: '2026-11-01',
+      title_fr: 'Le menu au design ATTACK', title_en: 'The menu in the ATTACK design', tag: 'new',
+      fr: 'En 1.21.1 et 26.3 : le menu ATTACK, l’écran Cosmétiques et l’éditeur de HUD adoptent le design ATTACK. La palette Sombre passe à des fonds graphite teintés de rouge, avec des interrupteurs éteints mieux visibles. Les titres, le logo, les compteurs et les chiffres sont en Barlow Condensed, et le texte garde la police que tu as choisie. Les cartes de module, les boutons principaux, la catégorie active, l’onglet choisi et les vignettes de cosmétiques ont un coin biseauté. Les thèmes Noir, Bleu nuit et Clair restent disponibles.',
+      en: 'On 1.21.1 and 26.3: the ATTACK menu, the Cosmetics screen and the HUD editor take on the ATTACK design. The Dark palette moves to graphite backgrounds tinted with red, with switches that are easier to see when off. Titles, the logo, counters and numbers are in Barlow Condensed, and the text keeps the font you chose. Module cards, main buttons, the active category, the selected tab and cosmetic thumbnails have a bevelled corner. The Black, Midnight Blue and Light themes are still available.',
+    },
+    {
+      version: 'ATTACK Client 2.8.0', date: '2026-11-01',
+      title_fr: 'Le même menu en 1.8.9', title_en: 'The same menu on 1.8.9', tag: 'new',
+      fr: 'En 1.8.9 : le menu ATTACK, l’écran Cosmétiques et l’éditeur de HUD prennent le même design ATTACK qu’en 1.21.1 et 26.3. Fonds graphite teintés de rouge, titres et chiffres en Barlow Condensed, coins biseautés sur les cartes, les boutons et les vignettes. Le texte garde la police que tu as choisie (Segoe UI par défaut). Les thèmes Noir, Bleu nuit et Clair restent disponibles.',
+      en: 'On 1.8.9: the ATTACK menu, the Cosmetics screen and the HUD editor get the same ATTACK design as on 1.21.1 and 26.3. Graphite backgrounds tinted with red, titles and numbers in Barlow Condensed, bevelled corners on cards, buttons and thumbnails. The text keeps the font you chose (Segoe UI by default). The Black, Midnight Blue and Light themes are still available.',
+    },
+    {
       version: 'Launcher 0.8.0', date: '2026-10-31',
       title_fr: 'Le profil 1.7.10', title_en: 'The 1.7.10 profile', tag: 'new',
       fr: 'Un quatrième profil, « 1.7.10 » (PvP 1.7) : Minecraft 1.7.10 avec Forge 10.13.4.1614 et le mod ATTACK 1.7.10, qui a toutes les fonctions du mod 1.8.9 sauf OptiFine. Ce profil n’a pas de pack de mods. Il a son dossier de jeu et ses réglages, comme les autres. Si la dernière release n’a pas encore le jar d’un profil, l’installation s’arrête tout de suite avec un message clair, au lieu de le dire après le téléchargement de Minecraft.',
