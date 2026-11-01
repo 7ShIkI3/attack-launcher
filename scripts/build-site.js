@@ -269,9 +269,12 @@ const CREDIT_LABELS = {
   fr: { profiles: 'Profils', group: 'Groupe', others: 'Autres', launcher: 'Launcher', launcherSite: 'Launcher et site', optifineLicense: 'Jamais téléchargé ni redistribué : copie du joueur' },
   en: { profiles: 'Profiles', group: 'Group', others: 'Others', launcher: 'Launcher', launcherSite: 'Launcher and site', optifineLicense: 'Never downloaded or redistributed: the player’s own copy' },
 };
-/** Lignes fixes du tableau : composants qui ne sont pas dans un pack de mods (licences : src/renderer/vendor, fonts, README). */
+/**
+ * Lignes fixes du tableau : composants qui ne sont pas dans un pack de mods (licences : src/renderer/vendor, fonts, README).
+ * `profiles` : un identifiant de profil, un libellé de CREDIT_LABELS (launcher…) ou « optifine » = les profils du catalogue qui ont OptiFine.
+ */
 const FIXED_CREDITS = [
-  { name: 'OptiFine', url: 'https://optifine.net/', author: { fr: 'sp614x', en: 'sp614x' }, license: 'optifine', profiles: 'forge-1.8.9' },
+  { name: 'OptiFine', url: 'https://optifine.net/', author: { fr: 'sp614x', en: 'sp614x' }, license: 'optifine', profiles: 'optifine' },
   { name: 'skinview3d', url: 'https://bs-community.github.io/skinview3d/', author: { fr: 'Kent Rasmussen, Haowei Wen, Sean Boult et contributeurs', en: 'Kent Rasmussen, Haowei Wen, Sean Boult and contributors' }, license: 'MIT', profiles: 'launcher' },
   { name: 'three.js', url: 'https://threejs.org/', author: { fr: 'Les auteurs de three.js', en: 'The three.js authors' }, license: 'MIT', profiles: 'launcher' },
   { name: 'Electron', url: 'https://www.electronjs.org/', author: { fr: 'Les contributeurs d’Electron', en: 'Electron contributors' }, license: 'MIT', profiles: 'launcher' },
@@ -280,6 +283,12 @@ const FIXED_CREDITS = [
   { name: 'Montserrat', url: 'https://github.com/JulietaUla/Montserrat', author: { fr: 'Les auteurs du projet Montserrat', en: 'The Montserrat Project Authors' }, license: 'OFL', profiles: 'launcher' },
   { name: 'Barlow Condensed', url: 'https://github.com/jpt/barlow', author: { fr: 'Les auteurs du projet Barlow', en: 'The Barlow Project Authors' }, license: 'OFL', profiles: 'launcherSite' },
 ];
+
+/** Colonne « Profils » d'une ligne fixe : les profils du catalogue qui ont OptiFine (hasOptifine), un profil, ou un libellé du tableau. */
+function creditProfiles(fixed, labels) {
+  if (fixed.profiles === 'optifine') return catalog.list().filter((p) => catalog.hasOptifine(p)).map((p) => p.label).join(', ');
+  return catalog.find(fixed.profiles) ? catalog.find(fixed.profiles).label : labels[fixed.profiles];
+}
 
 function externalLink(url, label) {
   return `<a href="${escapeHtml(url)}" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
@@ -331,7 +340,7 @@ function creditsHtml(lang, data) {
     const license = f.license === 'optifine' ? escapeHtml(labels.optifineLicense)
       : f.license === 'OFL' ? externalLink('https://openfontlicense.org/', 'OFL 1.1')
         : escapeHtml(f.license);
-    const profiles = catalog.find(f.profiles) ? catalog.find(f.profiles).label : labels[f.profiles];
+    const profiles = creditProfiles(f, labels);
     return row([externalLink(f.url, f.name), escapeHtml(f.author[lang]), license, escapeHtml(profiles), escapeHtml(dash)]);
   });
   return [

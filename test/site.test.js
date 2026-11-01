@@ -469,6 +469,20 @@ test('images : un manifeste qui ment sur les dimensions fait échouer la génér
   await assert.rejects(() => buildMini(miniSrc('x', { manifest: wrongName, images: ['launcher-home-fr-560.webp'] })), /incohérente/);
 });
 
+test('crédits : la ligne OptiFine cite exactement les profils du catalogue qui ont OptiFine, dans les deux langues', async () => {
+  const withOptifine = catalog.list().filter((profile) => catalog.hasOptifine(profile));
+  assert.deepEqual(withOptifine.map((profile) => profile.id), ['forge-1.8.9', 'forge-1.7.10']);
+  const labels = withOptifine.map((profile) => profile.label).join(', ');
+  assert.equal(labels, '1.8.9, 1.7.10');
+  for (const [lang, file] of [['fr', 'index.html'], ['en', 'en/index.html']]) {
+    const html = await miniPage('{{html.credits}}', {}, file);
+    const row = html.match(/<tr>(?:(?!<\/tr>).)*sp614x(?:(?!<\/tr>).)*<\/tr>/s)[0];
+    const cells = [...row.matchAll(/<td data-label="[^"]*">([^<]*)<\/td>/g)].map((m) => m[1]);
+    assert.ok(cells.includes(labels), `${lang} : la colonne des profils de la ligne OptiFine vaut « ${labels} » (cellules : ${JSON.stringify(cells)})`);
+    assert.equal(row.includes('Fabric') || /26\.3|1\.21\.1/.test(cells.join(' ')), false, `${lang} : aucun profil sans OptiFine dans la ligne`);
+  }
+});
+
 test('crédits : union des mods des 3 packs (un lien Modrinth par slug), licences lisibles et lignes fixes', async () => {
   const html = await miniPage('{{html.credits}}', {});
   const packs = fs.readdirSync(path.join(ROOT, 'src', 'main', 'packs')).filter((f) => f.endsWith('.json'));
@@ -511,7 +525,7 @@ test('actualités : les 3 entrées les plus récentes du CHANGELOG, dans la lang
   assert.ok(!fr.includes('Launcher 0.8.0') && !fr.includes('ATTACK Client 1.7.10 1.0.0'), 'les entrées du launcher précédent sortent des 3 plus récentes');
   assert.ok(en.includes('The ATTACK design') && en.includes('November 1, 2026') && en.includes('The menu in the ATTACK design'));
   assert.ok(en.includes('ATTACK Client 2.8.0') && en.includes('The same menu on 1.8.9'));
-  assert.ok(!/lite/i.test(fr) && !/lite/i.test(en), 'plus de version « lite »');
+  assert.ok(!/\blite\b/i.test(fr) && !/\blite\b/i.test(en), 'plus de version « lite »');
   assert.ok(fr.includes('datetime="2026-11-01"') && fr.includes('class="news-tag news-tag-new"'));
 });
 
@@ -1395,7 +1409,7 @@ test('profil 1.7.10 : le mod a tout le contenu du mod 1.8.9 sauf OptiFine, plus 
     assert.ok(card.includes(lang === 'fr' ? 'tout le contenu du mod 1.8.9' : 'all the content of the 1.8.9 mod'), `${lang} : la carte 1.7.10 dit qu’elle a tout le mod 1.8.9`);
     assert.ok(card.includes('61 modules') && card.includes('Minimap'), `${lang} : 61 modules, dont la Minimap`);
     assert.ok(card.includes(lang === 'fr' ? 'pas d’OptiFine' : 'no OptiFine'), `${lang} : pas d’OptiFine`);
-    assert.ok(!/lite|classé|ranked|une partie des modules|part of the modules|plus légère|lighter/i.test(html), `${lang} : plus de « lite » ni de modules interdits en classé absents`);
+    assert.ok(!/\blite\b|classé|ranked|une partie des modules|part of the modules|plus légère|lighter/i.test(html), `${lang} : plus de « lite » ni de modules interdits en classé absents`);
     const client = html.slice(html.indexOf('id="client"'));
     assert.ok(client.includes('Titles') && client.includes('Mouse Delay Fix'), `${lang} : les deux seuls modules qui n’existent pas en 1.7.10`);
     // l'avertissement Snap Tap vaut aussi pour la 1.7.10, et la mise en garde sur No Jump Delay / No Hit Delay la cite
@@ -1447,4 +1461,18 @@ test('profils : quatre cartes dont la 1.7.10 (Forge 10.13.4.1614, Java 8, son do
   const css = result.read('styles.css');
   assert.match(css, /\.profiles \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(css, /@media \(max-width: 999px\) \{\s*\.gallery, \.profiles \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/);
+});
+
+test('aucun test ne contient le caractère de contrôle U+0008 (retour arrière) : une expression régulière doit écrire \\b, pas le caractère lui-même', () => {
+  // U+0008 collé dans un fichier est invisible et ressemble à « \b » une fois affiché : /lite/ pour /\blite\b/ perd les bornes de mot (relecture Copilot)
+  const backspace = String.fromCharCode(8);
+  const dir = __dirname;
+  const files = fs.readdirSync(dir).filter((name) => name.endsWith('.js'));
+  assert.ok(files.length > 20, 'les fichiers de test sont bien listés');
+  for (const name of files) {
+    const text = fs.readFileSync(path.join(dir, name), 'utf8');
+    const at = text.indexOf(backspace);
+    const line = at < 0 ? 0 : text.slice(0, at).split('\n').length;
+    assert.equal(at, -1, `test/${name} ligne ${line} : caractère U+0008 (écrire \\b dans l'expression régulière)`);
+  }
 });
