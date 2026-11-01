@@ -10,6 +10,8 @@
 // --sums    fichier SHA256SUMS déjà téléchargé ; sans lui, SHA256SUMS est lu dans la release (`gh release download --output -`).
 // Contrôles (la moindre erreur = code de sortie 1) :
 //   1. mod.parseRelease() trouve un jar pour CHAQUE profil du catalogue, avec un SHA-256 (digest GitHub ou fichier de sommes) ;
+//   1b. pour un profil avec OptiFine, la version de son jar n'est pas plus ancienne que `minMod` de sa spec (src/main/optifine.js) :
+//      le launcher de CET arbre bloque la partie tant que le mod installé est plus ancien (une release plus ancienne, en 1.0.0, échoue donc) ;
 //   2. aucun jar n'est reconnu par deux profils, aucun profil n'en reconnaît deux, aucun nom n'a une « version » douteuse
 //      (attack-client-1710-1.0.0.jar serait pris pour le mod 1.8.9 par la règle large attack-client*.jar), aucun jar attack* n'est orphelin ;
 //   3. SHA256SUMS existe et a UNE ligne par jar de profil (« <sha256>  <nom exact> »), cohérente avec le digest GitHub ;
@@ -113,7 +115,15 @@ function checkRelease(release, sumsText, sidecars = release.sha256files) {
       continue;
     }
     jarNames.add(asset.name);
-    result.profiles.push({ id: profile.id, jar: asset.name, version: catalog.jarRule(profile).version(asset.name), size: asset.size, sha256: asset.sha256 });
+    const version = catalog.jarRule(profile).version(asset.name);
+    result.profiles.push({ id: profile.id, jar: asset.name, version, size: asset.size, sha256: asset.sha256 });
+    // OptiFine : le launcher bloque JOUER (installed = faux, bouton INSTALLER sans fin) tant que le mod installé est plus ancien que la
+    // version minimale de la spec du profil. Une release dont le jar est trop ancien enfermerait donc tous les joueurs qui ont OptiFine.
+    const minMod = profile.optifine?.minMod;
+    if (minMod && mod.olderThan(version, minMod)) {
+      errors.push(`Profil ${profile.id} : « ${asset.name} » est en version ${version}, plus ancienne que ${minMod}, la version minimale du mod avec OptiFine ${profile.mc} : `
+        + `tout joueur qui a OptiFine resterait bloqué sur INSTALLER. Publie le mod ${minMod} (ou plus) dans cette release.`);
+    }
   }
   const digests = new Map(result.profiles.map((entry) => [entry.jar, entry.sha256])); // hash annoncé par GitHub, avant que SHA256SUMS ne complète
 

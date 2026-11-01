@@ -14,7 +14,9 @@ const SCRIPT = path.join(__dirname, '..', 'scripts', 'check-release.js');
 const sha = (text) => crypto.createHash('sha256').update(text).digest('hex');
 
 /** Fichiers d'une release 0.8.0 complète : un jar par profil (avec digest), SHA256SUMS et les fichiers du launcher. */
-const JARS = ['attack-client-2.7.0.jar', 'attack-fabric-3.6.0+mc1.21.1.jar', 'attack-fabric-3.6.0+mc26.3.jar', 'attack-forge-1.0.0+mc1.7.10.jar'];
+// le jar 1.7.10 est en 1.1.0, la version minimale du mod avec OptiFine (spec de optifine.js) : en 1.0.0, la release serait refusée
+const MOD_1710 = 'attack-forge-1.1.0+mc1.7.10.jar';
+const JARS = ['attack-client-2.7.0.jar', 'attack-fabric-3.6.0+mc1.21.1.jar', 'attack-fabric-3.6.0+mc26.3.jar', MOD_1710];
 const LAUNCHER = ['ATTACK-Launcher-Setup-0.8.0.exe', 'ATTACK-Launcher-Setup-0.8.0.exe.blockmap', 'ATTACK-Launcher-Portable-0.8.0.exe', 'latest.yml'];
 
 /** Release au format `gh release view --json` ; `jars` : noms des jars, `extra` : autres fichiers ; sans digest quand `digest` est faux. */
@@ -39,13 +41,35 @@ test('release complète : chaque profil trouve son jar, SHA256SUMS a une ligne p
     ['forge-1.8.9', 'attack-client-2.7.0.jar', '2.7.0'],
     ['fabric-1.21.1', 'attack-fabric-3.6.0+mc1.21.1.jar', '3.6.0'],
     ['fabric-26.3', 'attack-fabric-3.6.0+mc26.3.jar', '3.6.0'],
-    ['forge-1.7.10', 'attack-forge-1.0.0+mc1.7.10.jar', '1.0.0'],
+    ['forge-1.7.10', MOD_1710, '1.1.0'],
   ]);
   assert.equal(result.profiles.length, catalog.list().length, 'un jar pour chaque profil du catalogue');
   assert.ok(result.profiles.every((p) => /^[0-9a-f]{64}$/.test(p.sha256)));
   const text = check.format(result);
   assert.match(text, /^Release v0\.8\.0 \(brouillon\) : 9 fichiers/, '4 jars, les 4 fichiers du launcher et SHA256SUMS');
   assert.match(text, /OK : les 4 profils trouvent chacun leur jar/);
+});
+
+test('jar 1.7.10 plus ancien que la version minimale avec OptiFine (minMod) : erreur, car le joueur qui a OptiFine resterait bloqué sur INSTALLER', () => {
+  const minMod = catalog.get('forge-1.7.10').optifine.minMod;
+  assert.equal(minMod, '1.1.0', 'la spec de la 1.7.10 demande le mod 1.1.0');
+  // la release garde le mod 1.0.0 : tout le reste est correct (noms, sommes, fichiers du launcher), seul le numéro de version est trop bas
+  const old = ['attack-client-2.7.0.jar', 'attack-fabric-3.6.0+mc1.21.1.jar', 'attack-fabric-3.6.0+mc26.3.jar', 'attack-forge-1.0.0+mc1.7.10.jar'];
+  const result = run(release({ jars: old }), sums(old));
+  assert.equal(result.errors.length, 1, result.errors.join('\n'));
+  assert.match(result.errors[0], /^Profil forge-1\.7\.10 : « attack-forge-1\.0\.0\+mc1\.7\.10\.jar » est en version 1\.0\.0, plus ancienne que 1\.1\.0/);
+  assert.match(result.errors[0], /OptiFine 1\.7\.10.*bloqué sur INSTALLER/);
+  assert.match(check.format(result), /ÉCHEC : 1 erreur/);
+  const gh = (args) => (args[1] === 'view' ? JSON.stringify(release({ jars: old })) : sums(old));
+  const out = [];
+  assert.equal(check.main(['v0.8.0'], { run: gh, out: (t) => out.push(t) }), 1, 'le code de sortie est 1');
+  assert.ok(out[0].includes('ERREUR : Profil forge-1.7.10 : « attack-forge-1.0.0+mc1.7.10.jar » est en version 1.0.0'), out[0]);
+  // 1.1.0 pile et plus récent : accepté ; les profils sans OptiFine n'ont aucune version minimale
+  for (const version of ['1.1.0', '1.1.1', '1.2.0', '2.0.0']) {
+    const jars = [...old.slice(0, 3), `attack-forge-${version}+mc1.7.10.jar`];
+    assert.deepEqual(run(release({ jars }), sums(jars)).errors, [], version);
+  }
+  for (const id of ['fabric-1.21.1', 'fabric-26.3']) assert.equal(catalog.get(id).optifine, undefined, `${id} n’a pas d’OptiFine donc pas de minMod`);
 });
 
 test('release 0.7.0 réelle (fixture) : trois profils trouvent leur jar, la 1.7.10 n’en a pas encore', () => {
@@ -58,7 +82,7 @@ test('release 0.7.0 réelle (fixture) : trois profils trouvent leur jar, la 1.7.
   assert.deepEqual(result.warnings, [], 'les fichiers du launcher y sont');
   // la même release 0.7.0 avec le jar 1.7.10 ajouté (comme le brouillon 0.8.0) : rien à redire
   const withOld = structuredClone(raw);
-  const jar = 'attack-forge-1.0.0+mc1.7.10.jar';
+  const jar = MOD_1710;
   withOld.assets.push({ name: jar, size: 1234, digest: `sha256:${sha(jar)}`, url: `https://example.invalid/${jar}` });
   const ok = run(withOld, `${realSums}${sha(jar)}  ${jar}\n`);
   assert.deepEqual(ok.errors, []);
@@ -93,7 +117,7 @@ test('attack-client-1710-1.0.0.jar : signalé comme dangereux, la règle 1.8.9 l
   assert.match(text, /Profil forge-1\.7\.10 : .*NO_JAR/, 'et la 1.7.10 n’a toujours pas son jar');
   assert.equal(result.errors.length, 3);
   // et seul, sans le vrai jar 1.8.9 : toujours dangereux
-  const alone = run(release({ jars: ['attack-fabric-3.6.0+mc1.21.1.jar', 'attack-fabric-3.6.0+mc26.3.jar', 'attack-forge-1.0.0+mc1.7.10.jar', trap] }), '');
+  const alone = run(release({ jars: ['attack-fabric-3.6.0+mc1.21.1.jar', 'attack-fabric-3.6.0+mc26.3.jar', MOD_1710, trap] }), '');
   assert.ok(alone.errors.some((e) => /pas une version propre/.test(e)));
   const noVersion = run(release({ jars: [...JARS, 'attack-client.jar'] }), sums());
   assert.ok(noVersion.errors.some((e) => /attack-client\.jar.*pas de version/.test(e)));
@@ -107,16 +131,16 @@ test('SHA256SUMS : absent, sans ligne pour un jar, en double, contraire au diges
   // joint mais illisible (gh a échoué)
   assert.match(run(release(), undefined).errors.join('\n'), /joint à la release mais son contenu n'a pas pu être lu/);
   // une ligne manque : celle du jar 1.7.10
-  assert.deepEqual(run(release(), sums(JARS.slice(0, 3))).errors, ['SHA256SUMS n\'a pas de ligne pour « attack-forge-1.0.0+mc1.7.10.jar ».']);
+  assert.deepEqual(run(release(), sums(JARS.slice(0, 3))).errors, ['SHA256SUMS n\'a pas de ligne pour « attack-forge-1.1.0+mc1.7.10.jar ».']);
   // une ligne en double
   assert.match(run(release(), `${sums()}${sha(JARS[0])}  ${JARS[0]}\n`).errors.join('\n'), /2 lignes pour « attack-client-2\.7\.0\.jar »/);
   // hash qui n'est pas celui du digest GitHub
   const wrong = sums().replace(sha(JARS[3]), 'a'.repeat(64));
-  assert.match(run(release(), wrong).errors.join('\n'), /digest GitHub de « attack-forge-1\.0\.0\+mc1\.7\.10\.jar » ne sont pas le même SHA-256/);
+  assert.match(run(release(), wrong).errors.join('\n'), /digest GitHub de « attack-forge-1\.1\.0\+mc1\.7\.10\.jar » ne sont pas le même SHA-256/);
   // ligne illisible
   assert.match(run(release(), `${sums()}pas un hash  fichier.jar\n`).errors.join('\n'), /ligne illisible « pas un hash {2}fichier\.jar »/);
   // un nom approximatif (sans le « + » exact) n'est pas la ligne du jar
-  assert.match(run(release(), sums().replace('attack-forge-1.0.0+mc1.7.10.jar', 'attack-forge-1.0.0-mc1.7.10.jar')).errors.join('\n'), /pas de ligne pour « attack-forge-1\.0\.0\+mc1\.7\.10\.jar »/);
+  assert.match(run(release(), sums().replace(MOD_1710, 'attack-forge-1.1.0-mc1.7.10.jar')).errors.join('\n'), /pas de ligne pour « attack-forge-1\.1\.0\+mc1\.7\.10\.jar »/);
   // format « * » (mode binaire de sha256sum) accepté ; ligne d'un jar qui n'est plus dans la release : avertissement seulement
   const binary = sums().replace(`  ${JARS[1]}`, ` *${JARS[1]}`);
   const lenient = run(release(), `${binary}${sha('vieux')}  attack-client-1.0.0.jar\n`);
@@ -256,10 +280,10 @@ test('<jar>.sha256 joint : même SHA-256 que SHA256SUMS (et que le digest GitHub
   const wrong = sidecarFiles({ [JARS[3]]: `${'b'.repeat(64)}  ${JARS[3]}\n` });
   const noDigest = run(release({ extra: sidecarNames, digest: false }), sums(), wrong);
   assert.equal(noDigest.errors.length, 1, noDigest.errors.join('\n'));
-  assert.match(noDigest.errors[0], /attack-forge-1\.0\.0\+mc1\.7\.10\.jar\.sha256 et SHA256SUMS ne sont pas le même SHA-256 pour « attack-forge-1\.0\.0\+mc1\.7\.10\.jar »/);
+  assert.match(noDigest.errors[0], /attack-forge-1\.1\.0\+mc1\.7\.10\.jar\.sha256 et SHA256SUMS ne sont pas le même SHA-256 pour « attack-forge-1\.1\.0\+mc1\.7\.10\.jar »/);
   // avec digest : il est aussi contredit, et SHA256SUMS aussi
   const withDigest = run(release({ extra: sidecarNames }), sums(), wrong).errors.join('\n');
-  assert.match(withDigest, /\.jar\.sha256 et le digest GitHub de « attack-forge-1\.0\.0\+mc1\.7\.10\.jar » ne sont pas le même SHA-256/);
+  assert.match(withDigest, /\.jar\.sha256 et le digest GitHub de « attack-forge-1\.1\.0\+mc1\.7\.10\.jar » ne sont pas le même SHA-256/);
   assert.match(withDigest, /\.jar\.sha256 et SHA256SUMS ne sont pas le même SHA-256/);
   // SHA256SUMS et digest d'accord entre eux, seul le .sha256 dévie : une erreur par source contredite, jamais de silence
   assert.equal(run(release({ extra: sidecarNames }), sums(), wrong).errors.length, 2);
