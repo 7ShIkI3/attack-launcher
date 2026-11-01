@@ -471,14 +471,15 @@ body[data-install='installing'] .ready-btn .r-ico .ic { animation: spin 1s linea
 .search .ic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--muted); }
 .search input { width: 100%; padding-left: 33px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
-/* filtres : le choix est teinté et cerné de rouge, pas un aplat */
+/* filtres : le choix est teinté et cerné de rouge, pas un aplat. Le contour est opaque : la teinte seule ne se distingue pas
+   d'une puce non choisie (1,14:1), le contour --accent atteint 3,66:1 contre la teinte (4,16:1 contre la carte) */
 .chip {
   border: 1px solid var(--border); background: var(--card); color: var(--text-2); border-radius: var(--r-sm);
   padding: 6px 13px; font-size: var(--fs-sm); font-weight: 600; transition: all 0.15s;
 }
 .chip i { font-style: normal; opacity: 0.75; margin-left: 5px; font-variant-numeric: tabular-nums; }
 .chip:hover { color: var(--text); background: var(--card-hover); }
-.chip.active { color: var(--text); background: var(--accent-soft); border-color: var(--accent-line); }
+.chip.active { color: var(--text); background: var(--accent-soft); border-color: var(--accent); }
 /* Barre de la page Mods : catégories à gauche ; état et densité à droite ; puis les compteurs, séparés (mods du pack, modules en jeu) */
 .mods-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 14px; }
 .mods-bar .mods-count { margin: 0; }
