@@ -27,6 +27,7 @@
     { name: 'Reach Display', icon: 'RD', cat: 'combat', fr: 'Distance de ton dernier coup.', en: 'Distance of your last hit.' },
     { name: 'No Jump Delay', icon: 'NJ', cat: 'combat', fr: 'Sauts sans délai, pour t’entraîner en solo et sur tes serveurs autorisés.', en: 'No jump delay, for practice in singleplayer and on your allowed servers.' },
     { name: 'No Hit Delay', icon: 'ND', cat: 'combat', fr: 'Coups sans délai, pour t’entraîner en solo et sur tes serveurs autorisés.', en: 'No hit delay, for practice in singleplayer and on your allowed servers.' },
+    { name: 'Snap Tap', icon: 'SN', cat: 'combat', fr: 'Deux touches opposées tenues : la dernière pressée gagne. Coupé par défaut, interdit sur certains serveurs.', en: 'Two opposite keys held: the last one pressed wins. Off by default, banned on some servers.' },
     { name: 'Personnalisation', en_name: 'Customization', icon: 'UI', cat: 'utility', fr: '22 polices, thèmes, couleur d’accent, flou et éditeur de HUD.', en: '22 fonts, themes, accent color, blur and HUD editor.' },
     { name: 'Combo Counter', icon: 'CC', cat: 'combat', fr: 'Compte tes coups enchaînés sans en prendre.', en: 'Counts hits landed in a row without taking one.' },
     { name: 'Hit Color', icon: 'HC', cat: 'combat', fr: 'Couleur personnalisée quand une cible est touchée.', en: 'Custom tint when a target is hit.' },
@@ -45,7 +46,7 @@
     { name: 'Nametags', icon: 'NT', cat: 'visual', fr: 'Pseudos plus lisibles, avec ton écusson.', en: 'Clearer nametags, with your badge.' },
     { name: 'Capes ATTACK', en_name: 'ATTACK capes', icon: 'CA', cat: 'visual', fr: '37 capes avec physique, en 5 collections (dont 12 « Ciné culte »), 9 paires d’ailes, 6 auréoles et 6 effets, visibles par tous les joueurs ATTACK.', en: '37 capes with physics, in 5 collections (12 of them “Cult cinema”), 9 pairs of wings, 6 halos and 6 effects, seen by every ATTACK player.' },
     { name: 'FPS Boost', icon: 'FX', cat: 'perf', fr: 'Réglages de rendu pour plus d’images par seconde.', en: 'Rendering tweaks for higher frame rates.' },
-    { name: 'Scoreboard', icon: 'SB', cat: 'utility', fr: 'Tableau des scores déplaçable et allégé.', en: 'Movable, cleaner scoreboard.' },
+    { name: 'Scoreboard', icon: 'SB', cat: 'utility', fr: 'Tableau des scores allégé : taille, fond, ombre et numéros réglables, ou caché.', en: 'Cleaner scoreboard: size, background, shadow and numbers adjustable, or hidden.' },
     { name: 'Chat', icon: 'CT', cat: 'utility', fr: 'Messages répétés regroupés et chat plus propre.', en: 'Stacks repeated messages, cleaner chat.' },
     { name: 'Amis', en_name: 'Friends', icon: 'AM', cat: 'utility', fr: 'Ajoute tes amis ATTACK par pseudo et discute en privé (touche N) ; messages effacés après 24 h.', en: 'Add your ATTACK friends by name and chat privately (N key); messages erased after 24 h.' },
     { name: 'Nick Hider', icon: 'NH', cat: 'utility', fr: 'Masque ton pseudo à l’écran (enregistrements).', en: 'Hides your name on screen (recordings).' },
@@ -84,16 +85,16 @@
    * arrive tout seul dans ce profil, il suffit de l'exclure ici s'il n'existe pas là-bas.
    * Le mod ATTACK 1.7.10 reprend tout le contenu du mod 1.8.9 sauf OptiFine (qui n'est pas un module de MODS). Deux modules de MODS
    * n'y existent pas : Mouse Delay Fix (sans objet, le jeu 1.7.10 vise déjà là où l'on regarde) et Titles (les titres sont une
-   * fonction du 1.8, impossibles en 1.7.10). Animations : la 1.7.10 règle la position, le style et la vitesse du coup ; le blocage
-   * et la pose 1.7 sont ceux du jeu. Le reste (22 polices, 37 capes, 9 ailes, 6 auréoles, 6 effets) est identique.
+   * fonction du 1.8, impossibles en 1.7.10). Animations : la 1.7.10 règle la position, le style et la vitesse du coup, et propose
+   * plusieurs styles de blocage ; la pose 1.7 d'origine est celle du jeu. Le reste (22 polices, 37 capes, 9 ailes, 6 auréoles, 6 effets) est identique.
    */
   const MODULES_BY_PROFILE = {
     'forge-1.7.10': {
       exclude: ['Mouse Delay Fix', 'Titles'],
       overrides: {
         'Animations 1.7': {
-          fr: 'Position, style et vitesse du coup réglables ; le blocage et la pose 1.7 sont déjà ceux du jeu.',
-          en: 'Adjustable swing position, style and speed; the 1.7 block and pose are already the game’s own.',
+          fr: 'Position, style et vitesse du coup réglables, plusieurs styles de blocage ; la pose 1.7 d’origine est celle du jeu.',
+          en: 'Adjustable swing position, style and speed, several block styles; the original 1.7 pose is the game’s own.',
         },
       },
     },
@@ -109,8 +110,8 @@
     {
       version: 'ATTACK Client 1.7.10 1.0.0', date: '2026-10-31',
       title_fr: 'Le mod ATTACK arrive en 1.7.10', title_en: 'The ATTACK mod comes to 1.7.10', tag: 'new',
-      fr: 'En 1.7.10 : le mod ATTACK Client reprend tout le contenu du mod 1.8.9, sauf OptiFine. Tu retrouves le menu ATTACK (Maj droite, ou « ATTACK Mods » dans le menu Échap), l’écran titre ATTACK, l’éditeur de HUD, la page Personnaliser et les profils de mods. Il compte 61 modules, dont la Minimap, les Waypoints (/wp), les Amis (touche N), Motion Blur, FPS Boost, No Jump Delay, No Hit Delay et Perspective. Tous les cosmétiques sont là : 37 capes à physique, 9 ailes, 6 auréoles et 6 effets, visibles par les autres joueurs ATTACK. Titles n’existe pas en 1.7.10 (les titres sont une fonction du 1.8), et Mouse Delay Fix est sans objet, le jeu visant déjà là où tu regardes. Animations règle la position, le style et la vitesse du coup ; le blocage et la pose 1.7 sont ceux du jeu.',
-      en: 'On 1.7.10: the ATTACK Client mod has all the content of the 1.8.9 mod, except OptiFine. You get the ATTACK menu (Right Shift, or “ATTACK Mods” in the pause menu), the ATTACK title screen, the HUD editor, the Customize page and mod profiles. It has 61 modules, including the Minimap, Waypoints (/wp), Friends (N key), Motion Blur, FPS Boost, No Jump Delay, No Hit Delay and Perspective. Every cosmetic is there: 37 capes with physics, 9 wings, 6 halos and 6 effects, seen by other ATTACK players. Titles does not exist on 1.7.10 (titles are a 1.8 feature), and Mouse Delay Fix is not needed, since the game already aims where you look. Animations sets the swing position, style and speed; the 1.7 block and pose are the game’s own.',
+      fr: 'En 1.7.10 : le mod ATTACK Client reprend tout le contenu du mod 1.8.9, sauf OptiFine. Tu retrouves le menu ATTACK (Maj droite, ou « ATTACK Mods » dans le menu Échap), l’écran titre ATTACK, l’éditeur de HUD, la page Personnaliser et les profils de mods. Il compte 61 modules, dont la Minimap, les Waypoints (/wp), les Amis (touche N), Motion Blur, FPS Boost, No Jump Delay, No Hit Delay et Perspective. Tous les cosmétiques sont là : 37 capes à physique, 9 ailes, 6 auréoles et 6 effets, visibles par les autres joueurs ATTACK. Titles n’existe pas en 1.7.10 (les titres sont une fonction du 1.8), et Mouse Delay Fix est sans objet, le jeu visant déjà là où tu regardes. Animations règle la position, le style et la vitesse du coup et propose plusieurs styles de blocage ; la pose 1.7 d’origine est celle du jeu.',
+      en: 'On 1.7.10: the ATTACK Client mod has all the content of the 1.8.9 mod, except OptiFine. You get the ATTACK menu (Right Shift, or “ATTACK Mods” in the pause menu), the ATTACK title screen, the HUD editor, the Customize page and mod profiles. It has 61 modules, including the Minimap, Waypoints (/wp), Friends (N key), Motion Blur, FPS Boost, No Jump Delay, No Hit Delay and Perspective. Every cosmetic is there: 37 capes with physics, 9 wings, 6 halos and 6 effects, seen by other ATTACK players. Titles does not exist on 1.7.10 (titles are a 1.8 feature), and Mouse Delay Fix is not needed, since the game already aims where you look. Animations sets the swing position, style and speed and offers several block styles; the original 1.7 pose is the game’s own.',
     },
     {
       version: 'Launcher 0.7.0', date: '2026-10-30',

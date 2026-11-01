@@ -45,11 +45,11 @@ anglais (Réglages → Langue).
 Elle suit le profil choisi sur l'accueil :
 
 - **1.8.9** : le mod ATTACK, **OptiFine** (ta copie, avec son interrupteur), les mods du pack Forge (Phosphor Legacy, Client
-  Side Sounds, Replay Mod en option) et la vitrine des **62 modules** d'ATTACK Client, filtrables par catégorie (Combat, HUD,
+  Side Sounds, Replay Mod en option) et la vitrine des **63 modules** d'ATTACK Client, filtrables par catégorie (Combat, HUD,
   Visuel, Performance, Utilitaire). Les modules sont une liste d'information (`src/renderer/data.js`) : on les active et on
   les règle **en jeu**, depuis le menu ATTACK, pas dans le launcher.
 - **1.7.10** : le mod ATTACK 1.7.10 (avec sa version installée, ou « à installer ») et la même vitrine de modules que la 1.8.9, moins deux : le mod 1.7.10
-  reprend tout le contenu du mod 1.8.9 sauf OptiFine, donc la page montre **60 des 62 modules**, tous sauf Mouse Delay Fix (sans
+  reprend tout le contenu du mod 1.8.9 sauf OptiFine, donc la page montre **61 des 63 modules**, tous sauf Mouse Delay Fix (sans
   objet, le jeu 1.7.10 vise déjà là où l'on regarde) et Titles (impossible en 1.7.10). Le texte d'Animations 1.7 est propre à ce
   profil (le mod règle la position, le style et la vitesse du coup ; le blocage et la pose 1.7 sont ceux du jeu). La liste est une
   liste d'exclusion (`MODULES_BY_PROFILE`, `src/renderer/data.js`) : un nouveau module de la vitrine y arrive tout seul. Ni OptiFine

@@ -117,7 +117,7 @@ const fr = {
   },
   client: {
     title: 'ATTACK Client, en jeu',
-    lead: 'Le launcher installe ATTACK Client, un mod de PvP (Forge en 1.7.10 et 1.8.9, Fabric en 1.21.1 et 26.3) avec environ 60 modules : HUD, PvP, visuel et divers. La version 1.7.10 a les mêmes modules que la 1.8.9, sauf Titles et Mouse Delay Fix, qui n’existent pas en 1.7.10. Ouvre son menu avec <kbd>Maj droite</kbd> ou avec le bouton « ATTACK Mods » du menu Échap.',
+    lead: 'Le launcher installe ATTACK Client, un mod de PvP (Forge en 1.7.10 et 1.8.9, Fabric en 1.21.1 et 26.3) avec environ 60 modules : HUD, PvP, visuel et divers. La version 1.7.10 a les mêmes modules que la 1.8.9, sauf Titles (impossible en 1.7.10) et Mouse Delay Fix (inutile en 1.7.10 : le jeu vise déjà là où tu regardes). Ouvre son menu avec <kbd>Maj droite</kbd> ou avec le bouton « ATTACK Mods » du menu Échap.',
     k1: { t: 'Un menu qui se parcourt vite', p: 'Barre latérale, cartes à interrupteur en trois densités, favoris et filtres Actifs / Inactifs. Les noms des modules et les valeurs des listes suivent la langue du jeu (français ou anglais).' },
     k2: { t: 'Recherche dès la frappe', p: 'La recherche trouve tous les modules et tous les réglages dès que tu tapes.' },
     k3: { t: 'Éditeur de HUD', p: 'Glisse un élément pour le placer, molette pour changer sa taille. Les HUD désactivés ne sont plus dessinés, et « Réinitialiser » demande confirmation.' },
@@ -310,7 +310,7 @@ const en = {
   },
   client: {
     title: 'ATTACK Client, in game',
-    lead: 'The launcher installs ATTACK Client, a PvP mod (Forge on 1.7.10 and 1.8.9, Fabric on 1.21.1 and 26.3) with about 60 modules: HUD, PvP, visual and misc. The 1.7.10 version has the same modules as 1.8.9, except Titles and Mouse Delay Fix, which do not exist on 1.7.10. Open its menu with <kbd>Right Shift</kbd> or with the “ATTACK Mods” button of the pause menu.',
+    lead: 'The launcher installs ATTACK Client, a PvP mod (Forge on 1.7.10 and 1.8.9, Fabric on 1.21.1 and 26.3) with about 60 modules: HUD, PvP, visual and misc. The 1.7.10 version has the same modules as 1.8.9, except Titles (impossible on 1.7.10) and Mouse Delay Fix (not needed on 1.7.10: the game already aims where you look). Open its menu with <kbd>Right Shift</kbd> or with the “ATTACK Mods” button of the pause menu.',
     k1: { t: 'A menu that is quick to browse', p: 'Sidebar, toggle cards in three densities, favourites and Enabled / Disabled filters. Module names and list values follow the game language (French or English).' },
     k2: { t: 'Search as you type', p: 'Search finds every module and every setting as you type.' },
     k3: { t: 'HUD editor', p: 'Drag an element to place it, mouse wheel to change its size. Disabled HUDs are no longer drawn, and “Reset” asks for confirmation.' },
