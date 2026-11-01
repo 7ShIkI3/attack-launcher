@@ -11,6 +11,7 @@
 // ATTACK_SCREENSHOT_ERROR=<code> ajoute home-error.png (l'alerte de l'accueil pour ce code, par ex. LAUNCHER_NOT_FOUND),
 // ATTACK_SCREENSHOT_OPTIFINE=waiting|refused|imported ajoute optifine-<état>.png et optifine-<état>-mods.png : l'assistant OptiFine
 // avec un faux jar dans un dossier Téléchargements TEMPORAIRE (ATTACK_DOWNLOADS_DIR) ; optifine.net n'est pas ouvert (ATTACK_NO_BROWSER).
+// Le faux jar est celui du profil affiché (ATTACK_PROFILE : forge-1.8.9 par défaut, ou forge-1.7.10) ; un profil sans OptiFine est refusé.
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -53,10 +54,18 @@ if (optifineMode) {
     process.exit(1);
   }
   const { makeZip } = require('../test/helpers');
+  const catalog = require('../src/main/catalog');
+  // le faux jar porte le nom d'OptiFine du profil affiché (OptiFine_1.8.9_HD_U_M5.jar, OptiFine_1.7.10_HD_U_E7.jar) : l'assistant de ce
+  // profil l'accepte, et seulement lui
+  const profile = catalog.find(process.env.ATTACK_PROFILE || 'forge-1.8.9');
+  if (!profile || !catalog.hasOptifine(profile)) {
+    console.error(`ATTACK_SCREENSHOT_OPTIFINE : le profil ${process.env.ATTACK_PROFILE || 'forge-1.8.9'} n'a pas OptiFine (forge-1.8.9 ou forge-1.7.10)`);
+    process.exit(1);
+  }
   const downloads = fs.mkdtempSync(path.join(os.tmpdir(), 'attack-downloads-'));
   const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'attack-stage-'));
-  const tweak = optifineMode === 'imported' ? 'optifine.OptiFineForgeTweaker' : 'autre.Tweaker';
-  const jar = path.join(stage, 'OptiFine_1.8.9_HD_U_M5.jar');
+  const tweak = optifineMode === 'imported' ? profile.optifine.tweak : 'autre.Tweaker';
+  const jar = path.join(stage, `OptiFine_${profile.mc}_${profile.optifine.edition}.jar`);
   fs.writeFileSync(jar, makeZip({
     'META-INF/MANIFEST.MF': `Manifest-Version: 1.0\r\nTweakClass: ${tweak}\r\n\r\n`,
     'optifine/OptiFineForgeTweaker.class': 'classe factice',

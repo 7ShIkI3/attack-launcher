@@ -236,3 +236,107 @@ test('package.json : npm run check-release, et la procédure de publication le c
   const wiki = fs.readFileSync(path.join(__dirname, '..', 'docs', 'wiki', 'Publier-une-version.md'), 'utf8');
   assert.match(wiki, /check-release/);
 });
+
+// ---------- fichiers « <jar>.sha256 » joints à la release (le launcher les lit quand GitHub ne donne pas de digest) ----------
+
+/** Contenu des fichiers <jar>.sha256 de toute la release : « <hash>  <nom> », avec des écarts par jar si besoin. */
+const sidecarFiles = (overrides = {}) => Object.fromEntries(JARS.map((n) => [`${n}.sha256`, overrides[n] ?? `${sha(n)}  ${n}\n`]));
+const sidecarNames = JARS.map((n) => `${n}.sha256`);
+
+test('<jar>.sha256 joint : même SHA-256 que SHA256SUMS (et que le digest GitHub quand il existe), sinon erreur ; sans digest il fait foi comme le fait le launcher', () => {
+  // cohérent, avec et sans digest GitHub (un brouillon n'en a pas)
+  assert.deepEqual(run(release({ extra: sidecarNames }), sums(), sidecarFiles()).errors, []);
+  const draft = run(release({ extra: sidecarNames, digest: false }), sums(), sidecarFiles());
+  assert.deepEqual(draft.errors, []);
+  assert.deepEqual(draft.profiles.map((p) => p.sha256), JARS.map(sha));
+  // un hash seul (sortie d'un sha256sum sur un fichier) est lu aussi
+  assert.deepEqual(run(release({ extra: sidecarNames, digest: false }), sums(), sidecarFiles({ [JARS[3]]: `${sha(JARS[3])}\n` })).errors, []);
+
+  // le .sha256 dit autre chose que SHA256SUMS : le launcher et ce contrôle liraient deux hash différents
+  const wrong = sidecarFiles({ [JARS[3]]: `${'b'.repeat(64)}  ${JARS[3]}\n` });
+  const noDigest = run(release({ extra: sidecarNames, digest: false }), sums(), wrong);
+  assert.equal(noDigest.errors.length, 1, noDigest.errors.join('\n'));
+  assert.match(noDigest.errors[0], /attack-forge-1\.0\.0\+mc1\.7\.10\.jar\.sha256 et SHA256SUMS ne sont pas le même SHA-256 pour « attack-forge-1\.0\.0\+mc1\.7\.10\.jar »/);
+  // avec digest : il est aussi contredit, et SHA256SUMS aussi
+  const withDigest = run(release({ extra: sidecarNames }), sums(), wrong).errors.join('\n');
+  assert.match(withDigest, /\.jar\.sha256 et le digest GitHub de « attack-forge-1\.0\.0\+mc1\.7\.10\.jar » ne sont pas le même SHA-256/);
+  assert.match(withDigest, /\.jar\.sha256 et SHA256SUMS ne sont pas le même SHA-256/);
+  // SHA256SUMS et digest d'accord entre eux, seul le .sha256 dévie : une erreur par source contredite, jamais de silence
+  assert.equal(run(release({ extra: sidecarNames }), sums(), wrong).errors.length, 2);
+
+  // joint mais illisible (gh a échoué), ou sans hash lisible
+  const unreadable = sidecarFiles();
+  delete unreadable[`${JARS[0]}.sha256`];
+  assert.match(run(release({ extra: sidecarNames, digest: false }), sums(), unreadable).errors.join('\n'), /attack-client-2\.7\.0\.jar\.sha256 est joint à la release mais son contenu n'a pas pu être lu/);
+  assert.match(run(release({ extra: sidecarNames }), sums(), sidecarFiles({ [JARS[1]]: 'pas un hash\n' })).errors.join('\n'), /attack-fabric-3\.6\.0\+mc1\.21\.1\.jar\.sha256 n'a pas de SHA-256 lisible/);
+
+  // fichiers non fournis (release lue dans un fichier JSON) : pas de contrôle ; fichiers fournis pour une release qui n'en joint pas : ignorés
+  assert.deepEqual(run(release({ extra: sidecarNames }), sums(), undefined).errors, []);
+  assert.deepEqual(run(release(), sums(), sidecarFiles({ [JARS[3]]: `${'b'.repeat(64)}  ${JARS[3]}\n` })).errors, []);
+});
+
+test('<jar>.sha256 : sans SHA256SUMS lisible la release est refusée, et un .sha256 seul ne la sauve pas', () => {
+  const raw = release({ extra: sidecarNames, digest: false });
+  assert.match(run(raw, undefined, sidecarFiles()).errors.join('\n'), /joint à la release mais son contenu n'a pas pu être lu/);
+  const noSums = release({ extra: sidecarNames, digest: false });
+  noSums.assets = noSums.assets.filter((a) => a.name !== 'SHA256SUMS');
+  assert.match(run(noSums, undefined, sidecarFiles()).errors.join('\n'), /n'a pas de fichier SHA256SUMS/);
+});
+
+test('gh : chaque <jar>.sha256 est lu avec `release download --output -`, le texte arrive à checkRelease ; un téléchargement qui échoue = release refusée', () => {
+  const raw = release({ extra: sidecarNames, digest: false });
+  const texts = sidecarFiles();
+  const calls = [];
+  const gh = (args) => {
+    calls.push(args);
+    if (args[1] === 'view') return JSON.stringify(raw);
+    const pattern = args[args.indexOf('--pattern') + 1];
+    if (pattern === 'SHA256SUMS') return sums();
+    if (texts[pattern] !== undefined) return texts[pattern];
+    throw new Error(`appel inattendu : ${args.join(' ')}`);
+  };
+  const read = check.readRelease({ tag: 'v0.8.0', run: gh });
+  assert.deepEqual(Object.keys(read.sidecars).sort(), [...sidecarNames].sort());
+  assert.equal(read.sidecars[`${JARS[3]}.sha256`], texts[`${JARS[3]}.sha256`]);
+  assert.equal(read.sumsText, sums());
+  const downloads = calls.filter((c) => c[1] === 'download').map((c) => c[c.indexOf('--pattern') + 1]);
+  assert.deepEqual(downloads.sort(), ['SHA256SUMS', ...sidecarNames].sort());
+  for (const call of calls.filter((c) => c[1] === 'download')) assert.deepEqual(call.slice(0, 3).concat(call.slice(-2)), ['release', 'download', 'v0.8.0', '--output', '-']);
+  const out = [];
+  assert.equal(check.main(['v0.8.0'], { run: gh, out: (t) => out.push(t) }), 0);
+  assert.match(out[0], /OK : les 4 profils/);
+
+  // un .sha256 qui ne correspond pas à SHA256SUMS : code de sortie 1
+  texts[`${JARS[0]}.sha256`] = `${'c'.repeat(64)}  ${JARS[0]}\n`;
+  const bad = [];
+  assert.equal(check.main(['v0.8.0'], { run: gh, out: (t) => bad.push(t) }), 1);
+  assert.match(bad[0], /attack-client-2\.7\.0\.jar\.sha256 et SHA256SUMS ne sont pas le même SHA-256/);
+  // le téléchargement d'un .sha256 échoue
+  const failing = (args) => {
+    if (args[1] === 'download' && String(args[args.indexOf('--pattern') + 1]).endsWith('.jar.sha256')) throw new Error('gh : introuvable');
+    return gh(args);
+  };
+  const lost = [];
+  assert.equal(check.main(['v0.8.0'], { run: failing, out: (t) => lost.push(t) }), 1);
+  assert.match(lost[0], /\.jar\.sha256 est joint à la release mais son contenu n'a pas pu être lu/);
+  // une release sans fichier .sha256 ne déclenche aucun téléchargement de plus (comme avant)
+  calls.length = 0;
+  const plain = (args) => (args[1] === 'view' ? JSON.stringify(release()) : sums());
+  assert.equal(check.main(['v0.8.0'], { run: (args) => { calls.push(args); return plain(args); }, out: () => {} }), 0);
+  assert.equal(calls.filter((c) => c[1] === 'download').length, 1, 'seulement SHA256SUMS');
+});
+
+test('--file : « sha256files » tient lieu des fichiers <jar>.sha256 ; absent, ils ne sont pas contrôlés', () => {
+  const dir = tempDir();
+  const raw = { ...release({ extra: sidecarNames, digest: false }), sha256sums: sums() };
+  const file = path.join(dir, 'release.json');
+  fs.writeFileSync(file, JSON.stringify(raw));
+  assert.equal(check.main(['--file', file], { out: () => {} }), 0, 'sans sha256files : pas de contrôle des .sha256');
+  fs.writeFileSync(file, JSON.stringify({ ...raw, sha256files: sidecarFiles() }));
+  assert.equal(check.main(['--file', file], { out: () => {} }), 0);
+  fs.writeFileSync(file, JSON.stringify({ ...raw, sha256files: sidecarFiles({ [JARS[2]]: `${'d'.repeat(64)}  ${JARS[2]}\n` }) }));
+  const out = [];
+  assert.equal(check.main(['--file', file], { out: (t) => out.push(t) }), 1);
+  assert.match(out[0], /attack-fabric-3\.6\.0\+mc26\.3\.jar\.sha256 et SHA256SUMS ne sont pas le même SHA-256/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

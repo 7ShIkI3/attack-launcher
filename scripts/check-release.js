@@ -6,15 +6,18 @@
 //           (gh doit être connecté à GitHub). Sans tag : la dernière release publiée.
 // --repo    dépôt de la release (7ShIkI3/attack-launcher par défaut).
 // --file    au lieu de gh : un fichier JSON, sortie de `gh release view --json …` ou réponse de l'API GitHub (essais, hors ligne). Un champ
-//           « sha256sums » (texte) peut y tenir lieu de SHA256SUMS.
+//           « sha256sums » (texte) peut y tenir lieu de SHA256SUMS, un champ « sha256files » ({ "<jar>.sha256": texte }) de ses fichiers <jar>.sha256.
 // --sums    fichier SHA256SUMS déjà téléchargé ; sans lui, SHA256SUMS est lu dans la release (`gh release download --output -`).
 // Contrôles (la moindre erreur = code de sortie 1) :
 //   1. mod.parseRelease() trouve un jar pour CHAQUE profil du catalogue, avec un SHA-256 (digest GitHub ou fichier de sommes) ;
 //   2. aucun jar n'est reconnu par deux profils, aucun profil n'en reconnaît deux, aucun nom n'a une « version » douteuse
 //      (attack-client-1710-1.0.0.jar serait pris pour le mod 1.8.9 par la règle large attack-client*.jar), aucun jar attack* n'est orphelin ;
-//   3. SHA256SUMS existe et a UNE ligne par jar de profil (« <sha256>  <nom exact> »), cohérente avec le digest GitHub.
+//   3. SHA256SUMS existe et a UNE ligne par jar de profil (« <sha256>  <nom exact> »), cohérente avec le digest GitHub ;
+//   4. quand une release joint un fichier « <jar>.sha256 » (le launcher le lit à la place du digest GitHub, absent d'un brouillon), il
+//      doit donner le même SHA-256 que SHA256SUMS (et que le digest s'il y en a un) : un seul hash pour un jar, quelle que soit la source.
 // Les fichiers du launcher (Setup, blockmap, latest.yml, Portable) manquants sont signalés en avertissement.
-// Ce script ne publie ni ne modifie rien ; il ne télécharge que SHA256SUMS (quelques centaines d'octets), et seulement avec `gh`.
+// Ce script ne publie ni ne modifie rien ; il ne télécharge que SHA256SUMS et les fichiers <jar>.sha256 (quelques centaines d'octets), et
+// seulement avec `gh`.
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
 const catalog = require('../src/main/catalog');
@@ -38,6 +41,7 @@ function normalizeRelease(raw) {
     draft: Boolean(raw.draft ?? raw.isDraft),
     prerelease: Boolean(raw.prerelease ?? raw.isPrerelease),
     sha256sums: typeof raw.sha256sums === 'string' ? raw.sha256sums : undefined,
+    sha256files: raw.sha256files && typeof raw.sha256files === 'object' ? raw.sha256files : undefined,
     assets: raw.assets.filter((a) => a && typeof a.name === 'string').map((a) => ({
       name: a.name,
       size: a.size,
@@ -67,11 +71,16 @@ function parseSums(text) {
   return { byName, bad };
 }
 
+/** Nom du fichier de somme d'un jar de release. */
+const sidecarName = (jarName) => `${jarName}.sha256`;
+
 /**
- * Applique tous les contrôles. `release` : sortie de normalizeRelease ; `sumsText` : contenu de SHA256SUMS (undefined = absent ou illisible).
+ * Applique tous les contrôles. `release` : sortie de normalizeRelease ; `sumsText` : contenu de SHA256SUMS (undefined = absent ou illisible) ;
+ * `sidecars` : contenu des fichiers « <jar>.sha256 » joints à la release, { nom du fichier : texte } (une entrée absente ou undefined =
+ * fichier joint mais illisible) ; sans cet argument (undefined), ces fichiers ne sont pas contrôlés (release lue dans un fichier JSON).
  * Renvoie { tag, draft, prerelease, files, profiles: [{ id, jar, version, size, sha256 }], errors, warnings }.
  */
-function checkRelease(release, sumsText) {
+function checkRelease(release, sumsText, sidecars = release.sha256files) {
   const errors = [];
   const warnings = [];
   const names = release.assets.map((a) => a.name);
@@ -106,6 +115,7 @@ function checkRelease(release, sumsText) {
     jarNames.add(asset.name);
     result.profiles.push({ id: profile.id, jar: asset.name, version: catalog.jarRule(profile).version(asset.name), size: asset.size, sha256: asset.sha256 });
   }
+  const digests = new Map(result.profiles.map((entry) => [entry.jar, entry.sha256])); // hash annoncé par GitHub, avant que SHA256SUMS ne complète
 
   // 3. SHA256SUMS : une ligne par jar de profil, cohérente avec le digest GitHub
   if (!release.assets.some((a) => a.name === SUMS_NAME)) {
@@ -127,6 +137,32 @@ function checkRelease(release, sumsText) {
     for (const name of sums.byName.keys()) {
       if (/\.jar$/i.test(name) && !jarNames.has(name)) warnings.push(`${SUMS_NAME} a une ligne pour « ${name} », qui n'est le jar d'aucun profil de cette release.`);
     }
+  }
+
+  // 4. <jar>.sha256 : quand la release en joint un, c'est celui que le launcher lit sans digest GitHub (un brouillon n'en a pas) ; il doit
+  // dire la même chose que SHA256SUMS (et que le digest s'il existe), sinon le launcher et ce contrôle n'ont pas le même hash
+  for (const entry of sidecars === undefined ? [] : result.profiles) {
+    const name = sidecarName(entry.jar);
+    if (!release.assets.some((a) => a.name === name)) continue;
+    const text = sidecars[name];
+    if (text === undefined) {
+      errors.push(`${name} est joint à la release mais son contenu n'a pas pu être lu : sa cohérence avec ${SUMS_NAME} n'est pas vérifiée.`);
+      continue;
+    }
+    let hash;
+    try {
+      hash = mod.sha256For(text, entry.jar);
+    } catch {
+      errors.push(`${name} n'a pas de SHA-256 lisible pour « ${entry.jar} ».`);
+      continue;
+    }
+    const digest = digests.get(entry.jar);
+    if (digest && digest !== hash) errors.push(`${name} et le digest GitHub de « ${entry.jar} » ne sont pas le même SHA-256 (${hash.slice(0, 12)}… contre ${digest.slice(0, 12)}…).`);
+    const listed = sumsText === undefined ? [] : parseSums(sumsText).byName.get(entry.jar) || [];
+    if (listed.length === 1 && listed[0] !== hash) {
+      errors.push(`${name} et ${SUMS_NAME} ne sont pas le même SHA-256 pour « ${entry.jar} » (${hash.slice(0, 12)}… contre ${listed[0].slice(0, 12)}…).`);
+    }
+    if (!entry.sha256) entry.sha256 = hash;
   }
 
   // le launcher lui-même : sans eux, les mises à jour automatiques et le site ne marchent pas
@@ -156,15 +192,18 @@ function runGh(args) {
 }
 
 /**
- * Release et SHA256SUMS : depuis un fichier JSON (`file`), sinon avec gh (`tag`, ou la dernière release publiée).
- * Renvoie { release, sumsText } ; sumsText est undefined si SHA256SUMS est absent ou illisible.
+ * Release, SHA256SUMS et fichiers « <jar>.sha256 » : depuis un fichier JSON (`file`), sinon avec gh (`tag`, ou la dernière release publiée).
+ * Renvoie { release, sumsText, sidecars } ; sumsText est undefined si SHA256SUMS est absent ou illisible ; sidecars = { nom du fichier :
+ * texte } avec undefined pour un fichier joint mais illisible.
  */
 function readRelease({ tag, repo = GITHUB_REPO, file, sumsFile, run = runGh } = {}) {
   let release;
   let sumsText;
+  let sidecars; // undefined : release lue dans un fichier JSON sans le texte de ses fichiers <jar>.sha256 (non contrôlés)
   if (file) {
     release = normalizeRelease(JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, '')));
     sumsText = release.sha256sums;
+    sidecars = release.sha256files;
   } else {
     const view = ['release', 'view', ...(tag ? [tag] : []), '--repo', repo, '--json', 'tagName,isDraft,isPrerelease,assets'];
     release = normalizeRelease(JSON.parse(run(view)));
@@ -175,9 +214,18 @@ function readRelease({ tag, repo = GITHUB_REPO, file, sumsFile, run = runGh } = 
         sumsText = undefined; // checkRelease le signale : SHA256SUMS est joint mais illisible
       }
     }
+    // les « <jar>.sha256 » : de quelques dizaines d'octets, lus un par un (le launcher en lit un quand GitHub ne donne pas de digest)
+    sidecars = {};
+    for (const asset of release.assets.filter((a) => /\.jar\.sha256$/i.test(a.name))) {
+      try {
+        sidecars[asset.name] = run(['release', 'download', release.tag_name, '--repo', repo, '--pattern', asset.name, '--output', '-']);
+      } catch {
+        sidecars[asset.name] = undefined; // checkRelease le signale : fichier joint mais illisible
+      }
+    }
   }
   if (sumsFile) sumsText = fs.readFileSync(sumsFile, 'utf8');
-  return { release, sumsText };
+  return { release, sumsText, sidecars };
 }
 
 /** Options de la ligne de commande : { tag, repo, file, sums }. */
@@ -204,8 +252,8 @@ function parseArgs(argv) {
 /** Programme : renvoie le code de sortie (0 = release correcte). `out` et `run` sont injectables pour les essais. */
 function main(argv, { out = console.log, run = runGh } = {}) {
   const options = parseArgs(argv);
-  const { release, sumsText } = readRelease({ tag: options.tag, repo: options.repo, file: options.file, sumsFile: options.sums, run });
-  const result = checkRelease(release, sumsText);
+  const { release, sumsText, sidecars } = readRelease({ tag: options.tag, repo: options.repo, file: options.file, sumsFile: options.sums, run });
+  const result = checkRelease(release, sumsText, sidecars);
   out(format(result));
   return result.errors.length === 0 ? 0 : 1;
 }

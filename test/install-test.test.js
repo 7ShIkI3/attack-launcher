@@ -10,6 +10,8 @@ const { tempDir, makeZip } = require('./helpers');
 const catalog = require('../src/main/catalog');
 const forge = require('../src/main/forge');
 const mod = require('../src/main/mod');
+const optifine = require('../src/main/optifine');
+const installer = require('../src/main/installer');
 const { readEntries, readEntry } = require('../src/main/zip');
 const it = require('../scripts/install-test');
 
@@ -138,9 +140,14 @@ test('bibliothèques Forge 1.7.10 : attendues d’après l’install_profile.jso
   assert.throws(() => it.forgeLibraryExpectations(other, catalog.get('forge-1.8.9')), /Installateur inattendu/);
 });
 
-/** Faux gh : `release view` rend la release, `release download` écrit le fichier demandé ou rend SHA256SUMS. */
-function fakeGh({ jars, digest = true, tag = 'v0.8.0', draft = true, bodies = {}, sums = true, calls = [] }) {
-  const assets = [...jars, ...(sums ? ['SHA256SUMS'] : [])].map((name) => ({
+/**
+ * Faux gh : `release view` rend la release, `release download` écrit le fichier demandé ou rend SHA256SUMS.
+ * `sidecars` : { nom du jar : texte de son fichier <jar>.sha256 } joints à la release (lus avec `--output -`) ; `sidecarsFail` : leur
+ * téléchargement échoue.
+ */
+function fakeGh({ jars, digest = true, tag = 'v0.8.0', draft = true, bodies = {}, sums = true, calls = [], sidecars = {}, sidecarsFail = false }) {
+  const sidecarAssets = Object.keys(sidecars).map((n) => `${n}.sha256`);
+  const assets = [...jars, ...sidecarAssets, ...(sums ? ['SHA256SUMS'] : [])].map((name) => ({
     name, size: 10, url: `https://github.com/7ShIkI3/attack-launcher/releases/download/${tag}/${name}`,
     ...(digest && name !== 'SHA256SUMS' ? { digest: `sha256:${sha('sha256', bodies[name] ?? `jar ${name}`)}` } : {}),
   }));
@@ -148,6 +155,10 @@ function fakeGh({ jars, digest = true, tag = 'v0.8.0', draft = true, bodies = {}
     calls.push(args);
     if (args[1] === 'view') return JSON.stringify({ tagName: tag, isDraft: draft, isPrerelease: false, assets });
     const pattern = args[args.indexOf('--pattern') + 1];
+    if (sidecarAssets.includes(pattern)) {
+      if (sidecarsFail) throw new Error('gh : introuvable');
+      return sidecars[pattern.slice(0, -'.sha256'.length)];
+    }
     if (pattern === 'SHA256SUMS') return `${jars.map((n) => `${sha('sha256', bodies[n] ?? `jar ${n}`)}  ${n}`).join('\n')}\n`;
     const dir = args[args.indexOf('--dir') + 1];
     fs.writeFileSync(path.join(dir, pattern), bodies[pattern] ?? `jar ${pattern}`);
@@ -313,4 +324,200 @@ test('contre-vérification des bibliothèques Forge 1.7.10 : checksums de l’in
   noSha1.delete(`${launchwrapper.url}.sha1`);
   assert.deepEqual((await run(world, noSha1)).failures, [`hash faux : ${launchwrapper.name} (.sha1 du dépôt Maven)`]);
   fs.rmSync(world.dir, { recursive: true, force: true });
+});
+
+// ---------- Copilot 1 : un jar de brouillon (sans digest GitHub) est vérifié par son fichier <jar>.sha256 ET par SHA256SUMS ----------
+
+const TAG_JARS = ['attack-client-2.7.0.jar', 'attack-fabric-3.6.0+mc1.21.1.jar', 'attack-fabric-3.6.0+mc26.3.jar', 'attack-forge-1.0.0+mc1.7.10.jar'];
+const TAG_NAME = 'attack-forge-1.0.0+mc1.7.10.jar';
+const TAG_HASH = sha('sha256', `jar ${TAG_NAME}`);
+
+test('--tag sans digest GitHub : le fichier <jar>.sha256 de la release est lu avec gh et doit dire la même chose que SHA256SUMS, sinon le jar est refusé sans rien télécharger', () => {
+  const profile = catalog.get('forge-1.7.10');
+  const attempt = (options) => {
+    const dir = tempDir();
+    return { dir, run: () => it.fetchTagJar({ tag: 'v0.8.0', profile, dir, run: fakeGh({ jars: TAG_JARS, digest: false, ...options }) }) };
+  };
+
+  // d'accord : le jar est téléchargé et les deux sources sont citées ; le .sha256 est lu avec --output - (jamais écrit sur le disque)
+  const calls = [];
+  const good = attempt({ sidecars: { [TAG_NAME]: `${TAG_HASH}  ${TAG_NAME}\n` }, calls });
+  const ok = good.run();
+  assert.equal(ok.sha256, TAG_HASH);
+  assert.deepEqual(ok.sources, [`${TAG_NAME}.sha256`, 'SHA256SUMS']);
+  assert.ok(calls.some((c) => c[1] === 'download' && c.includes('--output') && c[c.indexOf('--pattern') + 1] === `${TAG_NAME}.sha256`));
+  assert.deepEqual(fs.readdirSync(good.dir), [TAG_NAME], 'seul le jar est dans le dossier');
+
+  // le .sha256 contredit SHA256SUMS : refusé AVANT le téléchargement du jar
+  const bad = attempt({ sidecars: { [TAG_NAME]: `${'a'.repeat(64)}  ${TAG_NAME}\n` } });
+  assert.throws(bad.run, /SHA-256 incohérents pour attack-forge-1\.0\.0\+mc1\.7\.10\.jar.*attack-forge-1\.0\.0\+mc1\.7\.10\.jar\.sha256 aaaaaaaaaaaa….*SHA256SUMS/);
+  assert.deepEqual(fs.readdirSync(bad.dir), [], 'rien n’est téléchargé');
+
+  // le .sha256 est joint mais gh ne peut pas le lire : refusé (le launcher le lirait, pas ce contrôle)
+  const lost = attempt({ sidecars: { [TAG_NAME]: 'x' }, sidecarsFail: true });
+  assert.throws(lost.run, /attack-forge-1\.0\.0\+mc1\.7\.10\.jar\.sha256 est joint à la release v0\.8\.0 mais n'a pas pu être lu/);
+  assert.deepEqual(fs.readdirSync(lost.dir), []);
+
+  // sans hash lisible dans le .sha256
+  assert.throws(attempt({ sidecars: { [TAG_NAME]: 'rien de lisible' } }).run, /sans hash valide/);
+
+  // le .sha256 seul (SHA256SUMS absent) suffit à nommer le hash ; sans aucune source, refus
+  const alone = attempt({ sums: false, sidecars: { [TAG_NAME]: `${TAG_HASH}\n` } }).run();
+  assert.deepEqual(alone.sources, [`${TAG_NAME}.sha256`]);
+  assert.throws(attempt({ sums: false }).run, /ne publie pas de SHA-256/);
+
+  // le .sha256 d'un AUTRE jar de la release ne compte pas pour ce jar
+  const other = attempt({ sidecars: { 'attack-client-2.7.0.jar': `${'e'.repeat(64)}  attack-client-2.7.0.jar\n` } }).run();
+  assert.deepEqual(other.sources, ['SHA256SUMS']);
+});
+
+test('expectedSha256 : digest GitHub, fichier <jar>.sha256 et ligne de SHA256SUMS s’accordent ou le jar est refusé', () => {
+  const name = 'attack-forge-1.0.0+mc1.7.10.jar';
+  const hash = 'b'.repeat(64);
+  const release = { tag_name: 'v0.8.0', assets: [{ name: `${name}.sha256` }] };
+  const bare = { tag_name: 'v0.8.0', assets: [] };
+  const sumsText = `${hash}  ${name}\n`;
+  const sidecars = { [`${name}.sha256`]: `${hash}  ${name}\n` };
+  // les trois sources d'accord
+  assert.deepEqual(it.expectedSha256({ release, asset: { name, sha256: hash }, sumsText, sidecars }), { sha256: hash, sources: ['digest GitHub', `${name}.sha256`, 'SHA256SUMS'] });
+  // le digest GitHub seul (aucune autre source jointe)
+  assert.deepEqual(it.expectedSha256({ release: bare, asset: { name, sha256: hash } }), { sha256: hash, sources: ['digest GitHub'] });
+  // digest contredit par le .sha256 et SHA256SUMS, ou seulement par SHA256SUMS
+  assert.throws(() => it.expectedSha256({ release, asset: { name, sha256: 'c'.repeat(64) }, sumsText, sidecars }), /SHA-256 incohérents.*digest GitHub cccccccccccc….*SHA256SUMS bbbbbbbbbbbb…/);
+  assert.throws(() => it.expectedSha256({ release: bare, asset: { name, sha256: hash }, sumsText: `${'d'.repeat(64)}  ${name}\n` }), /SHA-256 incohérents/);
+  // SHA256SUMS sans la ligne du jar : toléré quand une autre source existe, refusé sinon (deux lignes d'autres jars ne sont pas la sienne)
+  assert.equal(it.expectedSha256({ release: bare, asset: { name, sha256: hash }, sumsText: `${hash}  autre.jar\n` }).sha256, hash);
+  assert.throws(() => it.expectedSha256({ release: bare, asset: { name }, sumsText: `${hash}  autre.jar\n${'e'.repeat(64)}  autre2.jar\n` }), /Aucun SHA-256 pour/);
+  assert.throws(() => it.expectedSha256({ release: bare, asset: { name } }), /Aucun SHA-256 connu/);
+});
+
+// ---------- --optifine par spec : refus, jar déposé, cycle ----------
+
+const optifineSpecs = Object.values(optifine.SPECS);
+const specManifest = (spec, tweak = spec.tweak) => `Manifest-Version: 1.0\r\nTweakClass: ${tweak}\r\n\r\n`;
+const specJar = (spec, salt = '') => makeZip({ 'META-INF/MANIFEST.MF': specManifest(spec), 'optifine/OptiFineForgeTweaker.class': `classe ${salt}` });
+const specName = (spec) => `OptiFine_${spec.mc}_${spec.edition}.jar`;
+
+test('--optifine : refusé pour un profil sans OptiFine, une racine hors du dossier temporaire, un jar sous .lunarclient ou d’une autre version', async () => {
+  const tmp = tempDir('atk-it-'); // tient lieu de dossier temporaire du système
+  const root = path.join(tmp, 'racine');
+  const outside = tempDir('atk-it-hors-'); // ailleurs que sous `tmp`
+  const spec89 = optifine.forVersion('1.8.9');
+  const spec710 = optifine.forVersion('1.7.10');
+  const good710 = path.join(tmp, specName(spec710));
+  fs.writeFileSync(good710, specJar(spec710));
+  const good89 = path.join(tmp, specName(spec89));
+  fs.writeFileSync(good89, specJar(spec89));
+  const args = (extra) => ({ profile: catalog.get('forge-1.7.10'), root, source: good710, tmp, ...extra });
+
+  // accepté, pour chaque profil avec son jar
+  const checked = await it.checkOptifineArgs(args({}));
+  assert.deepEqual([checked.ok, checked.version, checked.mc], [true, 'HD_U_E7', '1.7.10']);
+  assert.equal((await it.checkOptifineArgs(args({ profile: catalog.get('forge-1.8.9'), source: good89 }))).version, 'HD_U_M5');
+
+  // profil sans OptiFine : Fabric
+  for (const id of ['fabric-1.21.1', 'fabric-26.3']) {
+    await assert.rejects(it.checkOptifineArgs(args({ profile: catalog.get(id) })), /ne s'applique pas au profil .*n'a pas OptiFine \(profils avec OptiFine : forge-1\.8\.9, forge-1\.7\.10\)/);
+  }
+  // racine hors du dossier temporaire, ou le dossier temporaire lui-même, ou une racine qui en sort par « .. »
+  await assert.rejects(it.checkOptifineArgs(args({ root: outside })), /racine d'essai doit être sous le dossier temporaire/);
+  await assert.rejects(it.checkOptifineArgs(args({ root: tmp })), /racine d'essai doit être sous le dossier temporaire/);
+  await assert.rejects(it.checkOptifineArgs(args({ root: path.join(tmp, '..', 'ailleurs') })), /racine d'essai doit être sous le dossier temporaire/);
+  // jar du cache de Lunar : refusé même s'il est parfaitement valide
+  const lunar = path.join(tmp, '.lunarclient', 'offline', 'multiver');
+  fs.mkdirSync(lunar, { recursive: true });
+  fs.writeFileSync(path.join(lunar, specName(spec710)), specJar(spec710));
+  await assert.rejects(it.checkOptifineArgs(args({ source: path.join(lunar, specName(spec710)) })), /Lunar Client \(\.lunarclient\)/);
+  await assert.rejects(it.checkOptifineArgs(args({ source: path.join(tmp, '.LunarClient', 'x', specName(spec710)) })), /Lunar Client/, 'casse ignorée, même si le fichier n’existe pas');
+  // jar d'une autre version de Minecraft (1.8.9 donné pour la 1.7.10 et l'inverse), archive illisible, TweakClass absent, fichier absent
+  await assert.rejects(it.checkOptifineArgs(args({ source: good89 })), /n'est pas un OptiFine 1\.7\.10 valide \(WRONG_NAME\).*ne contient pas 1\.7\.10/);
+  await assert.rejects(it.checkOptifineArgs(args({ profile: catalog.get('forge-1.8.9'), source: good710 })), /n'est pas un OptiFine 1\.8\.9 valide \(WRONG_NAME\)/);
+  const broken = path.join(tmp, 'OptiFine_1.7.10_HD_U_E8.jar');
+  fs.writeFileSync(broken, 'pas une archive');
+  await assert.rejects(it.checkOptifineArgs(args({ source: broken })), /\(BAD_ZIP\)/);
+  fs.writeFileSync(broken, makeZip({ 'META-INF/MANIFEST.MF': specManifest(spec710, 'autre.Tweaker') }));
+  await assert.rejects(it.checkOptifineArgs(args({ source: broken })), /\(NO_TWEAK\).*Forge 1\.7\.10/);
+  await assert.rejects(it.checkOptifineArgs(args({ source: path.join(tmp, 'OptiFine_1.7.10_absent.jar') })), /\(UNREADABLE\)/);
+  // isInside : strictement dedans, casse ignorée sous Windows
+  assert.equal(it.isInside(path.join(tmp, 'a', 'b'), tmp), true);
+  assert.equal(it.isInside(tmp, tmp), false);
+  assert.equal(it.isInside(path.join(tmp, '..'), tmp), false);
+  for (const dir of [tmp, outside]) fs.rmSync(dir, { recursive: true, force: true });
+});
+
+for (const spec of optifineSpecs) {
+  const profile = catalog.list().find((p) => p.optifine === spec);
+  const other = optifineSpecs.find((s) => s !== spec);
+
+  /** Une installation d'essai : .minecraft avec l'OptiFine du joueur dans libraries, dossier de jeu du profil, première copie faite. */
+  async function world() {
+    const root = tempDir('atk-it-cycle-');
+    const minecraftDir = path.join(root, '.minecraft');
+    const gameDir = path.join(root, ...profile.gameDirName.split('/'));
+    const libDir = path.join(minecraftDir, 'libraries', 'optifine', 'OptiFine', `${spec.mc}_${spec.edition}`);
+    fs.mkdirSync(libDir, { recursive: true });
+    const source = path.join(libDir, `OptiFine-${spec.mc}_${spec.edition}.jar`);
+    fs.writeFileSync(source, specJar(spec, 'joueur'));
+    const run = async (settings) => ({ optifine: await installer.installOptifine(gameDir, minecraftDir, settings, profile) });
+    assert.equal((await run({})).optifine.action, 'copied');
+    const failures = [];
+    const check = async (target, algorithm, expected, label) => {
+      if (!fs.existsSync(target)) return failures.push(`absent : ${label}`);
+      if (sha(algorithm, fs.readFileSync(target)) !== expected) failures.push(`hash faux : ${label}`);
+      return undefined;
+    };
+    const decor = path.join(minecraftDir, 'libraries', 'optifine', 'OptiFine', `${other.mc}_${other.edition}`);
+    return { root, minecraftDir, gameDir, source, run, failures, check, fail: (message) => failures.push(message), decor };
+  }
+  const cycleOf = (w, run) => it.optifineCycle({ profile, gameDir: w.gameDir, minecraftDir: w.minecraftDir, source: w.source, run, settings: {}, check: w.check, fail: w.fail });
+
+  test(`[${spec.mc}] cycle OptiFine de install-test : copie retirée puis remise, jar du joueur et OptiFine du joueur intacts, OptiFine de l’autre version (même .minecraft) ignoré puis retiré`, async () => {
+    const w = await world();
+    let decorSeen = 0;
+    const summary = await cycleOf(w, async (settings) => {
+      if (fs.existsSync(w.decor)) decorSeen++;
+      return w.run(settings);
+    });
+    assert.deepEqual(w.failures, []);
+    assert.match(summary, new RegExp(`cycle OptiFine ${spec.mc.replace(/\./g, '\\.')} OK`));
+    assert.equal(decorSeen, 4, 'le décor de l’autre version était dans la racine pendant les quatre installations du cycle');
+    // état final : une seule copie OptiFine de cette version, l'original et le reste intacts ; ni faux jar du joueur ni décor
+    assert.deepEqual(fs.readdirSync(path.join(w.gameDir, 'mods')), [`OptiFine-${spec.mc}_${spec.edition}.jar`]);
+    assert.equal(fs.existsSync(w.decor), false, 'décor retiré');
+    assert.deepEqual(fs.readFileSync(w.source), specJar(spec, 'joueur'));
+    fs.rmSync(w.root, { recursive: true, force: true });
+  });
+
+  test(`[${spec.mc}] cycle OptiFine : un launcher qui garde la copie, supprime le jar du joueur ou copie l’OptiFine de l’autre version est pris en faute`, async () => {
+    // 1. l'option coupée est ignorée : la copie reste dans mods
+    let w = await world();
+    await cycleOf(w, async (settings) => w.run({ ...settings, optifine: undefined }));
+    assert.ok(w.failures.some((f) => /cycle OptiFine \(coupé\)/.test(f)), w.failures.join('\n'));
+    fs.rmSync(w.root, { recursive: true, force: true });
+    // 2. le jar du joueur est supprimé au passage
+    w = await world();
+    await cycleOf(w, async (settings) => {
+      const result = await w.run(settings);
+      fs.rmSync(path.join(w.gameDir, 'mods', 'mon-mod-perso-of.jar'), { force: true });
+      return result;
+    });
+    assert.ok(w.failures.some((f) => /le jar du joueur a été supprimé/.test(f)), w.failures.join('\n'));
+    fs.rmSync(w.root, { recursive: true, force: true });
+    // 3. l'OptiFine de l'autre version est copié dans mods en plus du bon
+    w = await world();
+    await cycleOf(w, async (settings) => {
+      const result = await w.run(settings);
+      if (settings.optifine !== false) fs.writeFileSync(path.join(w.gameDir, 'mods', specName(other)), 'copie de l’autre version');
+      return result;
+    });
+    assert.ok(w.failures.some((f) => /au lieu du seul OptiFine/.test(f)), w.failures.join('\n'));
+    fs.rmSync(w.root, { recursive: true, force: true });
+  });
+}
+
+test('install-test : OptiFine, --cycle et refus sont documentés dans l’en-tête', () => {
+  const head = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'install-test.js'), 'utf8').split('\n').slice(0, 40).join('\n');
+  assert.match(head, /--optifine\s+profils 1\.8\.9 et 1\.7\.10/);
+  assert.match(head, /\.lunarclient/);
+  assert.match(head, /Avec --optifine : coupe puis réactive OptiFine/);
 });
