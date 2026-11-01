@@ -290,6 +290,10 @@ et cache de validation (la clé contient la version : un refus pour la 1.7.10 n'
    installé plus ancien que `minMod` (1.1.0 en 1.7.10) met `modOutdated` à vrai dans l'état : `status().installed` devient faux, la
    ligne « ATTACK Client » du détail dit « à mettre à jour (compatibilité OptiFine) », le bandeau « À appliquer » le dit aussi, et
    **INSTALLER** reprend le mod de la dernière release. Une version illisible (« dev ») n'est pas déclarée trop ancienne.
+   Le jar que **le joueur a mis lui-même** dans `mods` compte même quand l'interrupteur « Utiliser OptiFine » est coupé : le
+   launcher n'y touche jamais, il reste dans le jeu, donc le mod 1.0.0 reste « trop ancien ». Seule la copie suivie par le launcher
+   part avec l'interrupteur. L'installation prend le mod **avant** de copier OptiFine : si son téléchargement échoue, aucun
+   OptiFine n'arrive dans `mods` à côté d'un mod sans les adaptations.
 6. **Rien trouvé** : un texte explique pourquoi (licence) et quelle édition récupérer, le lien **Pourquoi ?** le détaille en trois
    points, et **Obtenir OptiFine** lance l'assistant ci-dessous ; le jeu marche sans OptiFine. La page relit l'état au retour sur
    la fenêtre : un OptiFine installé entre-temps est trouvé tout seul.
