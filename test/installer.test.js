@@ -605,6 +605,59 @@ test('installation factice Forge 1.7.10 avec l’OptiFine du joueur : copié dan
   fs.rmSync(path.dirname(gameDir), { recursive: true, force: true });
 });
 
+test('OptiFine posé à la main dans mods : le mod 1.0.0 reste « trop ancien » même interrupteur coupé (le jar du joueur ne part jamais)', async () => {
+  forge1710World();
+  const minecraftDir = tempDir();
+  const gameDir = path.join(tempDir(), 'jeu');
+  await install1710({ gameDir, devMode: false }, { minecraftDir }); // sans OptiFine : rien à copier, le mod 1.0.0 est installé
+  const before = await installer.status({ minecraftDir, gameDir, profile: 'forge-1.7.10' });
+  assert.deepEqual([before.modVersion, before.optifine.modOutdated, before.installed], ['1.0.0', false, true]);
+
+  // le joueur met son OptiFine E7 lui-même dans mods : le launcher ne le retire pas, quel que soit l'interrupteur
+  const own = path.join(gameDir, 'mods', 'OptiFine_1.7.10_HD_U_E7.jar');
+  fs.writeFileSync(own, 'jar OptiFine du joueur');
+  for (const optifine of [true, false]) {
+    const status = await installer.status({ minecraftDir, gameDir, profile: 'forge-1.7.10', optifine });
+    assert.equal(status.optifine.own, 'OptiFine_1.7.10_HD_U_E7.jar', `optifine:${optifine}`);
+    assert.equal(status.optifine.modOutdated, true, `optifine:${optifine} : le jar du joueur est dans le jeu, le mod 1.0.0 n’a pas les adaptations`);
+    assert.equal(status.installed, false, `optifine:${optifine} : JOUER reste bloqué tant que le mod n’est pas à jour`);
+  }
+
+  // installation avec l'interrupteur coupé : le jar du joueur reste (action « own »), le mod reste celui de la release
+  const result = await install1710({ gameDir, devMode: false, optifine: false }, { minecraftDir });
+  assert.equal(result.optifine.action, 'own');
+  assert.equal(fs.readFileSync(own, 'utf8'), 'jar OptiFine du joueur', 'jamais supprimé');
+  // la release publie le mod 1.1.0 : plus rien n'est trop ancien
+  const newJar = Buffer.from('jar forge-1.7.10 version 1.1.0');
+  const newName = 'attack-forge-1.1.0+mc1.7.10.jar';
+  routes.set(RELEASE_URL, JSON.stringify({ tag_name: 'v0.8.2', assets: [asset(newName, { digest: `sha256:${hash('sha256', newJar)}`, size: newJar.length })] }));
+  routes.set(`https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.0/${newName}`, newJar);
+  await install1710({ gameDir, devMode: false, optifine: false }, { minecraftDir });
+  const done = await installer.status({ minecraftDir, gameDir, profile: 'forge-1.7.10', optifine: false });
+  assert.deepEqual([done.modVersion, done.optifine.modOutdated, done.installed], ['1.1.0', false, true]);
+  fs.rmSync(minecraftDir, { recursive: true, force: true });
+  fs.rmSync(path.dirname(gameDir), { recursive: true, force: true });
+});
+
+test('le mod est installé AVANT la copie d’OptiFine : si son téléchargement échoue, aucun OptiFine n’arrive dans mods', async () => {
+  forge1710World();
+  const minecraftDir = tempDir();
+  const gameDir = path.join(tempDir(), 'jeu');
+  const optifineJar = makeZip({ 'META-INF/MANIFEST.MF': 'Manifest-Version: 1.0\r\nTweakClass: optifine.OptiFineForgeTweaker\r\n\r\n', 'optifine/OptiFineForgeTweaker.class': 'classe' });
+  const libDir = path.join(minecraftDir, 'libraries', 'optifine', 'OptiFine', '1.7.10_HD_U_E7');
+  fs.mkdirSync(libDir, { recursive: true });
+  fs.writeFileSync(path.join(libDir, 'OptiFine-1.7.10_HD_U_E7.jar'), optifineJar);
+  // le jar de la release est corrompu : le SHA-256 annoncé ne correspond pas
+  routes.set(`https://github.com/7ShIkI3/attack-launcher/releases/download/v0.5.0/${JAR_NAMES['forge-1.7.10']}`, Buffer.from('jar modifié !'));
+  await assert.rejects(install1710({ gameDir, devMode: false }, { minecraftDir }), /SHA256 incorrect|Taille incorrecte/);
+  const mods = fs.existsSync(path.join(gameDir, 'mods')) ? fs.readdirSync(path.join(gameDir, 'mods')) : [];
+  assert.deepEqual(mods.filter((name) => /optifine/i.test(name)), [], 'OptiFine n’a pas été copié');
+  const state = fs.existsSync(path.join(gameDir, 'attack-launcher.json')) ? JSON.parse(fs.readFileSync(path.join(gameDir, 'attack-launcher.json'), 'utf8')) : {};
+  assert.equal(state.optifine, undefined, 'aucune copie suivie dans l’état');
+  fs.rmSync(minecraftDir, { recursive: true, force: true });
+  fs.rmSync(path.dirname(gameDir), { recursive: true, force: true });
+});
+
 test('échec rapide : sans jar du profil dans la release, NO_PROFILE_JAR arrive avant tout téléchargement de Minecraft', async () => {
   forge1710World();
   const minecraftDir = tempDir();

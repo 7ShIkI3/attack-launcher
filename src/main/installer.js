@@ -509,13 +509,16 @@ async function install(options) {
   } else {
     loaderLibraries = (await installForge(minecraftDir, report, net, profile)).libraries;
   }
-  // pack de mods du profil (Fabric comme Forge 1.8.9), puis OptiFine du joueur (1.8.9 et 1.7.10) et réglages de départ d'options.txt
+  // pack de mods du profil (Fabric comme Forge 1.8.9), réglages de départ d'options.txt, mod ATTACK, puis OptiFine du joueur (1.8.9 et 1.7.10)
   const packResult = profile.pack ? await installPack(gameDir, profile, settings, report, net) : null;
   // WalksyLib (groupe PvP) : sa vérification de mises à jour est coupée avant son premier démarrage
   const walksylib = packResult?.info.mods.some((m) => m.slug === 'walksylib') ? await installWalksyLibConfig(gameDir) : undefined;
-  if (catalog.hasOptifine(profile)) optifineResult = await installOptifine(gameDir, minecraftDir, settings, profile);
   const gameOptions = await installGameOptions(gameDir, profile, settings.lang);
   const modInfo = await installMod(gameDir, settings, report, net, profile, options.appVersion, releaseAsset);
+  // OptiFine après le mod : si le téléchargement du mod échoue (réseau coupé, limite GitHub, SHA refusé), l'installation s'arrête
+  // avant la copie. Sinon OptiFine serait déjà dans mods à côté d'un mod ATTACK qui n'a pas les adaptations (profil du launcher
+  // officiel déjà là : le jeu démarrerait ainsi depuis lui).
+  if (catalog.hasOptifine(profile)) optifineResult = await installOptifine(gameDir, minecraftDir, settings, profile);
   await installProfile(minecraftDir, gameDir, settings, icon, report, profile);
 
   const previous = await readState(gameDir);
@@ -634,8 +637,10 @@ async function status({
   if (catalog.hasOptifine(profile)) {
     const view = await optifine.inspect({ minecraftDir, gameDir, enabled: optifineEnabled, chosen: optifineJar, tracked: state?.optifine || null, mc });
     // OptiFine actif (copie posée, copie du joueur déjà dans mods, ou copie à poser) avec un mod ATTACK plus ancien que la version minimale
-    // de la spec : le mod n'a pas les adaptations pour OptiFine, l'installation (qui reprend le mod de la release) est à refaire
-    const active = view.enabled && (view.installed || Boolean(view.own) || view.wantCopy);
+    // de la spec : le mod n'a pas les adaptations pour OptiFine, l'installation (qui reprend le mod de la release) est à refaire.
+    // Le jar que le joueur a lui-même mis dans mods reste dans le jeu même quand l'interrupteur est coupé (apply() n'y touche jamais) :
+    // il compte toujours. Seule la copie suivie par le launcher part avec l'interrupteur.
+    const active = Boolean(view.own) || (view.enabled && (view.installed || view.wantCopy));
     result.optifine = { ...view, modOutdated: Boolean(view.minMod) && active && mod.olderThan(result.modVersion, view.minMod) };
   }
   // nom historique du chargeur (forge / fabric) à côté de `loader`
