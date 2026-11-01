@@ -18,16 +18,16 @@ son chargeur de mods, son dossier de jeu, son état d'installation et son profil
 | Jar du mod | `mods\attack-client.jar` | `mods\attack-fabric.jar` | `mods\attack-fabric.jar` | `mods\attack-forge.jar` |
 | Profil du launcher officiel | `attack-client`, « ATTACK Client » | `attack-fabric-1.21.1`, « ATTACK 1.21.1 » | `attack-fabric-26.3`, « ATTACK 26.3 » | `attack-forge-1.7.10`, « ATTACK 1.7.10 » |
 | Pack de mods | `src/main/packs/forge-1.8.9.json` | `src/main/packs/fabric-1.21.1.json` | `src/main/packs/fabric-26.3.json` | — (aucun) |
-| OptiFine | copie du joueur (jamais téléchargé) | — | — | — (pas dans cette version) |
+| OptiFine | copie du joueur (jamais téléchargé), édition testée HD U M5 | — | — | copie du joueur (jamais téléchargé), édition testée HD U E7, mod 1.1.0 au moins |
 
 Le profil 1.8.9 garde **exactement** son identifiant officiel (`attack-client`) et son dossier de jeu : un joueur qui
 l'utilisait déjà ne perd rien. L'ancien réglage « dossier de jeu » (global) est repris tel quel pour ce profil lors de la
 première lecture de `settings.json` (migration automatique).
 
 Le profil **1.7.10** (étiquette « PvP 1.7 ») a le même installateur Forge « legacy » que la 1.8.9 (`install_profile.json` lu comme
-une archive, rien d'exécuté) et le même format de JSON de version : aucun code propre au chargeur. Il n'a **ni pack de mods ni
-OptiFine** : seul le mod ATTACK 1.7.10, qui reprend tout le contenu du mod 1.8.9 sauf OptiFine (menu ATTACK, écran titre, éditeur
-de HUD, 61 modules, tous les cosmétiques). Seuls Mouse Delay Fix (sans objet en 1.7.10) et Titles (impossible en 1.7.10) n'y sont pas :
+une archive, rien d'exécuté) et le même format de JSON de version : aucun code propre au chargeur. Il n'a **pas de pack de mods** : le mod ATTACK 1.7.10, qui reprend tout le contenu du mod 1.8.9 (menu ATTACK, écran titre, éditeur
+de HUD, 61 modules, tous les cosmétiques), et, comme la 1.8.9, la copie d'OptiFine du joueur (HD U E7, avec le mod 1.1.0 au moins : voir
+[OptiFine pour la 1.8.9 et la 1.7.10](#optifine-pour-la-189-et-la-1710-la-copie-du-joueur)). Seuls Mouse Delay Fix (sans objet en 1.7.10) et Titles (impossible en 1.7.10) n'y sont pas :
 sa page Mods montre donc les modules de la vitrine moins ces deux-là, et la carte « Pack de mods » des Réglages est masquée pour lui.
 
 ## Ce qui est installé, et où
@@ -39,7 +39,7 @@ sa page Mods montre donc les modules de la vitrine moins ces deux-là, et la car
 | Dossier de jeu séparé (mods, réglages, captures, mondes) | un par profil, voir le tableau ci-dessus (modifiable dans Réglages, profil par profil) |
 | Mod ATTACK | `<dossier de jeu>\mods\attack-client.jar` (1.8.9), `attack-forge.jar` (1.7.10) ou `attack-fabric.jar` (Fabric) |
 | Pack de mods | `<dossier de jeu>\mods\` : un jar par mod du pack |
-| OptiFine du joueur (1.8.9) | `<dossier de jeu>\mods\OptiFine-1.8.9_*.jar` : copie de la sienne, suivie dans l'état |
+| OptiFine du joueur (1.8.9 et 1.7.10) | `<dossier de jeu>\mods\OptiFine-1.8.9_*.jar` ou `OptiFine-1.7.10_*.jar` : copie de la sienne, suivie dans l'état |
 | `options.txt` de départ (langue, et vidéo en Fabric) | `<dossier de jeu>\options.txt`, une fois par étape |
 | État de l'installation (profil, versions, source du mod, SHA-256, pack et jars gérés, date) | `<dossier de jeu>\attack-launcher.json` |
 | Profil du launcher officiel | fusionné dans `%APPDATA%\.minecraft\launcher_profiles.json` (copie `.bak` avant chaque écriture) |
@@ -101,7 +101,7 @@ flowchart TD
    `loader.pinnedSha1`), donc pas pris sur le serveur qui sert le jar ; à défaut, on prendrait le fichier `.sha1` publié à
    côté du jar sur le Maven de Fabric (`intermediary` n'existe pas pour 26.3). Un SHA-1 figé est **toujours** vérifié,
    même si le profil Fabric publie un hash pour cette bibliothèque : un hash du profil qui le contredit est refusé.
-5. **Pack de mods** (les trois profils qui en ont un, `src/main/modpack.js` ; le profil 1.7.10 n'en a pas : l'étape est sautée) : voir [Le pack de mods](#le-pack-de-mods-les-trois-profils), puis **OptiFine du joueur** (1.8.9) : voir [OptiFine pour la 1.8.9](#optifine-pour-la-189-la-copie-du-joueur).
+5. **Pack de mods** (les trois profils qui en ont un, `src/main/modpack.js` ; le profil 1.7.10 n'en a pas : l'étape est sautée) : voir [Le pack de mods](#le-pack-de-mods-les-trois-profils), puis **OptiFine du joueur** (1.8.9 et 1.7.10) : voir [OptiFine pour la 1.8.9 et la 1.7.10](#optifine-pour-la-189-et-la-1710-la-copie-du-joueur).
 6. **Mod** : voir [Mod ATTACK : d'où vient le jar ?](#mod-attack--doù-vient-le-jar-).
 7. **Profil** : fusion dans `launcher_profiles.json` ([Fonctionnalités](Fonctionnalites.md#profil-du-launcher-officiel)).
 
@@ -251,18 +251,31 @@ ressources au format OptiFine (textures connectées, mobs, ciel) **sans OptiFine
   chaque projet et réécrit les trois fichiers ; `--check` compare sans rien écrire. Les dépendances « requises » hors pack
   sont signalées (aucune ne manque : Mod Menu embarque la sienne). À relire avant de commiter.
 
-## OptiFine pour la 1.8.9 (la copie du joueur)
+## OptiFine pour la 1.8.9 et la 1.7.10 (la copie du joueur)
 
-OptiFine ne peut pas être redistribué : le launcher **ne le télécharge jamais**. Pour le profil 1.8.9, il utilise seulement
-la copie que le joueur a lui-même récupérée sur [optifine.net](https://optifine.net/downloads) (`src/main/optifine.js`) :
+OptiFine ne peut pas être redistribué : le launcher **ne le télécharge jamais**. Pour les profils 1.8.9 et 1.7.10, il utilise
+seulement la copie que le joueur a lui-même récupérée sur [optifine.net](https://optifine.net/downloads) (`src/main/optifine.js`).
+Une **spec par version de Minecraft** (la table `SPECS`, reprise telle quelle par le catalogue et exposée à la page) dit quel
+OptiFine est attendu :
 
-1. **Détection** : `.minecraft\libraries\optifine\OptiFine\1.8.9_*\OptiFine-1.8.9_*.jar` (laissée par l'installateur d'OptiFine,
-   la variante la plus récente d'abord), puis `.minecraft\mods\*OptiFine*1.8.9*.jar`, ou le **fichier choisi** avec le bouton
-   « Choisir le fichier… » de la carte OptiFine (Réglages, onglet Ce profil).
+| Profil | `mc` | Édition testée avec ATTACK Client | `tweak` (manifeste) | Mod ATTACK minimal |
+| --- | --- | --- | --- | --- |
+| `forge-1.8.9` | 1.8.9 | HD U M5 | `optifine.OptiFineForgeTweaker` | — |
+| `forge-1.7.10` | 1.7.10 | HD U E7 | `optifine.OptiFineForgeTweaker` | 1.1.0 |
+
+Chaque fonction d'`optifine.js` prend la version de Minecraft du profil (1.8.9 par défaut) : détection, noms acceptés, validation
+et cache de validation (la clé contient la version : un refus pour la 1.7.10 n'est jamais resservi à la 1.8.9) en dépendent.
+
+1. **Détection** : `.minecraft\libraries\optifine\OptiFine\<version>_*\OptiFine-<version>_*.jar` (laissée par l'installateur
+   d'OptiFine, la variante la plus récente d'abord), puis `.minecraft\mods\*OptiFine*<version>*.jar`, ou le **fichier choisi** avec
+   le bouton « Choisir le fichier… » de la carte OptiFine (Réglages, onglet Ce profil). `<version>` est celle du profil : un
+   OptiFine 1.8.9 n'est jamais pris pour la 1.7.10, ni l'inverse.
 2. **Validation** avant toute copie : archive ZIP lisible, `META-INF/MANIFEST.MF` (1 Mo décompressé au plus : un jar piégé qui
    annonce plus, ou qui ment sur sa taille, est refusé sans geler le launcher) avec
-   `TweakClass: optifine.OptiFineForgeTweaker`, nom contenant `1.8.9`. Un fichier refusé est expliqué (pas un .jar, mauvaise
-   version, pas une archive, trop gros, pas OptiFine pour Forge).
+   `TweakClass: optifine.OptiFineForgeTweaker`, nom contenant la version du profil. Un fichier refusé est expliqué (pas un .jar,
+   mauvaise version, pas une archive, trop gros, pas OptiFine pour Forge), avec la version du profil dans le message. Une **autre
+   édition** que celle de la spec (HD U E8 en 1.7.10, HD U L5 ou M6 pre2 en 1.8.9…) est **acceptée** si le manifeste est bon, mais
+   signalée « non testée » (ligne du détail en information, texte de la carte) : elle ne bloque rien.
 3. **Copie** dans `<dossier de jeu>\mods\` (fichier temporaire puis renommage, empreinte SHA-256 relue), **suivie dans
    `attack-launcher.json`** (`optifine` : nom, origine, SHA-256, taille). Quand le réglage **OptiFine** est coupé, ou qu'une
    autre variante est choisie, **seule la copie du launcher est retirée** (et seulement si son empreinte n'a pas changé) ;
@@ -270,34 +283,56 @@ la copie que le joueur a lui-même récupérée sur [optifine.net](https://optif
    (OptiFine désinstallé, fichier choisi effacé) alors que le réglage est actif, **le jar de `mods\` reste en place** :
    il marche, l'état est gardé et le profil reste prêt (JOUER, pas INSTALLER). Le launcher le compte (détail, nombre de mods,
    carte **Profil actuel**, page Mods) et l'affiche « déjà copié dans mods », pas « introuvable ».
-4. **Rien trouvé** : un texte explique pourquoi (licence), le lien **Pourquoi ?** le détaille en trois points, et **Obtenir
-   OptiFine** lance l'assistant ci-dessous ; le jeu marche sans OptiFine. La page relit l'état au retour sur la fenêtre : un
-   OptiFine installé entre-temps est trouvé tout seul.
+4. **OptiFine d'une autre version dans `mods\`** (un 1.8.9 dans le dossier du profil 1.7.10, par exemple) : le launcher ne le
+   supprime **jamais**. `inspect()` le range dans `foreign` ; la page l'affiche en information (ligne « OptiFine (autre version) »,
+   avertissement de la carte : il peut empêcher le jeu de démarrer, à toi de le retirer).
+5. **Mod ATTACK assez récent** : avec OptiFine actif (copie posée, copie du joueur déjà dans `mods`, ou copie à poser), un mod
+   installé plus ancien que `minMod` (1.1.0 en 1.7.10) met `modOutdated` à vrai dans l'état : `status().installed` devient faux, la
+   ligne « ATTACK Client » du détail dit « à mettre à jour (compatibilité OptiFine) », le bandeau « À appliquer » le dit aussi, et
+   **INSTALLER** reprend le mod de la dernière release. Une version illisible (« dev ») n'est pas déclarée trop ancienne.
+6. **Rien trouvé** : un texte explique pourquoi (licence) et quelle édition récupérer, le lien **Pourquoi ?** le détaille en trois
+   points, et **Obtenir OptiFine** lance l'assistant ci-dessous ; le jeu marche sans OptiFine. La page relit l'état au retour sur
+   la fenêtre : un OptiFine installé entre-temps est trouvé tout seul.
 
-### L'assistant « Obtenir OptiFine » (`src/main/optifine-watch.js`)
+Un joueur qui avait déjà un OptiFine 1.7.10 dans son `.minecraft` (installé avec l'installateur d'OptiFine) verra « À installer »
+**une fois** après la mise à jour du launcher : le réglage est actif par défaut en 1.7.10, la copie est trouvée dans `libraries` et
+il faut l'ajouter au jeu (et mettre le mod à jour, voir ci-dessus).
+
+### L'assistant « Obtenir OptiFine » (`src/main/optifine-watch.js`, `optifine-assist.js`)
 
 Dans la carte OptiFine des Réglages, et sur la carte OptiFine de la page Mods quand aucune copie n'est trouvée. Le launcher ne
 télécharge toujours rien : il ouvre [optifine.net](https://optifine.net/downloads) dans le navigateur du joueur (`shell.openExternal`,
 sauf avec `ATTACK_NO_BROWSER`) et surveille le dossier Téléchargements (`ATTACK_DOWNLOADS_DIR` le remplace pour les essais).
 
-- **Étapes montrées** : bouton **(Mirror)**, puis **Download**, puis **Conserver** si le navigateur ou Windows le demande.
-- **Sondage** chaque seconde, 10 minutes au plus (**Attendre encore** relance un tour), un seul guetteur à la fois. Noms
-  acceptés : `OptiFine_1.8.9_….jar` ou `preview_OptiFine_1.8.9_….jar` (`-` ou `_`, insensible à la casse), après retrait du
-  suffixe « (1) » du navigateur (espacé par Chrome et Edge, collé par Firefox). Ignorés : `.crdownload`, `.part`, `.tmp`, fichiers vides, plus de 64 Mo, un jar qui a un
-  `<nom>.part` voisin, tout ce qui n'est pas un fichier ordinaire (liens).
+- **Un assistant par profil** : `optifine-assist.js` tient un guetteur par profil (identifiant et version capturés au premier
+  « Obtenir OptiFine »). Chaque appel de la page (`pickOptifine`, `optifineAssist.start`, `use`, `cancel`) nomme son `profileId` ; le
+  processus principal refuse un profil inconnu ou sans OptiFine (`NO_OPTIFINE`). Chaque état émis porte `{ profileId, mc }` : l'import
+  écrit dans les réglages **de son** profil, quel que soit le profil affiché quand le jar arrive, et la page range chaque état sous
+  son profil (celui d'un autre profil n'est ni affiché ni annoncé).
+- **Étapes montrées** (d'après la page de téléchargements d'optifine.net, relue le 01/11/2026) : « Show all versions » sous la liste
+  des versions récentes (les anciennes versions de Minecraft y sont repliées), la section « Minecraft <version> », le bouton
+  **(Mirror)** de sa première ligne (OptiFine HD U M5 en 1.8.9, HD U E7 en 1.7.10 ; les plus anciennes sont sous « + More », les
+  préversions sous « + Preview versions »), puis **Download**, puis **Conserver** si le navigateur ou Windows le demande.
+- **Sondage** chaque seconde, 10 minutes au plus (**Attendre encore** relance un tour). Noms acceptés pour la version du profil :
+  `OptiFine_<version>_….jar` ou `preview_OptiFine_<version>_….jar` (`-` ou `_`, insensible à la casse), après retrait du
+  suffixe « (1) » du navigateur (espacé par Chrome et Edge, collé par Firefox). Ignorés : `.crdownload`, `.part`, `.tmp`, fichiers vides,
+  plus de 64 Mo, un jar qui a un `<nom>.part` voisin, tout ce qui n'est pas un fichier ordinaire (liens). Un OptiFine **d'une autre version
+  de Minecraft** arrivé pendant l'attente n'est jamais importé : l'état porte son nom dans `foreign` et la page l'écrit sous l'état
+  (« Reçu dans Téléchargements, mais pas pour ce profil »).
 - **Un fichier nouveau** doit être **stable sur deux sondages**, puis passe la validation ci-dessus (états *vérification*, puis
   *importé* ou *refusé* avec la raison). Un jar **verrouillé un instant** (antivirus, OneDrive : illisible, `EBUSY`, `EPERM`,
   `EACCES`) est repris aux 5 sondages suivants avant le refus ou l'erreur. **Un fichier déjà présent au départ** est seulement
   **proposé** (« Utiliser ce fichier ») : jamais importé sans clic.
 - **Import** (`optifine.importCopy`) : copie **privée** dans `%APPDATA%\ATTACK Launcher\optifine\` (fichier temporaire, SHA-256,
-  renommage) ; le réglage **fichier choisi** du profil 1.8.9 pointe dessus et l'interrupteur OptiFine est activé. Le jar est
+  renommage) ; le réglage **fichier choisi** du profil pointe dessus et l'interrupteur OptiFine est activé. Le jar est
   ensuite copié dans `mods` à la prochaine installation (bouton **Installer maintenant**).
 - **États** annoncés aux lecteurs d'écran (`aria-live`) : attente, repéré, vérification, importé, refusé, délai dépassé,
-  annulé, erreur. Aucune minuterie ne reste après la fin, l'annulation ou la fermeture du launcher.
-- **Aucun accès réseau** dans `optifine.js`, `optifine-watch.js` et `fsretry.js` : un test statique le vérifie.
+  annulé, erreur. Aucune minuterie ne reste après la fin, l'annulation ou la fermeture du launcher (`dispose` de tous les guetteurs).
+- **Aucun accès réseau** dans `optifine.js`, `optifine-watch.js`, `optifine-assist.js` et `fsretry.js` : un test statique le vérifie.
 
-Réglages par profil 1.8.9 : `optifine` (activé par défaut : la copie est utilisée si elle existe) et `optifineJar` (chemin
-absolu choisi, vide = recherche automatique). ATTACK Client 2.5.4 et OptiFine HD U M5 marchent ensemble (0 mixin en échec).
+Réglages par profil (1.8.9 et 1.7.10) : `optifine` (activé par défaut : la copie est utilisée si elle existe) et `optifineJar` (chemin
+absolu choisi, vide = recherche automatique). ATTACK Client 2.5.4 et OptiFine HD U M5 marchent ensemble en 1.8.9 (0 mixin en échec) ;
+en 1.7.10, le mod 1.1.0 est celui qui s'entend avec OptiFine HD U E7.
 
 ## Crédits des mods
 

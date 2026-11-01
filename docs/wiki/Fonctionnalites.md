@@ -16,12 +16,12 @@ anglais (Réglages → Langue).
   profil dans le launcher officiel, son Java (8, 21 ou 25) et ses réglages. Le choix est retenu d'un lancement à l'autre ; il
   est bloqué pendant une installation ou un lancement.
 - **INSTALLER** (puis **JOUER** une fois tout installé) : installe Minecraft, le chargeur de mods (Forge ou Fabric Loader),
-  le pack de mods du profil, la copie d'OptiFine du joueur (1.8.9), le mod ATTACK, et crée le profil du launcher officiel.
+  le pack de mods du profil, la copie d'OptiFine du joueur (1.8.9 et 1.7.10), le mod ATTACK, et crée le profil du launcher officiel.
   Pendant l'installation, la progression est **dans le bouton** (« INSTALLATION 42 % »).
 - **Sous le bouton** : « Lancer en tant que *pseudo* » avec la tête du joueur quand un compte est connecté, sinon
   l'explication (« Ouvre le launcher officiel sur le profil … » et un lien **Connecter un compte**).
 - **Ligne « Tout est prêt · N mods · ATTACK Client vX »** : un résumé à la place des anciennes tuiles ; **Détails** ouvre la
-  liste (Minecraft, chargeur, pack de mods, OptiFine en 1.8.9, ATTACK Client avec sa version, profil du launcher) avec ce qui
+  liste (Minecraft, chargeur, pack de mods, OptiFine en 1.8.9 et 1.7.10, ATTACK Client avec sa version, profil du launcher) avec ce qui
   reste à installer. Quand il n'y a rien à installer mais un retrait à faire (réglage OptiFine coupé alors que la copie est encore
   dans `mods`), la ligne dit « Mise à jour à appliquer » et la ligne OptiFine du détail « à retirer ». Si la copie d'origine a
   disparu mais que le jar copié est toujours dans `mods`, la ligne OptiFine dit « déjà copié dans mods » et il est compté. Le nombre de mods est le
@@ -48,13 +48,13 @@ Elle suit le profil choisi sur l'accueil :
   Side Sounds, Replay Mod en option) et la vitrine des **63 modules** d'ATTACK Client, filtrables par catégorie (Combat, HUD,
   Visuel, Performance, Utilitaire). Les modules sont une liste d'information (`src/renderer/data.js`) : on les active et on
   les règle **en jeu**, depuis le menu ATTACK, pas dans le launcher.
-- **1.7.10** : le mod ATTACK 1.7.10 (avec sa version installée, ou « à installer ») et la même vitrine de modules que la 1.8.9, moins deux : le mod 1.7.10
-  reprend tout le contenu du mod 1.8.9 sauf OptiFine, donc la page montre **61 des 63 modules**, tous sauf Mouse Delay Fix (sans
+- **1.7.10** : le mod ATTACK 1.7.10 (avec sa version installée, ou « à installer »), **OptiFine** (ta copie, avec son interrupteur, comme en 1.8.9) et la même vitrine de modules que la 1.8.9, moins deux : le mod 1.7.10
+  reprend tout le contenu du mod 1.8.9 (OptiFine est ta copie, pas un module), donc la page montre **61 des 63 modules**, tous sauf Mouse Delay Fix (sans
   objet, le jeu 1.7.10 vise déjà là où l'on regarde) et Titles (impossible en 1.7.10). Le texte d'Animations 1.7 est propre à ce
   profil (le mod règle la position, le style et la vitesse du coup ; le blocage et la pose 1.7 sont ceux du jeu). La liste est une
-  liste d'exclusion (`MODULES_BY_PROFILE`, `src/renderer/data.js`) : un nouveau module de la vitrine y arrive tout seul. Ni OptiFine
-  ni pack de mods : le sous-titre le dit (« sans pack de mods »)
-  au lieu d'afficher « 0 mod », la carte « Pack de mods » des Réglages est masquée et « Mods et licences » n'a pas de tableau de pack.
+  liste d'exclusion (`MODULES_BY_PROFILE`, `src/renderer/data.js`) : un nouveau module de la vitrine y arrive tout seul. Pas de pack de mods : le sous-titre le dit (« sans pack de mods »)
+  au lieu d'afficher « 0 mod », la carte « Pack de mods » des Réglages est masquée et « Mods et licences » n'a pas de tableau de pack (il dit que seuls
+  ATTACK Client et ta copie d'OptiFine sont installés). Le rail « Profil actuel » garde la version du mod ATTACK à côté de la ligne OptiFine.
 - **1.21.1 et 26.3** : le mod ATTACK (avec sa version installée, ou « à installer ») et les mods du **pack figé** avec leur
   version (Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast, Entity Culling, More Culling, BadOptimizations,
   ModernFix en 1.21.1, Krypton, Reflex AntiLag, Mod Menu, Continuity, Entity Texture / Model Features, Iris et Replay Mod en
@@ -74,7 +74,7 @@ Elle suit le profil choisi sur l'accueil :
 ![Page Réglages](../images/settings.png)
 
 Les réglages sont répartis en **trois onglets** : **Ce profil** (mémoire avec sa zone recommandée et des raccourcis 2, 3, 4, 6 Go,
-dossier de jeu, Java, pack de mods avec ses interrupteurs, carte OptiFine en 1.8.9), **Launcher** (langue, À propos, mods et
+dossier de jeu, Java, pack de mods avec ses interrupteurs, carte OptiFine en 1.8.9 et 1.7.10), **Launcher** (langue, À propos, mods et
 licences, mises à jour, dossiers et journaux) et **Avancé** (arguments Java, mode développeur, ID client Azure). Un bandeau « À appliquer » avec **Installer maintenant**
 apparaît quand un réglage du pack attend une installation, et chaque interrupteur affiche **Appliqué**, **À appliquer** ou **Désactivé**.
 
@@ -95,7 +95,7 @@ et son dossier de jars deviennent ceux du profil 1.8.9.
 | Mods PvP (latence) | Profils Fabric, activé par défaut : Crystal Optimizer, Anchor Optimizer, WalksyLib, BetterHitReg et Complete Shield Fixes. À couper si un serveur les interdit. |
 | Packs OptiFine | Profils Fabric, activé par défaut : Continuity, Entity Texture Features et Entity Model Features lisent les packs de ressources au format OptiFine sans OptiFine. |
 | Replay Mod | Les trois profils, **coupé par défaut** : enregistre les parties pour les revoir et les monter. |
-| OptiFine | Profil 1.8.9, activé par défaut : copie **ta** copie d'OptiFine (trouvée dans `.minecraft\libraries\optifine`, `.minecraft\mods` ou choisie avec **Choisir le fichier…**) dans le dossier mods du profil. Le launcher ne le télécharge jamais : sans copie, un texte explique et **optifine.net** s'ouvre dans le navigateur. Voir [OptiFine pour la 1.8.9](Installation-et-mises-a-jour.md#optifine-pour-la-189-la-copie-du-joueur). |
+| OptiFine | Profils 1.8.9 et 1.7.10, activé par défaut : copie **ta** copie d'OptiFine (trouvée dans `.minecraft\libraries\optifine`, `.minecraft\mods` ou choisie avec **Choisir le fichier…**) dans le dossier mods du profil. Le launcher ne le télécharge jamais : sans copie, un texte explique et **optifine.net** s'ouvre dans le navigateur. Voir [OptiFine pour la 1.8.9 et la 1.7.10](Installation-et-mises-a-jour.md#optifine-pour-la-189-et-la-1710-la-copie-du-joueur). |
 | Langue | Français ou English. Elle sert aussi de langue de départ à Minecraft : écrite dans `options.txt` à la création du fichier seulement, un `options.txt` existant garde sa langue (voir [Le pack de mods](Installation-et-mises-a-jour.md#le-pack-de-mods-les-trois-profils)). |
 | À propos | Version du launcher, dossier `.minecraft`, et **Mods et licences** : tous les mods du pack du profil avec auteur, version et licence, et la phrase de crédit. |
 | Mode développeur | Voir plus bas. |

@@ -29,7 +29,7 @@ const fr = {
     },
     guide: {
       title: 'Guide d’ATTACK Launcher : installation, compte, OptiFine, dépannage',
-      description: 'Le guide d’ATTACK Launcher : premier lancement, compte Microsoft, OptiFine en 1.8.9, mods et groupes, dépannage et questions fréquentes.',
+      description: 'Le guide d’ATTACK Launcher : premier lancement, compte Microsoft, OptiFine en 1.8.9 et en 1.7.10, mods et groupes, dépannage et questions fréquentes.',
     },
   },
   nav: {
@@ -107,7 +107,7 @@ const fr = {
     lead: 'Pour jouer ATTACK Client, il faut normalement installer Minecraft, le chargeur de mods et le bon jar au bon endroit, sans mélanger avec tes autres mods. Le launcher s’en charge.',
     c1: { t: 'Installation en un clic', p: 'INSTALLER télécharge Minecraft, le chargeur de mods, le pack de mods du profil (s’il en a un) et ATTACK Client, dans un dossier de jeu séparé de ton <code>.minecraft</code>. Chaque fichier est vérifié par son empreinte (hash) : sans le bon hash, il est refusé.' },
     c2: { t: 'Packs de mods figés, par groupes', p: 'Chaque profil, sauf le 1.7.10, a un pack de mods figé. Des groupes s’activent ou se coupent dans les Réglages : <strong>Mods PvP (latence)</strong>, <strong>Packs OptiFine</strong>, <strong>Replay Mod</strong> et <strong>Shaders (Iris)</strong>. Un réglage s’applique à la prochaine installation.' },
-    c3: { t: 'OptiFine en 1.8.9, avec ta propre copie', p: 'Sa licence interdit de le redistribuer : le launcher ne le télécharge jamais. Il repère l’OptiFine que tu as récupéré toi-même (ou celui que tu choisis), le valide, puis le copie dans le dossier <code>mods</code> du profil.' },
+    c3: { t: 'OptiFine en 1.8.9 et en 1.7.10, avec ta propre copie', p: 'Sa licence interdit de le redistribuer : le launcher ne le télécharge jamais. Il repère l’OptiFine que tu as récupéré toi-même (ou celui que tu choisis), le valide pour la version du profil, puis le copie dans le dossier <code>mods</code> du profil.' },
     c4: { t: 'JOUER, avec ou sans compte Microsoft', p: 'Avec un compte connecté, JOUER lance directement le jeu, avec le Java officiel de Mojang adapté au profil. Sans compte, il ouvre le launcher Minecraft officiel sur le profil ATTACK choisi.' },
     c5: { t: 'Skin en 3D', p: 'La page Compte affiche ton skin en 3D (marche, course ou repos) et te laisse en changer sans quitter le launcher. La connexion se fait par code d’appareil : le launcher ne voit jamais ton mot de passe.' },
     c6: { t: 'Mises à jour, jamais pendant une partie', p: 'La version installée télécharge les nouvelles versions en arrière-plan, vérifie leur SHA-512 et n’installe jamais rien pendant une partie. La version portable affiche un avis avec un lien vers la page des versions.' },
@@ -124,7 +124,7 @@ const fr = {
     forge189: { tag: 'PvP classique', p: 'Le profil historique « ATTACK Client » : son identifiant et son dossier de jeu ne changent pas. Pack de mods : Phosphor Legacy et Client Side Sounds, Replay Mod en option, et OptiFine avec ta propre copie.' },
     fabric1211: { tag: 'PvP moderne', p: 'Fabric avec le pack de performance (Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast…) et les groupes réglables : Mods PvP, Packs OptiFine, Replay Mod et Shaders.' },
     fabric263: { tag: 'Dernière version', p: 'Le même genre de pack qu’en 1.21.1, sans ModernFix (qui n’a pas de version 26.3), avec les mêmes groupes réglables.' },
-    forge1710: { tag: 'PvP 1.7', p: 'Forge 10.13.4.1614 et le mod ATTACK 1.7.10, avec tout le contenu du mod 1.8.9 : menu ATTACK, écran titre, éditeur de HUD, 61 modules (dont la Minimap, les Waypoints et les Amis) et tous les cosmétiques. Pas de pack de mods, et pas d’OptiFine.' },
+    forge1710: { tag: 'PvP 1.7', p: 'Forge 10.13.4.1614 et le mod ATTACK 1.7.10, avec tout le contenu du mod 1.8.9 : menu ATTACK, écran titre, éditeur de HUD, 61 modules (dont la Minimap, les Waypoints et les Amis) et tous les cosmétiques. Pas de pack de mods, mais OptiFine avec ta propre copie (HD U E7).' },
   },
   client: {
     title: 'ATTACK Client, en jeu',
@@ -173,7 +173,7 @@ const fr = {
     q2: 'Faut-il posséder Minecraft Java Edition ?',
     a2: '<p>Oui. Avec un compte Microsoft connecté, le launcher vérifie que le compte possède Minecraft Java Edition (achat ou Game Pass). Sans compte, JOUER ouvre le launcher Minecraft officiel sur le profil ATTACK : c’est le seul cas où ce launcher officiel est nécessaire.</p>',
     q3: 'OptiFine est-il inclus ?',
-    a3: `<p>Non : sa licence interdit de le redistribuer, donc le launcher <strong>ne le télécharge jamais</strong>. En 1.8.9, il utilise <strong>ta copie</strong>, que tu récupères toi-même sur ${ext('https://optifine.net/downloads', 'optifine.net')}. Il la cherche dans <code>.minecraft\\libraries\\optifine</code> puis dans <code>.minecraft\\mods</code>, ou tu la choisis avec « Choisir le fichier… » ; il la valide, puis la copie dans le dossier <code>mods</code> du profil. Sans copie, le jeu marche sans OptiFine.</p><p>En 1.21.1 et 26.3, le groupe <strong>Packs OptiFine</strong> (Continuity, Entity Texture Features, Entity Model Features) lit les packs de ressources au format OptiFine sans OptiFine. Le profil 1.7.10 n’a pas d’OptiFine pour l’instant.</p>`,
+    a3: `<p>Non : sa licence interdit de le redistribuer, donc le launcher <strong>ne le télécharge jamais</strong>. En 1.8.9 et en 1.7.10, il utilise <strong>ta copie</strong> (OptiFine HD U M5 en 1.8.9, HD U E7 en 1.7.10), que tu récupères toi-même sur ${ext('https://optifine.net/downloads', 'optifine.net')}. Il la cherche dans <code>.minecraft\\libraries\\optifine</code> puis dans <code>.minecraft\\mods</code>, ou tu la choisis avec « Choisir le fichier… » ; il la valide, puis la copie dans le dossier <code>mods</code> du profil. Sans copie, le jeu marche sans OptiFine. En 1.7.10, OptiFine demande le mod ATTACK Client 1.7.10 1.1.0 ou plus : l’installation le met à jour.</p><p>En 1.21.1 et 26.3, le groupe <strong>Packs OptiFine</strong> (Continuity, Entity Texture Features, Entity Model Features) lit les packs de ressources au format OptiFine sans OptiFine.</p>`,
     q4: 'Est-ce que ça touche à mon dossier .minecraft ?',
     a4: '<p>Ton jeu ATTACK vit dans son propre dossier de jeu (par défaut <code>%APPDATA%\\.attack</code>) : mods, réglages, captures et mondes ne se mélangent pas avec ceux de ton <code>.minecraft</code>. Le launcher y ajoute quand même les versions de Minecraft, les bibliothèques et les ressources, partagées entre les profils, et fusionne un profil dans <code>launcher_profiles.json</code> (copie <code>.bak</code> avant chaque écriture ; tes autres profils restent intacts).</p>',
     q5: 'Les mods PvP sont-ils autorisés sur mon serveur ?',
@@ -257,9 +257,9 @@ const fr = {
       needMeta: 'Achat ou Game Pass.',
     },
     optifine: {
-      t: 'OptiFine en 1.8.9',
-      p: 'Sa licence interdit de le redistribuer : le launcher ne le télécharge jamais. L’assistant « Obtenir OptiFine » ouvre optifine.net, surveille ton dossier Téléchargements, vérifie le fichier puis le garde pour toi.',
-      versions: 'Versions reconnues : HD U M5 et HD U M6 pre2. S’il en trouve plusieurs, le launcher prend la plus récente.',
+      t: 'OptiFine en 1.8.9 et en 1.7.10',
+      p: 'Sa licence interdit de le redistribuer : le launcher ne le télécharge jamais. L’assistant « Obtenir OptiFine » ouvre optifine.net, surveille ton dossier Téléchargements, vérifie le fichier puis le garde pour toi. Chaque profil a son assistant : il ne prend que l’OptiFine de sa version de Minecraft, et signale celui d’une autre version sans jamais l’importer.',
+      versions: 'Éditions testées avec ATTACK Client : HD U M5 en 1.8.9, HD U E7 en 1.7.10. Une autre édition d’OptiFine pour la même version est acceptée, mais signalée « non testée ». S’il en trouve plusieurs, le launcher prend la plus récente. En 1.7.10, OptiFine demande le mod ATTACK Client 1.7.10 1.1.0 ou plus : l’installation le met à jour.',
     },
     mods: {
       t: 'Mods et groupes',
@@ -297,7 +297,7 @@ const en = {
     },
     guide: {
       title: 'ATTACK Launcher guide: install, account, OptiFine, troubleshooting',
-      description: 'The ATTACK Launcher guide: first launch, Microsoft account, OptiFine on 1.8.9, mods and groups, troubleshooting and frequently asked questions.',
+      description: 'The ATTACK Launcher guide: first launch, Microsoft account, OptiFine on 1.8.9 and on 1.7.10, mods and groups, troubleshooting and frequently asked questions.',
     },
   },
   nav: {
@@ -375,7 +375,7 @@ const en = {
     lead: 'To play ATTACK Client you would normally install Minecraft, the mod loader and the right jar in the right place, without mixing it with your other mods. The launcher does it for you.',
     c1: { t: 'One-click install', p: 'INSTALL downloads Minecraft, the mod loader, the profile’s mod pack (if it has one) and ATTACK Client, in a game folder separate from your <code>.minecraft</code>. Every file is checked against its hash: without the right hash, it is refused.' },
     c2: { t: 'Pinned mod packs, in groups', p: 'Each profile except 1.7.10 has a pinned mod pack. Groups switch on or off in Settings: <strong>PvP mods (latency)</strong>, <strong>OptiFine packs</strong>, <strong>Replay Mod</strong> and <strong>Shaders (Iris)</strong>. A setting applies at the next install.' },
-    c3: { t: 'OptiFine on 1.8.9, with your own copy', p: 'Its license forbids redistributing it: the launcher never downloads it. It finds the OptiFine you got yourself (or the one you pick), validates it, then copies it into the profile’s <code>mods</code> folder.' },
+    c3: { t: 'OptiFine on 1.8.9 and on 1.7.10, with your own copy', p: 'Its license forbids redistributing it: the launcher never downloads it. It finds the OptiFine you got yourself (or the one you pick), validates it for the profile’s version, then copies it into the profile’s <code>mods</code> folder.' },
     c4: { t: 'PLAY, with or without a Microsoft account', p: 'With a signed-in account, PLAY starts the game directly, with the official Mojang Java suited to the profile. Without an account, it opens the official Minecraft launcher on the chosen ATTACK profile.' },
     c5: { t: '3D skin', p: 'The Account page shows your skin in 3D (walking, running or idle) and lets you change it without leaving the launcher. Sign-in uses a device code: the launcher never sees your password.' },
     c6: { t: 'Updates, never during a game', p: 'The installed version downloads new versions in the background, checks their SHA-512 and never installs anything during a game. The portable version shows a notice with a link to the releases page.' },
@@ -392,7 +392,7 @@ const en = {
     forge189: { tag: 'Classic PvP', p: 'The original “ATTACK Client” profile: its identifier and game folder do not change. Mod pack: Phosphor Legacy and Client Side Sounds, Replay Mod optional, and OptiFine with your own copy.' },
     fabric1211: { tag: 'Modern PvP', p: 'Fabric with the performance pack (Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast…) and the adjustable groups: PvP mods, OptiFine packs, Replay Mod and Shaders.' },
     fabric263: { tag: 'Latest version', p: 'The same kind of pack as on 1.21.1, without ModernFix (it has no 26.3 version), with the same adjustable groups.' },
-    forge1710: { tag: '1.7 PvP', p: 'Forge 10.13.4.1614 and the ATTACK 1.7.10 mod, with all the content of the 1.8.9 mod: ATTACK menu, title screen, HUD editor, 61 modules (including the Minimap, Waypoints and Friends) and every cosmetic. No mod pack, and no OptiFine.' },
+    forge1710: { tag: '1.7 PvP', p: 'Forge 10.13.4.1614 and the ATTACK 1.7.10 mod, with all the content of the 1.8.9 mod: ATTACK menu, title screen, HUD editor, 61 modules (including the Minimap, Waypoints and Friends) and every cosmetic. No mod pack, but OptiFine with your own copy (HD U E7).' },
   },
   client: {
     title: 'ATTACK Client, in game',
@@ -441,7 +441,7 @@ const en = {
     q2: 'Do I need to own Minecraft Java Edition?',
     a2: '<p>Yes. With a signed-in Microsoft account, the launcher checks that the account owns Minecraft Java Edition (purchase or Game Pass). Without an account, PLAY opens the official Minecraft launcher on the ATTACK profile: that is the only case where the official launcher is needed.</p>',
     q3: 'Is OptiFine included?',
-    a3: `<p>No: its license forbids redistributing it, so the launcher <strong>never downloads it</strong>. On 1.8.9, it uses <strong>your copy</strong>, which you get yourself from ${ext('https://optifine.net/downloads', 'optifine.net')}. It looks in <code>.minecraft\\libraries\\optifine</code> then in <code>.minecraft\\mods</code>, or you pick the file with “Choose the file…”; it validates it, then copies it into the profile’s <code>mods</code> folder. Without a copy, the game runs without OptiFine.</p><p>On 1.21.1 and 26.3, the <strong>OptiFine packs</strong> group (Continuity, Entity Texture Features, Entity Model Features) reads resource packs in the OptiFine format without OptiFine. The 1.7.10 profile has no OptiFine for now.</p>`,
+    a3: `<p>No: its license forbids redistributing it, so the launcher <strong>never downloads it</strong>. On 1.8.9 and on 1.7.10, it uses <strong>your copy</strong> (OptiFine HD U M5 on 1.8.9, HD U E7 on 1.7.10), which you get yourself from ${ext('https://optifine.net/downloads', 'optifine.net')}. It looks in <code>.minecraft\\libraries\\optifine</code> then in <code>.minecraft\\mods</code>, or you pick the file with “Choose the file…”; it validates it, then copies it into the profile’s <code>mods</code> folder. Without a copy, the game runs without OptiFine. On 1.7.10, OptiFine needs the ATTACK Client 1.7.10 1.1.0 mod or newer: the installation updates it.</p><p>On 1.21.1 and 26.3, the <strong>OptiFine packs</strong> group (Continuity, Entity Texture Features, Entity Model Features) reads resource packs in the OptiFine format without OptiFine.</p>`,
     q4: 'Does it touch my .minecraft folder?',
     a4: '<p>Your ATTACK game lives in its own game folder (by default <code>%APPDATA%\\.attack</code>): mods, settings, screenshots and worlds do not mix with those of your <code>.minecraft</code>. The launcher still adds the Minecraft versions, libraries and assets there, shared between profiles, and merges a profile into <code>launcher_profiles.json</code> (a <code>.bak</code> copy before every write; your other profiles stay untouched).</p>',
     q5: 'Are PvP mods allowed on my server?',
@@ -525,9 +525,9 @@ const en = {
       needMeta: 'Purchase or Game Pass.',
     },
     optifine: {
-      t: 'OptiFine on 1.8.9',
-      p: 'Its license forbids redistributing it: the launcher never downloads it. The “Get OptiFine” assistant opens optifine.net, watches your Downloads folder, checks the file and then keeps it for you.',
-      versions: 'Recognised versions: HD U M5 and HD U M6 pre2. If it finds several, the launcher takes the most recent.',
+      t: 'OptiFine on 1.8.9 and on 1.7.10',
+      p: 'Its license forbids redistributing it: the launcher never downloads it. The “Get OptiFine” assistant opens optifine.net, watches your Downloads folder, checks the file and then keeps it for you. Each profile has its own assistant: it only takes the OptiFine for its Minecraft version, and flags one for another version without ever importing it.',
+      versions: 'Editions tested with ATTACK Client: HD U M5 on 1.8.9, HD U E7 on 1.7.10. Another OptiFine edition for the same version is accepted, but flagged “untested”. If it finds several, the launcher takes the most recent. On 1.7.10, OptiFine needs the ATTACK Client 1.7.10 1.1.0 mod or newer: the installation updates it.',
     },
     mods: {
       t: 'Mods and groups',

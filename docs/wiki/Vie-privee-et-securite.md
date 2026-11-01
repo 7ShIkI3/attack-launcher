@@ -15,7 +15,7 @@ vérifiée dans le code ; les références sont de la forme `fichier:ligne` (les
   de Modrinth (`cdn.modrinth.com`) et GitHub** : la liste est fixe et codée en dur.
 - Il **ne contacte pas l'API ATTACK** ni **l'API de Modrinth** (aucune des deux n'est dans la liste des hôtes autorisés) :
   les mods du pack sont des adresses et des hash écrits dans le dépôt.
-- Il **ne télécharge jamais OptiFine** (sa licence l'interdit) : il copie seulement la copie que tu as récupérée toi-même (avec l'assistant, il surveille ton dossier Téléchargements pendant 10 minutes au plus, sans accès réseau), après
+- Il **ne télécharge jamais OptiFine** (sa licence l'interdit), en 1.8.9 comme en 1.7.10 : il copie seulement la copie que tu as récupérée toi-même (avec l'assistant, il surveille ton dossier Téléchargements pendant 10 minutes au plus, sans accès réseau, et ne retient que les jars de la version de Minecraft du profil), après
   l'avoir validée ; le lien optifine.net s'ouvre dans ton navigateur, le launcher n'y fait aucune requête.
 - **WalksyLib** (mod PvP du pack Fabric) interroge `api.modrinth.com` au démarrage du jeu pour chercher des mises à jour, avec
   l'empreinte de chaque mod : le launcher écrit une fois sa configuration de départ pour couper cette vérification
@@ -78,7 +78,7 @@ Détails utiles :
 | `%LOCALAPPDATA%\ATTACK Launcher\runtime` | Java officiel de Mojang du profil (Java 8, 21 ou 25) | Non | `main.js:33-35` |
 | `%LOCALAPPDATA%\attack-launcher-updater` | Mise à jour téléchargée en attente d'installation (cache d'`electron-updater`) | Non | `app-update.yml` généré par electron-builder |
 | `%APPDATA%\.minecraft\...` | Versions, bibliothèques, ressources, `launcher_profiles.json` (+ `.bak`) | Non | [Installation](Installation-et-mises-a-jour.md) |
-| `%APPDATA%\.attack\...` | Mod, mods du pack (et copie d'OptiFine en 1.8.9), état d'installation `attack-launcher.json`, `logs\launcher\game-*.log` | Non | `installer.js:201-207`, `game.js:162-165` |
+| `%APPDATA%\.attack\...` | Mod, mods du pack (et copie d'OptiFine en 1.8.9 et 1.7.10), état d'installation `attack-launcher.json`, `logs\launcher\game-*.log` | Non | `installer.js:201-207`, `game.js:162-165` |
 
 - Aucun de ces fichiers n'est envoyé nulle part par le launcher.
 - Le **jeton Minecraft n'est jamais écrit sur disque** : il vit dans une `Map` en mémoire (`accounts.js:27`).

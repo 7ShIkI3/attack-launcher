@@ -58,6 +58,9 @@ flowchart TD
    chacun des 4 profils (`forge-1.8.9`, `forge-1.7.10`, `fabric-1.21.1`, `fabric-26.3`). `gh` lit la release (brouillon compris :
    l'API publique ne le montre pas), télécharge le jar du profil, vérifie son SHA-256 puis l'installe en **mode développeur** ; tous
    les hash sont ensuite recontrôlés. Ce sont les octets que les joueurs recevront, essayés avant que la release soit publique.
+   Pour la 1.7.10, ajoute la **variante OptiFine** : `npm run install-test -- <dossier> --profile forge-1.7.10 --tag v<version> --optifine <OptiFine_1.7.10_HD_U_E7.jar>`
+   (votre copie d'OptiFine, copiée sous le dossier temporaire ; jamais téléchargée par le launcher), avec `--cycle` pour le cycle OptiFine, puis
+   `npm run launch-test -- <dossier> --profile forge-1.7.10` : le critère « Loading tweaker optifine.OptiFineForgeTweaker » doit être vu.
    Puis **publie** le brouillon (ni brouillon, ni préversion).
 4. **Chaque** release doit contenir `latest.yml` et le `Setup.exe` qu'il désigne (avec son `.blockmap`), **même une release
    qui ne change que le mod** (joins alors à nouveau ceux de la version actuelle du launcher) : les launchers lisent la
@@ -87,7 +90,7 @@ flowchart TD
 - `npm run update-test -- <dossier>` valide la chaîne de mise à jour sur une version de test (sans GitHub) ;
 - `npm run install-test -- <dossier> --release` installe avec le vrai jar de la dernière release et recontrôle tous les hash.
   Fais-le sur les **4 profils** : sans option pour la 1.8.9, puis `--profile forge-1.7.10`, `--profile fabric-1.21.1` et
-  `--profile fabric-26.3` ([Développement](Developpement.md)). Chaque profil prend son jar : c'est la preuve que le contrôle
+  `--profile fabric-26.3` ([Développement](Developpement.md)), plus la variante `--profile forge-1.7.10 --optifine <jar>` (OptiFine 1.7.10 avec le mod publié). Chaque profil prend son jar : c'est la preuve que le contrôle
   du brouillon (étape 3 bis) disait vrai ;
 - `npm run check-release` (sans tag) relit la release publiée : la même sortie « OK » qu'avant la publication ;
 - `node scripts/resolve-pack.js --check` compare les packs figés avec ce que Modrinth publie aujourd'hui.

@@ -1401,7 +1401,7 @@ test('captures : plus de recadrage CSS, et la commande site:images exige --sourc
   assert.doesNotThrow(() => images.checkSource(account, { width: 1120, height: 618 }));
 });
 
-test('profil 1.7.10 : le mod a tout le contenu du mod 1.8.9 sauf OptiFine, plus de « lite » ni de modules interdits en classé absents, l’avertissement Snap Tap reste', { skip: NEED_SRC }, async () => {
+test('profil 1.7.10 : le mod a tout le contenu du mod 1.8.9, OptiFine avec la copie du joueur, plus de « lite » ni de modules interdits en classé absents, l’avertissement Snap Tap reste', { skip: NEED_SRC }, async () => {
   const result = await generated();
   for (const [file, lang] of [['index.html', 'fr'], ['en/index.html', 'en']]) {
     const html = result.read(file);
@@ -1410,7 +1410,9 @@ test('profil 1.7.10 : le mod a tout le contenu du mod 1.8.9 sauf OptiFine, plus 
     const card = section.slice(section.lastIndexOf('<article class="profile cut">'));
     assert.ok(card.includes(lang === 'fr' ? 'tout le contenu du mod 1.8.9' : 'all the content of the 1.8.9 mod'), `${lang} : la carte 1.7.10 dit qu’elle a tout le mod 1.8.9`);
     assert.ok(card.includes('61 modules') && card.includes('Minimap'), `${lang} : 61 modules, dont la Minimap`);
-    assert.ok(card.includes(lang === 'fr' ? 'pas d’OptiFine' : 'no OptiFine'), `${lang} : pas d’OptiFine`);
+    // OptiFine : la carte du profil dit qu'il s'utilise avec la copie du joueur (édition HD U E7), jamais « pas d'OptiFine »
+    assert.ok(card.includes(lang === 'fr' ? 'OptiFine avec ta propre copie (HD U E7)' : 'OptiFine with your own copy (HD U E7)'), `${lang} : OptiFine avec la copie du joueur`);
+    assert.ok(!/pas d’OptiFine|no OptiFine|n’a pas d’OptiFine|has no OptiFine/.test(card), `${lang} : la carte ne dit plus que la 1.7.10 n’a pas OptiFine`);
     assert.ok(!/\blite\b|classé|ranked|une partie des modules|part of the modules|plus légère|lighter/i.test(html), `${lang} : plus de « lite » ni de modules interdits en classé absents`);
     const client = html.slice(html.indexOf('id="client"'));
     assert.ok(client.includes('Titles') && client.includes('Mouse Delay Fix'), `${lang} : les deux seuls modules qui n’existent pas en 1.7.10`);
@@ -1476,5 +1478,39 @@ test('aucun test ne contient le caractère de contrôle U+0008 (retour arrière)
     const at = text.indexOf(backspace);
     const line = at < 0 ? 0 : text.slice(0, at).split('\n').length;
     assert.equal(at, -1, `test/${name} ligne ${line} : caractère U+0008 (écrire \\b dans l'expression régulière)`);
+  }
+});
+
+test('OptiFine en 1.7.10 : la FAQ, le guide, les raisons d’être et les cartes disent 1.8.9 ET 1.7.10, avec leurs éditions, et plus nulle part « pas d’OptiFine » pour la 1.7.10', { skip: NEED_SRC }, async () => {
+  const result = await generated();
+  const withOptifine = catalog.list().filter((profile) => catalog.hasOptifine(profile));
+  assert.deepEqual(withOptifine.map((profile) => profile.id), ['forge-1.8.9', 'forge-1.7.10']);
+  const editions = withOptifine.map((profile) => profile.optifine.edition.replace(/_/g, ' ')); // HD U M5, HD U E7 : lues dans la spec, pas recopiées
+  assert.deepEqual(editions, ['HD U M5', 'HD U E7']);
+  for (const [home, guide, lang] of [['index.html', 'guide/index.html', 'fr'], ['en/index.html', 'en/guide/index.html', 'en']]) {
+    const homeHtml = result.read(home);
+    const guideHtml = result.read(guide);
+    // FAQ : la réponse sur OptiFine cite les deux profils, leurs deux éditions, la licence et le mod 1.1.0 demandé en 1.7.10
+    const faq = guideHtml.slice(guideHtml.indexOf('id="faq"'));
+    const answer = faq.slice(faq.indexOf(lang === 'fr' ? 'OptiFine est-il inclus' : 'Is OptiFine included'));
+    const a3 = answer.slice(0, answer.indexOf('</details>') > 0 ? answer.indexOf('</details>') : 2500);
+    assert.ok(a3.includes(lang === 'fr' ? 'En 1.8.9 et en 1.7.10, il utilise' : 'On 1.8.9 and on 1.7.10, it uses'), `${lang} : la FAQ dit que les deux profils utilisent la copie du joueur`);
+    for (const edition of editions) assert.ok(a3.includes(edition), `${lang} : la FAQ cite ${edition}`);
+    assert.ok(a3.includes('1.7.10 1.1.0'), `${lang} : la FAQ dit que le mod 1.7.10 1.1.0 est demandé avec OptiFine`);
+    assert.ok(a3.includes(lang === 'fr' ? 'ne le télécharge jamais' : 'never downloads it'), `${lang} : jamais téléchargé`);
+    // guide : section OptiFine
+    const section = guideHtml.slice(guideHtml.indexOf('id="optifine"'), guideHtml.indexOf('id="mods"'));
+    assert.ok(section.includes(lang === 'fr' ? 'OptiFine en 1.8.9 et en 1.7.10' : 'OptiFine on 1.8.9 and on 1.7.10'), `${lang} : titre du guide`);
+    assert.ok(section.includes('HD U M5') && section.includes('HD U E7'), `${lang} : les deux éditions testées`);
+    assert.ok(lang === 'fr' ? /«\snon testée\s»/.test(section) : section.includes('“untested”'), `${lang} : une autre édition est signalée non testée`);
+    assert.ok(section.includes(lang === 'fr' ? 'Chaque profil a son assistant' : 'Each profile has its own assistant'), `${lang} : un assistant par profil`);
+    assert.ok(!/HD U M6 pre2/.test(section), `${lang} : plus de liste « versions reconnues » figée sur la 1.8.9`);
+    // la description de la page Guide et la raison d'être « OptiFine » de l'accueil
+    assert.ok(guideHtml.includes(lang === 'fr' ? 'OptiFine en 1.8.9 et en 1.7.10, mods et groupes' : 'OptiFine on 1.8.9 and on 1.7.10, mods and groups'), `${lang} : description du guide`);
+    assert.ok(homeHtml.includes(lang === 'fr' ? 'OptiFine en 1.8.9 et en 1.7.10, avec ta propre copie' : 'OptiFine on 1.8.9 and on 1.7.10, with your own copy'), `${lang} : raison d’être OptiFine de l’accueil`);
+    // nulle part, une page ne dit que la 1.7.10 n'a pas OptiFine (ni « pour l'instant »)
+    for (const [page, html] of [[home, homeHtml], [guide, guideHtml]]) {
+      assert.ok(!/pas d’OptiFine|n’a pas d’OptiFine|no OptiFine|has no OptiFine/.test(html), `${page} : aucune phrase ne dit que la 1.7.10 n’a pas OptiFine`);
+    }
   }
 });
