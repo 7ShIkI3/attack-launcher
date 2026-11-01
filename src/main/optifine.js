@@ -22,14 +22,12 @@ const { safeJoin } = require('./maven');
 const DOWNLOAD_URL = 'https://optifine.net/downloads';
 /** Version de Minecraft prise quand l'appelant n'en donne pas : le profil historique. */
 const DEFAULT_MC = '1.8.9';
-/** TweakClass d'OptiFine pour Forge 1.8.9 (confirmé : jar HD U M5). */
-const TWEAK = 'optifine.OptiFineForgeTweaker';
 /**
- * TweakClass d'OptiFine pour Forge 1.7.10. VALEUR PROVISOIRE : on suppose le même nom qu'en 1.8.9, faute d'avoir lu le manifeste d'un
- * vrai OptiFine_1.7.10_HD_U_E7.jar. À confirmer (ou corriger ICI, et seulement ici) après le diagnostic M0 sur le jar de Raphaël :
- * le catalogue, la validation, l'assistant et les scripts d'essai la lisent tous dans SPECS.
+ * TweakClass d'OptiFine pour Forge, le même en 1.8.9 (jar HD U M5) et en 1.7.10 (jar HD U E7, manifeste lu : « TweakClass:
+ * optifine.OptiFineForgeTweaker », « TweakOrder: -1000 »). Le catalogue, la validation, l'assistant et les scripts d'essai le lisent
+ * tous dans SPECS.
  */
-const TWEAK_1_7_10 = 'optifine.OptiFineForgeTweaker';
+const TWEAK = 'optifine.OptiFineForgeTweaker';
 /**
  * Spec d'OptiFine par version de Minecraft : table fermée, une entrée par version prise en charge.
  *   mc       version de Minecraft du profil
@@ -40,7 +38,7 @@ const TWEAK_1_7_10 = 'optifine.OptiFineForgeTweaker';
  */
 const SPECS = Object.freeze({
   '1.8.9': Object.freeze({ mc: '1.8.9', edition: 'HD_U_M5', tweak: TWEAK }),
-  '1.7.10': Object.freeze({ mc: '1.7.10', edition: 'HD_U_E7', tweak: TWEAK_1_7_10, minMod: '1.1.0' }),
+  '1.7.10': Object.freeze({ mc: '1.7.10', edition: 'HD_U_E7', tweak: TWEAK, minMod: '1.1.0' }),
 });
 
 /** Spec d'une version de Minecraft (1.8.9 sans argument), ou null si OptiFine n'y est pas pris en charge. */

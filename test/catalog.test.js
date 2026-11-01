@@ -58,7 +58,7 @@ test('profil Forge 1.7.10 : Forge 10.13.4.1614, Java 8, jar attack-forge-<versio
   assert.equal(p.gameDirName, '.attack/profiles/forge-1.7.10');
   assert.equal(p.modFile, 'attack-forge.jar');
   assert.equal(p.pack, null, 'pas de pack de mods en v1');
-  // OptiFine : copie du joueur, spec propre à la 1.7.10 ; le TweakClass est PROVISOIRE (à confirmer sur le jar réel) et centralisé dans optifine.js
+  // OptiFine : copie du joueur, spec propre à la 1.7.10 (jar HD_U_E7), centralisée dans optifine.js
   assert.deepEqual(p.optifine, { mc: '1.7.10', edition: 'HD_U_E7', tweak: 'optifine.OptiFineForgeTweaker', minMod: '1.1.0' });
   assert.equal(p.optifine, optifine.forVersion('1.7.10'));
   assert.equal(catalog.hasOptifine(p), true);

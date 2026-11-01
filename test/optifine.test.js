@@ -466,7 +466,7 @@ test('jar OptiFine réel (ATTACK_TEST_OPTIFINE_JAR) : accepté par la validation
 test('specs : une table fermée (1.8.9 puis 1.7.10), gelée ; une version inconnue n’a pas de spec et fait lever les fonctions qui en ont besoin', async () => {
   assert.deepEqual(Object.keys(optifine.SPECS), ['1.8.9', '1.7.10']);
   assert.deepEqual(optifine.forVersion('1.8.9'), { mc: '1.8.9', edition: 'HD_U_M5', tweak: 'optifine.OptiFineForgeTweaker' });
-  // le TweakClass 1.7.10 est PROVISOIRE (à confirmer sur le vrai jar HD_U_E7) : s'il change, il change dans la table, et ce test avec lui
+  // 1.7.10 : édition HD_U_E7, même TweakClass qu'en 1.8.9 (manifeste du jar E7 lu), mod ATTACK 1.1.0 minimum
   assert.deepEqual(optifine.forVersion('1.7.10'), { mc: '1.7.10', edition: 'HD_U_E7', tweak: 'optifine.OptiFineForgeTweaker', minMod: '1.1.0' });
   assert.equal(optifine.forVersion(), optifine.forVersion('1.8.9'), '1.8.9 par défaut');
   assert.equal(optifine.DEFAULT_MC, '1.8.9');
