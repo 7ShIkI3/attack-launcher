@@ -1,8 +1,9 @@
 'use strict';
 // Génère le site statique d'ATTACK Launcher (GitHub Pages) dans _site/ à partir de site/ :
 //   node scripts/build-site.js [--out _site] [--src site] [--offline] [--fixture <json>] [--strict] [--check-links]
-// Sources : site/template.html, site/404.template.html, site/i18n.js (lu seulement par Node, jamais publié),
-// site/styles.css et site/img/ (WebP produits par scripts/site-images.js + manifest.json).
+// Sources : site/template.html (accueil), site/download.template.html, site/guide.template.html, site/404.template.html,
+// site/parts/*.html (morceaux communs), site/i18n.js (lu seulement par Node, jamais publié), site/styles.css et site/img/
+// (WebP produits par scripts/site-images.js + manifest.json). Pages : PAGE_PATHS, en français et en anglais.
 // Rien n'est publié en JavaScript : la page n'a ni script, ni ressource tierce (voir CSP).
 //   --out      dossier de sortie, VIDÉ à chaque génération : refusé s'il existe, n'est pas vide et n'est ni nommé _site ni marqué
 //              par le fichier .attack-site que ce script y écrit (donc `--out docs` ou `--out src` n'effacent rien) ;
@@ -16,7 +17,9 @@
 // Marqueurs du modèle : {{lang}} {{root}} {{year}} {{url.fr}} {{url.en}} {{url.canonical}} ; {{t.<clé.pointée>}} (texte de
 // site/i18n.js, HTML de confiance, marqueurs compris) ; {{rel.*}} (release GitHub validée, échappée) avec les blocs
 // {{#rel}}…{{/rel}} / {{^rel}}…{{/rel}} et {{#sha}}…{{/sha}} ; {{cat.<forge189|fabric1211|fabric263>.<mc|loader|java>}} ;
-// {{img.<clé>[:eager][|sizes=…]}} ; {{html.logo}} {{html.logoHero}} {{html.credits}} {{html.news}}.
+// {{img.<clé>[:eager][|sizes=…]}} ; {{html.logo}} {{html.logoHero}} {{html.credits}} {{html.news}} ; {{page.<home|download|guide>}}
+// (lien relatif dans la langue de la page), {{page.fr}} {{page.en}} {{page.alt.fr}} {{page.alt.en}} (la page courante dans chaque
+// langue), {{aria.<page>}} (aria-current sur le lien de la page courante), {{pt.<clé>}} (texte pages.<page>.<clé>), {{part.<nom>}}.
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
@@ -29,6 +32,19 @@ const ROOT = path.join(__dirname, '..');
 const SITE_ORIGIN = 'https://7shiki3.github.io';
 const BASE_PATH = '/attack-launcher/';
 const PAGE_URL = { fr: `${SITE_ORIGIN}${BASE_PATH}`, en: `${SITE_ORIGIN}${BASE_PATH}en/` };
+/** Pages du site : dossier de chaque langue sous BASE_PATH (l'accueil français est la racine) et modèle de la page. */
+const PAGE_PATHS = {
+  home: { fr: '', en: 'en/' },
+  download: { fr: 'telechargement/', en: 'en/download/' },
+  guide: { fr: 'guide/', en: 'en/guide/' },
+};
+const PAGE_TEMPLATES = { home: 'template.html', download: 'download.template.html', guide: 'guide.template.html' };
+/** Polices publiées par le site : TTF du launcher converti en WOFF. */
+const SITE_FONTS = [
+  ['BarlowCondensed-Bold.ttf', 'barlow-condensed-700.woff'],
+  ['BarlowCondensed-ExtraBold.ttf', 'barlow-condensed-800.woff'],
+  ['BarlowCondensed-ExtraBoldItalic.ttf', 'barlow-condensed-800i.woff'],
+];
 const REPO_URL = 'https://github.com/7ShIkI3/attack-launcher';
 const RELEASES_URL = `${REPO_URL}/releases/latest`;
 const API_URL = 'https://api.github.com/repos/7ShIkI3/attack-launcher/releases/latest';
@@ -259,7 +275,8 @@ const FIXED_CREDITS = [
   { name: 'Electron', url: 'https://www.electronjs.org/', author: { fr: 'Les contributeurs d’Electron', en: 'Electron contributors' }, license: 'MIT', profiles: 'launcher' },
   { name: 'electron-updater', url: 'https://github.com/electron-userland/electron-builder', author: { fr: 'Vladimir Krivosheev et les contributeurs d’electron-builder', en: 'Vladimir Krivosheev and electron-builder contributors' }, license: 'MIT', profiles: 'launcher' },
   { name: 'Inter', url: 'https://github.com/rsms/inter', author: { fr: 'Les auteurs du projet Inter', en: 'The Inter Project Authors' }, license: 'OFL', profiles: 'launcher' },
-  { name: 'Montserrat', url: 'https://github.com/JulietaUla/Montserrat', author: { fr: 'Les auteurs du projet Montserrat', en: 'The Montserrat Project Authors' }, license: 'OFL', profiles: 'launcherSite' },
+  { name: 'Montserrat', url: 'https://github.com/JulietaUla/Montserrat', author: { fr: 'Les auteurs du projet Montserrat', en: 'The Montserrat Project Authors' }, license: 'OFL', profiles: 'launcher' },
+  { name: 'Barlow Condensed', url: 'https://github.com/jpt/barlow', author: { fr: 'Les auteurs du projet Barlow', en: 'The Barlow Project Authors' }, license: 'OFL', profiles: 'launcherSite' },
 ];
 
 function externalLink(url, label) {
@@ -557,7 +574,41 @@ function resolveVariable(name, page, env, depth) {
   if (name === 'html.logoHero') return logoSvg(`logo-${++env.logoCount}`, 160, true);
   if (name === 'html.credits') return env.credits[page.lang];
   if (name === 'html.news') return env.news[page.lang];
+  if (name.startsWith('page.')) return pageLink(name.slice(5), page);
+  if (name.startsWith('aria.')) {
+    const key = name.slice(5);
+    if (!PAGE_PATHS[key]) throw new Error(`Marqueur inconnu : {{${name}}}`);
+    return page.key === key ? 'aria-current="page"' : '';
+  }
+  // pt.* : texte de la page courante (pages.<page>.* dans site/i18n.js), pour le titre et la description
+  if (name.startsWith('pt.')) {
+    if (!page.key) throw new Error(`{{${name}}} : cette page n'a pas de textes propres`);
+    const key = `pages.${page.key}.${name.slice(3)}`;
+    lookupText(env.texts, key);
+    return renderText(env.texts[page.lang][key], page, env, depth + 1, `site/i18n.js (${page.lang}) ${key}`);
+  }
+  // part.* : morceau commun aux pages (site/parts/<nom>.html : en-tête, pied de page…), rendu pour la page courante
+  if (name.startsWith('part.')) {
+    const part = name.slice(5);
+    const file = path.join(env.src, 'parts', `${part}.html`);
+    if (!/^[a-z][a-z0-9-]*$/.test(part) || !fs.existsSync(file)) throw new Error(`Morceau inconnu : {{${name}}}`);
+    return renderText(fs.readFileSync(file, 'utf8'), page, env, depth + 1, `site/parts/${part}.html (${page.file})`);
+  }
   throw new Error(`Marqueur inconnu : {{${name}}}`);
+}
+
+/**
+ * page.<clé> : lien relatif vers une page dans la langue de la page courante (page.home, page.download, page.guide) ;
+ * page.fr / page.en : la page courante dans l'autre langue ; page.alt.fr / page.alt.en : son adresse absolue (hreflang).
+ */
+function pageLink(spec, page) {
+  const relative = (target) => `${page.root}${target}` || './';
+  if (PAGE_PATHS[spec]) return relative(PAGE_PATHS[spec][page.lang]);
+  const alt = /^alt\.(fr|en)$/.exec(spec);
+  const lang = alt ? alt[1] : LANGS.includes(spec) ? spec : null;
+  if (!lang) throw new Error(`Marqueur inconnu : {{page.${spec}}}`);
+  if (!page.key) throw new Error(`{{page.${spec}}} : cette page n'a pas d'équivalent dans l'autre langue`);
+  return alt ? `${SITE_ORIGIN}${BASE_PATH}${PAGE_PATHS[page.key][lang]}` : relative(PAGE_PATHS[page.key][lang]);
 }
 
 function renderNodes(nodes, page, env, depth) {
@@ -638,10 +689,19 @@ function robotsTxt() {
 }
 
 function sitemapXml() {
-  const alternates = [['fr', PAGE_URL.fr], ['en', PAGE_URL.en], ['x-default', PAGE_URL.fr]]
-    .map(([hreflang, href]) => `    <xhtml:link rel="alternate" hreflang="${hreflang}" href="${href}"/>`).join('\n');
-  const entry = (url) => `  <url>\n    <loc>${url}</loc>\n${alternates}\n  </url>`;
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${entry(PAGE_URL.fr)}\n${entry(PAGE_URL.en)}\n</urlset>\n`;
+  const url = (dir) => `${SITE_ORIGIN}${BASE_PATH}${dir}`;
+  const entries = [];
+  for (const dirs of Object.values(PAGE_PATHS)) {
+    const alternates = [['fr', dirs.fr], ['en', dirs.en], ['x-default', dirs.fr]]
+      .map(([hreflang, dir]) => `    <xhtml:link rel="alternate" hreflang="${hreflang}" href="${url(dir)}"/>`).join('\n');
+    for (const lang of LANGS) entries.push(`  <url>\n    <loc>${url(dirs[lang])}</loc>\n${alternates}\n  </url>`);
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${entries.join('\n')}\n</urlset>\n`;
+}
+
+/** Fichiers HTML publiés : chaque page dans chaque langue, puis la page 404. */
+function htmlFiles() {
+  return [...Object.values(PAGE_PATHS).flatMap((dirs) => LANGS.map((lang) => `${dirs[lang]}index.html`)), '404.html'];
 }
 
 function faviconSvg() {
@@ -681,7 +741,7 @@ async function build(options = {}) {
   const src = given ? path.resolve(given) : path.join(ROOT, 'site');
   const out = options.out ? path.resolve(options.out) : path.join(ROOT, '_site');
   assertSafeOut(out, src);
-  for (const required of ['template.html', '404.template.html', 'i18n.js', 'styles.css']) {
+  for (const required of [...Object.values(PAGE_TEMPLATES), '404.template.html', 'i18n.js', 'styles.css']) {
     if (!fs.existsSync(path.join(src, required))) throw new Error(`Source manquante : ${path.join(src, required)}`);
   }
 
@@ -704,6 +764,7 @@ async function build(options = {}) {
   };
   const now = process.env.SOURCE_DATE_EPOCH ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000) : new Date();
   const env = {
+    src,
     texts,
     manifest,
     rel,
@@ -714,11 +775,11 @@ async function build(options = {}) {
     news: Object.fromEntries(LANGS.map((lang) => [lang, newsHtml(lang, data)])),
   };
 
-  const pages = [
-    { file: 'index.html', template: 'template.html', lang: 'fr', root: '', canonical: PAGE_URL.fr },
-    { file: 'en/index.html', template: 'template.html', lang: 'en', root: '../', canonical: PAGE_URL.en },
-    { file: '404.html', template: '404.template.html', lang: 'fr', root: BASE_PATH, canonical: PAGE_URL.fr },
-  ];
+  // chaque page dans chaque langue (root : chemin relatif vers la racine du site), puis la 404 (adresses absolues)
+  const pages = Object.entries(PAGE_PATHS).flatMap(([key, dirs]) => LANGS.map((lang) => ({
+    key, file: `${dirs[lang]}index.html`, template: PAGE_TEMPLATES[key], lang, root: '../'.repeat(dirs[lang].split('/').filter(Boolean).length), canonical: `${SITE_ORIGIN}${BASE_PATH}${dirs[lang]}`,
+  })));
+  pages.push({ file: '404.html', template: '404.template.html', lang: 'fr', root: BASE_PATH, canonical: PAGE_URL.fr });
   const rendered = pages.map((page) => {
     env.logoCount = 0;
     const text = fs.readFileSync(path.join(src, page.template), 'utf8');
@@ -737,8 +798,8 @@ async function build(options = {}) {
   for (const page of rendered) write(page.file, page.html);
   write('styles.css', fs.readFileSync(path.join(src, 'styles.css')));
   for (const file of [...env.usedImages].sort()) write(`img/${file}`, fs.readFileSync(path.join(manifest.dir, file)));
-  write('fonts/montserrat-bold.woff', ttfToWoff(fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'fonts', 'Montserrat-Bold.ttf'))));
-  write('fonts/OFL-montserrat.txt', fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'fonts', 'OFL-montserrat.txt')));
+  for (const [ttf, woff] of SITE_FONTS) write(`fonts/${woff}`, ttfToWoff(fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'fonts', ttf))));
+  write('fonts/OFL-barlow.txt', fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'fonts', 'OFL-barlow.txt')));
   write('favicon.svg', faviconSvg());
   write('apple-touch-icon.png', renderIcon(180, { background: true }));
   const ogSource = [path.join(src, 'img', 'og.png'), path.join(ROOT, 'docs', 'images', 'home.png')].find((f) => fs.existsSync(f));
@@ -794,7 +855,7 @@ async function checkUrl(url) {
 async function checkLinks(out, log) {
   const sources = new Map();
   const add = (url, where) => sources.set(url, [...(sources.get(url) || []), where]);
-  for (const page of ['index.html', 'en/index.html', '404.html']) {
+  for (const page of htmlFiles()) {
     for (const url of collectLinks(fs.readFileSync(path.join(out, page), 'utf8'))) add(url, page);
   }
   for (const url of collectLinks(fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8'))) add(url, 'README.md');
@@ -859,6 +920,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  CSP, PAGE_URL, RELEASES_URL, OUT_MARKER, build, assertSafeOut, parseRelease, readRelease, compareVersions, parseArgs, formatSize, formatDate, ttfToWoff,
+  CSP, PAGE_URL, PAGE_PATHS, SITE_FONTS, RELEASES_URL, OUT_MARKER, build, htmlFiles, assertSafeOut, parseRelease, readRelease, compareVersions, parseArgs, formatSize, formatDate, ttfToWoff,
   webpSize, flattenKeys, escapeHtml, sitemapXml, robotsTxt, checkLinks, collectLinks,
 };

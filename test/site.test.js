@@ -28,6 +28,10 @@ const KEYS = ['launcher-home', 'launcher-home-fabric', 'launcher-mods', 'launche
 const ALLOWED_HOSTS = new Set(['github.com', 'modrinth.com', 'optifine.net', 'minecraft.net', 'www.minecraft.net', 'openfontlicense.org', '7shiki3.github.io',
   'learn.microsoft.com', 'support.microsoft.com', 'electronjs.org', 'www.electronjs.org', 'threejs.org', 'bs-community.github.io']);
 
+/** Pages publiées (chaque page dans chaque langue, puis la 404), et adresse publique de chaque page hors 404. */
+const PAGES = site.htmlFiles();
+const PAGE_ADDRESSES = Object.values(site.PAGE_PATHS).flatMap((dirs) => ['fr', 'en'].map((lang) => `https://7shiki3.github.io/attack-launcher/${dirs[lang]}`));
+
 const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
 const builds = new Map();
 /** Génère une fois (par fixture) le site de SRC dans un dossier temporaire. */
@@ -44,6 +48,7 @@ function miniSrc(template, { fr = {}, en = fr, manifest = null, images = [] } = 
   const dir = tempDir('attack-site-src-');
   const doc = (body) => `<!doctype html><html lang="{{lang}}"><head><title>t</title></head><body>${body}</body></html>`;
   fs.writeFileSync(path.join(dir, 'template.html'), doc(template));
+  for (const page of ['download.template.html', 'guide.template.html']) fs.writeFileSync(path.join(dir, page), doc('{{lang}}'));
   fs.writeFileSync(path.join(dir, '404.template.html'), doc('{{t.x}}'));
   fs.writeFileSync(path.join(dir, 'styles.css'), 'body{}');
   fs.writeFileSync(path.join(dir, 'i18n.js'), `module.exports = ${JSON.stringify({ fr: { x: 'x', ...fr }, en: { x: 'x', ...en } })};`);
@@ -475,12 +480,15 @@ test('crédits : union des mods des 3 packs (un lien Modrinth par slug), licence
   const replay = html.match(/<tr>(?:(?!<\/tr>).)*replaymod(?:(?!<\/tr>).)*<\/tr>/s)[0];
   assert.ok(replay.includes('1.8.9, 1.21.1, 26.3'), 'Replay Mod : les trois profils');
   assert.ok(replay.includes('Johni0702') && replay.includes('Replay Mod</td>'));
-  for (const fixed of ['OptiFine', 'sp614x', 'skinview3d', 'three.js', 'Electron', 'electron-updater', 'Montserrat', 'OFL 1.1']) assert.ok(html.includes(fixed), fixed);
-  // electron-updater (MIT) et la police Inter (OFL 1.1) : composants du launcher, avec leur lien, leur licence et leur profil
-  for (const [name, url, license] of [['electron-updater', 'https://github.com/electron-userland/electron-builder', 'MIT'], ['Inter', 'https://github.com/rsms/inter', 'OFL 1.1']]) {
-    const row = html.match(new RegExp(`<tr><th[^>]*><a href="${url.replace(/\W/g, '\\$&')}" rel="noopener noreferrer">${name}</a></th>(?:(?!</tr>).)*</tr>`, 's'));
+  for (const fixed of ['OptiFine', 'sp614x', 'skinview3d', 'three.js', 'Electron', 'electron-updater', 'Montserrat', 'Barlow Condensed', 'OFL 1.1']) assert.ok(html.includes(fixed), fixed);
+  // electron-updater (MIT), les polices Inter et Montserrat (OFL 1.1) : composants du launcher ; Barlow Condensed : launcher et site
+  const rowOf = (name, url) => html.match(new RegExp(`<tr><th[^>]*><a href="${url.replace(/\W/g, '\\$&')}" rel="noopener noreferrer">${name}</a></th>(?:(?!</tr>).)*</tr>`, 's'));
+  for (const [name, url, license] of [['electron-updater', 'https://github.com/electron-userland/electron-builder', 'MIT'], ['Inter', 'https://github.com/rsms/inter', 'OFL 1.1'], ['Montserrat', 'https://github.com/JulietaUla/Montserrat', 'OFL 1.1']]) {
+    const row = rowOf(name, url);
     assert.ok(row && row[0].includes(license) && row[0].includes('>Launcher<'), `${name} : ligne, licence ${license}, profil Launcher`);
   }
+  const barlow = rowOf('Barlow Condensed', 'https://github.com/jpt/barlow');
+  assert.ok(barlow && barlow[0].includes('OFL 1.1') && barlow[0].includes('>Launcher et site<'), 'Barlow Condensed : licence OFL 1.1, launcher et site');
   assert.ok(html.includes('Jamais téléchargé ni redistribué'));
   const en = await miniPage('{{html.credits}}', {}, 'en/index.html');
   assert.ok(en.includes('LGPL 3.0 or later') && en.includes('Never downloaded or redistributed') && en.includes('>Author<'));
@@ -518,11 +526,11 @@ test('logos : SVG décoratif, identifiants de dégradés uniques par occurrence'
 test('sortie : fichiers attendus, aucun .js, aucun marqueur restant, icône 180 px, robots et plan du site', { skip: NEED_SRC }, async () => {
   const result = await generated();
   const set = new Set(result.files);
-  for (const file of ['index.html', 'en/index.html', '404.html', 'styles.css', 'fonts/montserrat-bold.woff', 'fonts/OFL-montserrat.txt', 'favicon.svg',
+  for (const file of [...PAGES, 'styles.css', ...site.SITE_FONTS.map(([, woff]) => `fonts/${woff}`), 'fonts/OFL-barlow.txt', 'favicon.svg',
     'apple-touch-icon.png', 'og.png', 'og-en.png', 'robots.txt', 'sitemap.xml']) assert.ok(set.has(file), file);
   assert.ok(!result.files.some((f) => /\.(js|mjs|cjs|map)$/i.test(f)), 'aucun JavaScript publié');
-  assert.ok(!result.files.some((f) => /^(template|404\.template|i18n)/.test(f)), 'ni modèle ni textes sources');
-  for (const page of ['index.html', 'en/index.html', '404.html']) assert.ok(!/\{\{|\}\}/.test(result.read(page)), `${page} : aucun marqueur restant`);
+  assert.ok(!result.files.some((f) => /(^|\/)(template|[a-z]+\.template|404\.template|i18n)|^parts\//.test(f)), 'ni modèle, ni morceau, ni textes sources');
+  for (const page of PAGES) assert.ok(!/\{\{|\}\}/.test(result.read(page)), `${page} : aucun marqueur restant`);
   const icon = fs.readFileSync(path.join(result.out, 'apple-touch-icon.png'));
   assert.equal(icon.readUInt32BE(0), 0x89504e47);
   assert.deepEqual([icon.readUInt32BE(16), icon.readUInt32BE(20)], [180, 180]);
@@ -530,9 +538,12 @@ test('sortie : fichiers attendus, aucun .js, aucun marqueur restant, icône 180 
   const robots = result.read('robots.txt');
   assert.ok(robots.includes('Allow: /') && robots.includes('Sitemap: https://7shiki3.github.io/attack-launcher/sitemap.xml'));
   const sitemap = result.read('sitemap.xml');
-  assert.equal(sitemap.match(/<loc>/g).length, 2);
-  for (const url of ['https://7shiki3.github.io/attack-launcher/', 'https://7shiki3.github.io/attack-launcher/en/']) assert.ok(sitemap.includes(`<loc>${url}</loc>`));
+  assert.equal(sitemap.match(/<loc>/g).length, 6, 'accueil, téléchargement et guide, en français et en anglais');
+  for (const url of PAGE_ADDRESSES) assert.ok(sitemap.includes(`<loc>${url}</loc>`), url);
   for (const lang of ['fr', 'en', 'x-default']) assert.ok(sitemap.includes(`hreflang="${lang}"`));
+  // chaque entrée annonce ses deux langues : la page de téléchargement française pointe vers la page anglaise équivalente
+  const download = sitemap.match(/<url>\s*<loc>https:\/\/7shiki3\.github\.io\/attack-launcher\/telechargement\/<\/loc>[\s\S]*?<\/url>/)[0];
+  assert.ok(download.includes('hreflang="en" href="https://7shiki3.github.io/attack-launcher/en/download/"'));
 });
 
 test('sortie : balise lang, canonique et alternates hreflang de chaque page', { skip: NEED_SRC }, async () => {
@@ -544,35 +555,94 @@ test('sortie : balise lang, canonique et alternates hreflang de chaque page', { 
   const links = (html) => tagsOf(html, 'link').map(attrs);
   assert.equal(links(fr).find((l) => l.rel === 'canonical').href, 'https://7shiki3.github.io/attack-launcher/');
   assert.equal(links(en).find((l) => l.rel === 'canonical').href, 'https://7shiki3.github.io/attack-launcher/en/');
-  for (const page of [fr, en]) {
-    const alternates = Object.fromEntries(links(page).filter((l) => l.rel === 'alternate' && l.hreflang).map((l) => [l.hreflang, l.href]));
-    assert.equal(alternates.fr, 'https://7shiki3.github.io/attack-launcher/');
-    assert.equal(alternates.en, 'https://7shiki3.github.io/attack-launcher/en/');
-    const metas = tagsOf(page, 'meta').map(attrs);
-    assert.ok(metas.some((m) => m.name === 'viewport'), 'meta viewport');
-    assert.ok(metas.some((m) => m.name === 'description' && m.content.length > 20), 'meta description');
-    assert.match(page, /<title>[^<]+<\/title>/);
+  // toutes les pages : la canonique est leur propre adresse, les alternates désignent la même page dans chaque langue
+  const titles = new Set();
+  for (const [key, dirs] of Object.entries(site.PAGE_PATHS)) {
+    for (const lang of ['fr', 'en']) {
+      const file = `${dirs[lang]}index.html`;
+      const page = result.read(file);
+      assert.match(page, new RegExp(`<html[^>]*\\slang="${lang}"`), file);
+      assert.equal(links(page).find((l) => l.rel === 'canonical').href, `https://7shiki3.github.io/attack-launcher/${dirs[lang]}`, `${file} : canonique`);
+      const alternates = Object.fromEntries(links(page).filter((l) => l.rel === 'alternate' && l.hreflang).map((l) => [l.hreflang, l.href]));
+      assert.equal(alternates.fr, `https://7shiki3.github.io/attack-launcher/${dirs.fr}`, `${file} (${key}) : alternate fr`);
+      assert.equal(alternates.en, `https://7shiki3.github.io/attack-launcher/${dirs.en}`, `${file} (${key}) : alternate en`);
+      assert.equal(alternates['x-default'], alternates.fr);
+      const metas = tagsOf(page, 'meta').map(attrs);
+      assert.ok(metas.some((m) => m.name === 'viewport'), `${file} : meta viewport`);
+      assert.ok(metas.some((m) => m.name === 'description' && m.content.length > 20), `${file} : meta description`);
+      const title = page.match(/<title>([^<]+)<\/title>/);
+      assert.ok(title, `${file} : titre`);
+      titles.add(title[1]);
+    }
+  }
+  assert.equal(titles.size, 6, 'un titre différent par page et par langue');
+});
+
+test('pages : navigation entre les pages (aria-current), langue vers la page équivalente, ancres et liens relatifs', { skip: NEED_SRC }, async () => {
+  const result = await generated();
+  const labels = { home: /Accueil|Home/, download: /Télécharger|Download/, guide: /Guide/ };
+  for (const [key, dirs] of Object.entries(site.PAGE_PATHS)) {
+    for (const lang of ['fr', 'en']) {
+      const file = `${dirs[lang]}index.html`;
+      const html = result.read(file);
+      const nav = html.match(/<nav class="pages"[^>]*>([\s\S]*?)<\/nav>/);
+      assert.ok(nav, `${file} : navigation des pages`);
+      const current = tagsOf(nav[1], 'a').filter((tag) => attrs(tag)['aria-current'] === 'page');
+      assert.equal(current.length, 1, `${file} : un seul lien marqué page courante`);
+      const label = nav[1].slice(nav[1].indexOf(current[0]) + current[0].length).split('</a>')[0];
+      assert.match(label, labels[key], `${file} : le lien courant est celui de la page`);
+      // le sélecteur de langue mène à la même page dans l'autre langue (lien relatif résolu depuis la page)
+      const langs = html.match(/<nav class="langs"[^>]*>([\s\S]*?)<\/nav>/)[1];
+      for (const target of ['fr', 'en']) {
+        const link = tagsOf(langs, 'a').map(attrs).find((a) => a.hreflang === target);
+        const resolved = path.posix.normalize(`${path.posix.dirname(file)}/${link.href}`);
+        assert.equal(resolved, site.PAGE_PATHS[key][target] || './', `${file} : langue ${target}`);
+      }
+    }
+  }
+  // le bouton Télécharger de l'accueil reste, et la page Télécharger a le SmartScreen ; le guide a la FAQ
+  assert.ok(result.read('index.html').includes('href="telechargement/"'));
+  assert.ok(result.read('telechargement/index.html').includes('id="smartscreen"'));
+  assert.ok(result.read('en/guide/index.html').includes('id="faq"'));
+  assert.ok(result.read('guide/index.html').includes('Questions fréquentes'));
+});
+
+test('modèle : page.*, aria.*, pt.* et part.* (morceaux de site/parts) ; marqueur ou morceau inconnu refusé', async () => {
+  const src = miniSrc('{{page.home}}|{{page.download}}|{{page.guide}}|{{page.fr}}|{{page.en}}|{{page.alt.en}}|{{aria.home}}|{{aria.guide}}|{{pt.t}}|{{part.bloc}}',
+    { fr: { pages: { home: { t: 'Accueil' }, download: { t: 'T' }, guide: { t: 'G' } } }, en: { pages: { home: { t: 'Home' }, download: { t: 'D' }, guide: { t: 'G' } } } });
+  fs.mkdirSync(path.join(src, 'parts'));
+  fs.writeFileSync(path.join(src, 'parts', 'bloc.html'), '[{{lang}}:{{t.x}}]');
+  const result = await buildMini(src);
+  const body = (file) => fs.readFileSync(path.join(result.out, file), 'utf8').match(/<body>(.*)<\/body>/s)[1];
+  assert.equal(body('index.html'), './|telechargement/|guide/|./|en/|https://7shiki3.github.io/attack-launcher/en/|aria-current="page"||Accueil|[fr:x]');
+  assert.equal(body('en/index.html'), '../en/|../en/download/|../en/guide/|../|../en/|https://7shiki3.github.io/attack-launcher/en/|aria-current="page"||Home|[en:x]');
+  for (const bad of ['{{page.nope}}', '{{aria.nope}}', '{{part.absent}}', '{{part.../x}}']) {
+    await assert.rejects(() => buildMini(miniSrc(bad)), Error, bad);
   }
 });
 
 test('sécurité : CSP exacte en meta sur chaque page, referrer, color-scheme, theme-color', { skip: NEED_SRC }, async () => {
   const result = await generated();
   assert.equal(site.CSP, EXPECTED_CSP);
-  for (const page of ['index.html', 'en/index.html', '404.html']) {
+  for (const page of PAGES) {
     const html = result.read(page);
     const metas = tagsOf(html, 'meta').map(attrs);
     const csp = metas.filter((m) => (m['http-equiv'] || '').toLowerCase() === 'content-security-policy');
     assert.equal(csp.length, 1, `${page} : une seule meta CSP`);
     assert.equal(csp[0].content, EXPECTED_CSP, page);
     assert.equal(metas.find((m) => m.name === 'referrer').content, 'no-referrer', page);
-    assert.equal(metas.find((m) => m.name === 'color-scheme').content, 'dark', page);
-    assert.equal(metas.find((m) => m.name === 'theme-color').content.toLowerCase(), '#09090c', page);
+    // sombre par défaut, clair si le système le demande : une couleur de barre par thème
+    assert.equal(metas.find((m) => m.name === 'color-scheme').content, 'dark light', page);
+    const themes = Object.fromEntries(metas.filter((m) => m.name === 'theme-color').map((m) => [m.media, m.content.toLowerCase()]));
+    assert.deepEqual(themes, { '(prefers-color-scheme: dark)': '#0b0a0c', '(prefers-color-scheme: light)': '#f6f4f5' }, page);
   }
+  const css = result.read('styles.css');
+  assert.match(css, /@media \(prefers-color-scheme: light\) \{\s*:root \{[^}]*color-scheme: light/, 'thème clair par prefers-color-scheme');
 });
 
 test('sécurité : ni script, ni attribut style, ni gestionnaire d’événement, ni ressource tierce', { skip: NEED_SRC }, async () => {
   const result = await generated();
-  for (const page of ['index.html', 'en/index.html', '404.html']) {
+  for (const page of PAGES) {
     const html = result.read(page);
     assert.ok(!/<script\b/i.test(html), `${page} : pas de <script>`);
     assert.ok(!/<style\b/i.test(html), `${page} : pas de <style> (style-src 'self')`);
@@ -595,7 +665,8 @@ test('partage : og:image de chaque langue (adresse absolue du site), largeur, ha
     const png = fs.readFileSync(path.join(result.out, file));
     return [String(png.readUInt32BE(16)), String(png.readUInt32BE(20))];
   };
-  for (const [page, image, alt] of [['index.html', 'og.png', /^Fenêtre d’ATTACK Launcher/], ['en/index.html', 'og-en.png', /^ATTACK Launcher window/]]) {
+  const shares = Object.values(site.PAGE_PATHS).flatMap((dirs) => [[`${dirs.fr}index.html`, 'og.png', /^Fenêtre d’ATTACK Launcher/], [`${dirs.en}index.html`, 'og-en.png', /^ATTACK Launcher window/]]);
+  for (const [page, image, alt] of shares) {
     const metas = tagsOf(result.read(page), 'meta').map(attrs);
     const content = (property) => (metas.find((m) => m.property === property) || {}).content;
     assert.equal(content('og:image'), `https://7shiki3.github.io/attack-launcher/${image}`, `${page} : image de la langue de la page, à la racine du site`);
@@ -624,7 +695,7 @@ test('liens : tout src, href, srcset et url() relatif désigne un fichier (ou un
     if (fs.existsSync(target) && fs.statSync(target).isDirectory()) target = path.join(target, 'index.html'); // GitHub Pages sert index.html
     assert.ok(fs.existsSync(target) && fs.statSync(target).isFile(), `${page} : ${value} introuvable dans _site`);
   };
-  for (const page of ['index.html', 'en/index.html', '404.html']) {
+  for (const page of PAGES) {
     const html = result.read(page);
     for (const m of html.matchAll(/\s(?:src|href|poster|data-src)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'<>`]+))/g)) check(page, m[1] ?? m[2] ?? m[3]);
     for (const m of html.matchAll(/\ssrcset\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) for (const part of (m[1] ?? m[2]).split(',')) check(page, part.trim().split(/\s+/)[0]);
@@ -635,7 +706,7 @@ test('liens : tout src, href, srcset et url() relatif désigne un fichier (ou un
 
 test('liens externes : hôtes de la liste blanche, rel="noopener noreferrer", jamais de lien vers le piège', { skip: NEED_SRC }, async () => {
   const result = await generated();
-  for (const page of ['index.html', 'en/index.html', '404.html']) {
+  for (const page of PAGES) {
     assert.deepEqual(externalLinkProblems(result.read(page), page), []);
   }
 });
@@ -668,14 +739,23 @@ test('release dans la page : la fixture valide donne le Setup, la taille et le S
     if (usesMarker('rel.setupSize')) assert.ok(/107[,.]5\u00a0(Mo|MB)/.test(html), `${page} : taille`);
     assert.ok(html.includes('releases/download/v0.5.16/ATTACK-Launcher-Portable-0.5.16.exe'), `${page} : lien du Portable`);
   }
+  // la page Télécharger porte le bloc complet : Setup, taille, Portable, SHA-256 et commande de vérification
+  for (const page of ['telechargement/index.html', 'en/download/index.html']) {
+    const html = good.read(page);
+    assert.ok(html.includes('releases/download/v0.5.16/ATTACK-Launcher-Setup-0.5.16.exe'), `${page} : lien du Setup`);
+    assert.ok(html.includes('releases/download/v0.5.16/ATTACK-Launcher-Portable-0.5.16.exe'), `${page} : lien du Portable`);
+    assert.ok(html.includes('2299e608466c913ebb39654b549c87c03bcef21e57ddb7f4320b6ea1da58521d'), `${page} : SHA-256`);
+    assert.ok(/107[,.]5 (Mo|MB)/.test(html), `${page} : taille`);
+    assert.ok(html.includes('Get-FileHash .\\ATTACK-Launcher-Setup-0.5.16.exe -Algorithm SHA256'), `${page} : commande de vérification`);
+  }
   const trap = await generated(TRAP);
   assert.equal(trap.rel, null);
   assert.ok(trap.problems.length > 0);
-  for (const page of ['index.html', 'en/index.html', '404.html']) {
+  for (const page of PAGES) {
     const html = trap.read(page);
     assert.ok(!html.includes('evil-user') && !html.includes('releases/download') && !html.includes('<script') && !html.includes('phish'), `${page} : rien du piège`);
   }
-  for (const page of ['index.html', 'en/index.html']) {
+  for (const page of ['index.html', 'en/index.html', 'telechargement/index.html', 'en/download/index.html']) {
     assert.ok(trap.read(page).includes('https://github.com/7ShIkI3/attack-launcher/releases/latest'), `${page} : lien générique vers les releases`);
   }
 });
@@ -689,7 +769,7 @@ test('crédits dans la page : tous les mods des 3 packs et les lignes fixes', { 
     assert.ok(html.includes('class="credits-table"'), `${page} : tableau des crédits`);
     const slugs = [...html.matchAll(/href="https:\/\/modrinth\.com\/mod\/([^"]+)"/g)].map((m) => m[1]);
     assert.deepEqual([...new Set(slugs)].sort(), [...union].sort(), `${page} : mêmes mods que les packs`);
-    for (const fixed of ['OptiFine', 'skinview3d', 'three.js', 'Electron', 'electron-updater', '>Inter</a>', 'Montserrat']) assert.ok(html.includes(fixed), `${page} : ${fixed}`);
+    for (const fixed of ['OptiFine', 'skinview3d', 'three.js', 'Electron', 'electron-updater', '>Inter</a>', 'Montserrat', '>Barlow Condensed</a>']) assert.ok(html.includes(fixed), `${page} : ${fixed}`);
   }
 });
 
@@ -772,7 +852,7 @@ function readTtf(buffer) {
 }
 
 test('police : le WOFF relu redonne chacune des tables du TTF, avec la bonne structure', () => {
-  const ttfBuffer = fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'fonts', 'Montserrat-Bold.ttf'));
+  const ttfBuffer = fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'fonts', site.SITE_FONTS[0][0]));
   const ttf = readTtf(ttfBuffer);
   const woffBuffer = site.ttfToWoff(ttfBuffer);
   const woff = readWoff(woffBuffer);
@@ -803,12 +883,16 @@ test('police : le WOFF relu redonne chacune des tables du TTF, avec la bonne str
   assert.ok(compressed > 0, 'au moins une table compressée');
 });
 
-test('police : le WOFF publié existe, est identique à la conversion et tient dans le budget', { skip: NEED_SRC }, async () => {
+test('police : les WOFF publiés existent, sont identiques à la conversion, tiennent dans le budget et sont déclarés par la CSS', { skip: NEED_SRC }, async () => {
   const result = await generated();
-  const published = fs.readFileSync(path.join(result.out, 'fonts', 'montserrat-bold.woff'));
-  assert.ok(published.equals(site.ttfToWoff(fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'fonts', 'Montserrat-Bold.ttf')))));
-  assert.ok(published.length <= 200 * 1024, `police : ${published.length} octets`);
-  assert.ok(result.read('fonts/OFL-montserrat.txt').includes('SIL Open Font License'));
+  const css = result.read('styles.css');
+  for (const [ttf, woff] of site.SITE_FONTS) {
+    const published = fs.readFileSync(path.join(result.out, 'fonts', woff));
+    assert.ok(published.equals(site.ttfToWoff(fs.readFileSync(path.join(ROOT, 'src', 'renderer', 'fonts', ttf)))), woff);
+    assert.ok(published.length <= 200 * 1024, `${woff} : ${published.length} octets`);
+    assert.ok(css.includes(`url(fonts/${woff})`), `${woff} : @font-face dans styles.css`);
+  }
+  assert.ok(result.read('fonts/OFL-barlow.txt').includes('SIL Open Font License'));
 });
 
 // --- poids --------------------------------------------------------------------------------------------------------
@@ -816,14 +900,15 @@ test('police : le WOFF publié existe, est identique à la conversion et tient d
 test('poids : HTML <= 60 Ko, CSS <= 25 Ko, police <= 200 Ko, image <= 150 Ko, une page complète <= 1,3 Mo', { skip: NEED_SRC }, async () => {
   const result = await generated();
   const size = (file) => fs.statSync(path.join(result.out, file)).size;
-  for (const page of ['index.html', 'en/index.html', '404.html']) assert.ok(size(page) <= 60 * 1024, `${page} : ${size(page)} octets`);
+  for (const page of PAGES) assert.ok(size(page) <= 60 * 1024, `${page} : ${size(page)} octets`);
   assert.ok(size('styles.css') <= 25 * 1024, `styles.css : ${size('styles.css')} octets`);
-  assert.ok(size('fonts/montserrat-bold.woff') <= 200 * 1024);
+  const fonts = site.SITE_FONTS.map(([, woff]) => `fonts/${woff}`);
+  for (const font of fonts) assert.ok(size(font) <= 200 * 1024, font);
   for (const file of result.files.filter((f) => f.endsWith('.webp'))) assert.ok(size(file) <= 150 * 1024, `${file} : ${size(file)} octets`);
-  for (const page of ['index.html', 'en/index.html']) {
+  for (const page of PAGES.filter((p) => p !== '404.html')) {
     const html = result.read(page);
     const dir = path.dirname(page);
-    const loaded = new Set(['styles.css', 'fonts/montserrat-bold.woff', 'favicon.svg']);
+    const loaded = new Set(['styles.css', ...fonts, 'favicon.svg']);
     for (const tag of tagsOf(html, 'img')) loaded.add(path.posix.normalize(path.posix.join(dir, attrs(tag).src)));
     const total = size(page) + [...loaded].reduce((sum, file) => sum + size(file), 0);
     assert.ok(total <= 1.3 * 1024 * 1024, `${page} : ${total} octets au total`);
@@ -864,8 +949,15 @@ test('serveur local : 200 sur les pages et fichiers, 404.html en 404, redirectio
   assert.equal((await get(port, '/attack-launcher/index.html')).status, 200);
   const css = await get(port, '/attack-launcher/styles.css');
   assert.deepEqual([css.status, css.headers['content-type']], [200, 'text/css; charset=utf-8']);
-  const font = await get(port, '/attack-launcher/fonts/montserrat-bold.woff');
+  const font = await get(port, `/attack-launcher/fonts/${site.SITE_FONTS[0][1]}`);
   assert.deepEqual([font.status, font.headers['content-type']], [200, 'font/woff']);
+  for (const dir of ['telechargement/', 'guide/', 'en/download/', 'en/guide/']) {
+    const page = await get(port, `/attack-launcher/${dir}`);
+    assert.equal(page.status, 200, dir);
+    assert.ok(page.body.equals(fs.readFileSync(path.join(result.out, dir, 'index.html'))), `${dir} : sa page`);
+  }
+  const guide = await get(port, '/attack-launcher/guide');
+  assert.deepEqual([guide.status, guide.headers.location], [301, '/attack-launcher/guide/']);
   const image = result.images[0];
   const webp = await get(port, `/attack-launcher/img/${image}`);
   assert.deepEqual([webp.status, webp.headers['content-type']], [200, 'image/webp']);
@@ -1293,8 +1385,9 @@ test('profil 1.7.10 : le mod a tout le contenu du mod 1.8.9 sauf OptiFine, plus 
   const result = await generated();
   for (const [file, lang] of [['index.html', 'fr'], ['en/index.html', 'en']]) {
     const html = result.read(file);
-    const last = html.slice(html.indexOf('id="profiles"'), html.indexOf('id="client"'));
-    const card = last.slice(last.lastIndexOf('<article class="card profile">'));
+    const start = html.indexOf('id="profiles"');
+    const section = html.slice(start, html.indexOf('</section>', start));
+    const card = section.slice(section.lastIndexOf('<article class="profile cut">'));
     assert.ok(card.includes(lang === 'fr' ? 'tout le contenu du mod 1.8.9' : 'all the content of the 1.8.9 mod'), `${lang} : la carte 1.7.10 dit qu’elle a tout le mod 1.8.9`);
     assert.ok(card.includes('61 modules') && card.includes('Minimap'), `${lang} : 61 modules, dont la Minimap`);
     assert.ok(card.includes(lang === 'fr' ? 'pas d’OptiFine' : 'no OptiFine'), `${lang} : pas d’OptiFine`);
@@ -1309,14 +1402,17 @@ test('profil 1.7.10 : le mod a tout le contenu du mod 1.8.9 sauf OptiFine, plus 
 
 test('FAQ « mods PvP autorisés ? » et README : No Jump Delay / No Hit Delay actifs par défaut en 1.8.9 ET en 1.7.10, jamais « le mod 1.7.10 n’en a aucun »', { skip: NEED_SRC }, async () => {
   const result = await generated();
-  for (const [file, lang] of [['index.html', 'fr'], ['en/index.html', 'en']]) {
-    const html = result.read(file);
+  // la FAQ vit dans la page Guide ; l'accueil garde la mise en garde de la section ATTACK Client
+  for (const [home, guide, lang] of [['index.html', 'guide/index.html', 'fr'], ['en/index.html', 'en/guide/index.html', 'en']]) {
+    const html = result.read(guide);
     const faq = html.slice(html.indexOf('id="faq"'));
     const answer = faq.slice(faq.indexOf('No Jump Delay') - 200, faq.indexOf('Perspective') + 200);
     assert.ok(answer.includes('No Hit Delay'), `${lang} : la réponse de la FAQ sur les mods PvP cite No Jump Delay et No Hit Delay`);
     assert.ok(answer.includes(lang === 'fr' ? 'En 1.8.9 et en 1.7.10,' : 'On 1.8.9 and on 1.7.10,'), `${lang} : la FAQ dit que ces deux modules sont actifs par défaut aussi en 1.7.10`);
     // le mod 1.7.10 a No Jump Delay, No Hit Delay et Perspective : aucune page ne dit le contraire
-    assert.ok(!/aucun de ces|n’a aucun|none of these|has none/i.test(html), `${lang} : aucune phrase ne dit que le mod 1.7.10 n’a pas ces modules`);
+    for (const page of [home, guide]) {
+      assert.ok(!/aucun de ces|n’a aucun|none of these|has none/i.test(result.read(page)), `${page} : aucune phrase ne dit que le mod 1.7.10 n’a pas ces modules`);
+    }
   }
   const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8').replace(/\s+/g, ' ');
   assert.ok(readme.includes('En 1.8.9 et en 1.7.10, **Saut sans délai** (No Jump Delay) et **Coups sans délai** (No Hit Delay) sont actifs par défaut'), 'README : même avertissement que le site');
@@ -1327,13 +1423,14 @@ test('profils : quatre cartes dont la 1.7.10 (Forge 10.13.4.1614, Java 8, son do
   const result = await generated();
   for (const [file, lang] of [['index.html', 'fr'], ['en/index.html', 'en']]) {
     const html = result.read(file);
-    const section = html.slice(html.indexOf('id="profiles"'), html.indexOf('id="client"'));
-    const cards = section.match(/<article class="card profile">/g) || [];
+    const start = html.indexOf('id="profiles"');
+    const section = html.slice(start, html.indexOf('</section>', start));
+    const cards = section.match(/<article class="profile cut">/g) || [];
     assert.equal(cards.length, 4, `${lang} : quatre cartes de profil`);
-    assert.match(section, /<div class="grid grid-4">/, `${lang} : grille à 4 colonnes`);
-    const titles = [...section.matchAll(/<div class="profile-head"><h3>([^<]+)<\/h3><span class="badge">([A-Z]+)<\/span>/g)].map((m) => [m[1], m[2]]);
+    assert.match(section, /<div class="profiles">/, `${lang} : grille des profils`);
+    const titles = [...section.matchAll(/<div class="profile-head"><h3 class="profile-ver">([^<]+)<\/h3><span class="tag">([A-Z]+)<\/span>/g)].map((m) => [m[1], m[2]]);
     assert.deepEqual(titles, [['1.8.9', 'FORGE'], ['1.21.1', 'FABRIC'], ['26.3', 'FABRIC'], ['1.7.10', 'FORGE']], `${lang} : versions et chargeurs`);
-    const last = section.slice(section.lastIndexOf('<article class="card profile">'));
+    const last = section.slice(section.lastIndexOf('<article class="profile cut">'));
     assert.ok(last.includes('Forge 10.13.4.1614') && last.includes('<dd>8</dd>'), `${lang} : chargeur et Java de la 1.7.10`);
     assert.ok(last.includes('profiles\\<wbr>forge-1.7.10'), `${lang} : dossier de jeu de la 1.7.10`);
     assert.ok(last.includes(lang === 'fr' ? 'PvP 1.7' : '1.7 PvP'), `${lang} : étiquette de la carte`);
@@ -1342,4 +1439,8 @@ test('profils : quatre cartes dont la 1.7.10 (Forge 10.13.4.1614, Java 8, son do
     assert.ok(html.includes('1.7.10, 1.8.9, 1.21.1'), `${lang} : titre et description citent la 1.7.10`);
     assert.ok(html.includes(lang === 'fr' ? 'sauf en 1.7.10' : 'except on 1.7.10'), `${lang} : le pack de mods n’existe pas en 1.7.10`);
   }
+  // 4 colonnes, puis 2 x 2 sous 1000 px (jamais une carte seule sur sa ligne), puis 1 sous 640 px
+  const css = result.read('styles.css');
+  assert.match(css, /\.profiles \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(css, /@media \(max-width: 999px\) \{\s*\.gallery, \.profiles \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/);
 });

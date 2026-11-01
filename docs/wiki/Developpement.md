@@ -123,13 +123,14 @@ sans `--keep`, l'app de test est désinstallée ensuite. Détails dans l'en-têt
 | `ATTACK_SCREENSHOT_SIZE=940x600` | Taille de fenêtre (bornée par la taille minimale) |
 | `ATTACK_SCREENSHOT_ERROR=<code>` | Ajoute `home-error.png` : l'alerte de l'accueil pour ce code d'erreur (par ex. `LAUNCHER_NOT_FOUND`) |
 | `ATTACK_SCREENSHOT_OPTIFINE=waiting\|refused\|imported` | Ajoute `optifine-<état>.png` et `optifine-<état>-mods.png` : l'assistant OptiFine avec un faux jar dans un dossier Téléchargements **temporaire** (`ATTACK_DOWNLOADS_DIR`) ; `ATTACK_NO_BROWSER` empêche d'ouvrir optifine.net |
-| `ATTACK_PROFILE=fabric-1.21.1` | Profil affiché (`forge-1.8.9` par défaut, `fabric-1.21.1`, `fabric-26.3`) |
+| `ATTACK_PROFILE=fabric-1.21.1` | Profil affiché (`forge-1.8.9` par défaut, `fabric-1.21.1`, `fabric-26.3`, `forge-1.7.10`) |
 | `ATTACK_SETTINGS='{"replayMod":true}'` | Réglages à plat ajoutés au profil affiché |
 
-Les images de `docs/images/` sont de vraies captures du launcher (0.7.0), prises le 2026-10-31 sur des installations de test
-(`npm run install-test`) avec un compte factice (« Joueur », « Player » en anglais) et un skin de test, dans un dossier de jeu
-sans nom d'utilisateur (`C:\Users\Public\ATTACK`, une jonction vers l'installation de test, retirée ensuite) et sans mode
-développeur. En mode capture, le compte actif n'est pas rafraîchi au démarrage : le compte factice n'a pas de jeton de
+Les images de `docs/images/` sont de vraies captures du launcher (0.8.0, avec la refonte du design), prises le 2026-11-01 sur des
+installations de test de la release v0.8.0 (`npm run install-test`) avec un compte factice (« Joueur », « Player » en anglais) et un
+skin de test, dans un dossier de jeu sans nom d'utilisateur (`C:\Users\Public\ATTACK`, des jonctions vers l'installation de test,
+retirées ensuite) et sans mode développeur. Le dossier de jeu passé à `screenshot.js` vaut pour le profil affiché : pour un profil
+Fabric, donne son sous-dossier (`…\.attack\profiles\fabric-26.3`), sinon l'accueil affiche « À installer ». En mode capture, le compte actif n'est pas rafraîchi au démarrage : le compte factice n'a pas de jeton de
 renouvellement, et l'erreur s'afficherait en haut de la page Compte. `account.png` reste coupée à 618 px de haut, comme la capture
 « Compte » du site. `ATTACK_SETTINGS='{"replayMod":true}'` ajoute des réglages à plat au profil affiché (pour photographier
 l'état « à appliquer »). Garde les PNG sous environ 1 Mo.

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+{{part.head}}
+</head>
+<body>
+{{part.header}}
+
+<main id="contenu" tabindex="-1">
+<div class="wrap page">
+
+<header class="page-head">
+<p class="eyebrow"><span class="slash" aria-hidden="true"></span>{{t.dl.eyebrow}}{{#rel}} · {{t.hero.version}} {{rel.version}} · {{t.hero.published}} {{rel.date}}{{/rel}}</p>
+<h1>{{t.dl.title}}</h1>
+<p class="lead">{{t.dl.lead}}</p>
+</header>
+
+{{#rel}}
+<div class="dl-grid">
+<section class="dl-card dl-main cut cut-lg" aria-labelledby="dl-setup">
+<div class="dl-head"><h2 id="dl-setup">{{t.dl.setup.t}}</h2><span class="tag tag-new">{{t.dl.setup.tag}}</span></div>
+<ul class="checks">
+<li>{{t.dl.setup.b1}}</li>
+<li>{{t.dl.setup.b2}}</li>
+<li>{{t.dl.setup.b3}}</li>
+</ul>
+<a class="btn btn-primary btn-xl" href="{{rel.setupUrl}}" rel="noopener noreferrer"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="btn-title">{{t.dl.setup.btn}}</span></a>
+<p class="file"><code>ATTACK-Launcher-Setup-{{rel.version}}.exe</code> · {{rel.setupSize}}</p>
+</section>
+<section class="dl-card cut cut-lg" aria-labelledby="dl-portable">
+<div class="dl-head"><h2 id="dl-portable">{{t.dl.portable.t}}</h2></div>
+<ul class="checks checks-muted">
+<li>{{t.dl.portable.b1}}</li>
+<li>{{t.dl.portable.b2}}</li>
+</ul>
+<a class="btn btn-secondary" href="{{rel.portableUrl}}" rel="noopener noreferrer"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="btn-title">{{t.dl.portable.btn}}</span></a>
+<p class="file"><code>ATTACK-Launcher-Portable-{{rel.version}}.exe</code></p>
+</section>
+</div>
+
+<section class="split" id="verifier" aria-labelledby="verify-title">
+<div class="split-head">
+<h2 id="verify-title">{{t.dl.verify.t}}</h2>
+<p>{{t.dl.verify.p}}</p>
+</div>
+<div class="codes">
+{{#sha}}<div class="code-box"><p class="code-label">{{t.verify.shaLabel}}</p><code class="hash">{{rel.sha256}}</code></div>{{/sha}}
+{{^sha}}<p class="note">{{t.verify.noSha}}</p>{{/sha}}
+<div class="code-box"><p class="code-label">{{t.verify.cmd}}</p><code class="cmd">Get-FileHash .\ATTACK-Launcher-Setup-{{rel.version}}.exe -Algorithm SHA256</code></div>
+<p class="note">{{t.verify.same}}</p>
+</div>
+</section>
+{{/rel}}
+{{^rel}}
+<div class="cta">
+<a class="btn btn-primary btn-xl" href="{{rel.releasesUrl}}" rel="noopener noreferrer"><span class="btn-title">{{t.hero.fallback}}</span></a>
+</div>
+{{/rel}}
+
+<section class="block" id="smartscreen" aria-labelledby="smart-title">
+<div class="section-head">
+<h2 id="smart-title">{{t.dl.smart.t}}</h2>
+<p>{{t.dl.smart.p}}</p>
+</div>
+<ol class="steps">
+<li class="cut"><span>{{t.dl.smart.s1}}</span></li>
+<li class="cut"><span>{{t.dl.smart.s2}}</span></li>
+<li class="cut"><span>{{t.dl.smart.s3}}</span></li>
+</ol>
+</section>
+
+<section class="more cut" aria-labelledby="more-title">
+<h2 id="more-title">{{t.dl.more}}</h2>
+<p class="links">
+<a class="btn btn-quiet" href="{{rel.releasesUrl}}" rel="noopener noreferrer">{{t.hero.all}}</a>
+{{#rel}}<a class="btn btn-quiet" href="{{rel.releaseUrl}}" rel="noopener noreferrer">{{t.hero.notes}}</a>{{/rel}}
+<a class="btn btn-quiet" href="{{page.guide}}">{{t.nav.guide}}</a>
+</p>
+</section>
+
+</div>
+</main>
+
+{{part.footer}}
+</body>
+</html>

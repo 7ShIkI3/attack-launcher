@@ -80,7 +80,7 @@ Les noeuds les plus connectés du graphe de dépendances du dépôt sont `Accoun
 | `i18n.js` | Textes en français et en anglais |
 | `data.js` | Contenu « vitrine » : modules d'ATTACK Client, descriptions des mods du pack Fabric et historique des versions |
 | `skin.js` | Vue 3D du skin avec skinview3d |
-| `logo.js`, `styles.css`, `fonts/` | Logo SVG généré, styles, polices Inter et Montserrat |
+| `logo.js`, `styles.css`, `fonts/` | Logo SVG généré, styles, polices Inter, Montserrat et Barlow Condensed |
 | `vendor/` | skinview3d et three.js, copiés dans le dépôt (la page ne télécharge rien) |
 
 ## Comment la page et le processus principal se parlent (IPC)

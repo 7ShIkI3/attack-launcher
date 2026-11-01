@@ -16,19 +16,29 @@ function typo(value) {
 
 const fr = {
   meta: {
-    title: 'ATTACK Launcher : Minecraft PvP en un clic, en 1.7.10, 1.8.9, 1.21.1 et 26.3',
-    description: 'Le launcher Windows d’ATTACK Client : Minecraft PvP installé et lancé en un clic, en 1.7.10, 1.8.9, 1.21.1 et 26.3. Fichiers vérifiés par hash, aucune télémétrie dans le launcher.',
     ogImage: '{{url.fr}}og.png', // image de partage : l'accueil du launcher, à la racine du site (la page française en est la racine)
+  },
+  pages: {
+    home: {
+      title: 'ATTACK Launcher : Minecraft PvP en un clic, en 1.7.10, 1.8.9, 1.21.1 et 26.3',
+      description: 'Le launcher Windows d’ATTACK Client : Minecraft PvP installé et lancé en un clic, en 1.7.10, 1.8.9, 1.21.1 et 26.3. Fichiers vérifiés par hash, aucune télémétrie dans le launcher.',
+    },
+    download: {
+      title: 'Télécharger ATTACK Launcher pour Windows : installateur ou version portable',
+      description: 'Télécharge ATTACK Launcher pour Windows : installateur avec mises à jour automatiques ou version portable, empreinte SHA-256 à vérifier et marche à suivre si SmartScreen bloque.',
+    },
+    guide: {
+      title: 'Guide d’ATTACK Launcher : installation, compte, OptiFine, dépannage',
+      description: 'Le guide d’ATTACK Launcher : premier lancement, compte Microsoft, OptiFine en 1.8.9, mods et groupes, dépannage et questions fréquentes.',
+    },
   },
   nav: {
     skip: 'Aller au contenu',
-    anchors: 'Sections de la page',
-    features: 'Fonctions',
-    profiles: 'Profils',
-    client: 'ATTACK Client',
-    performance: 'Performances',
-    security: 'Sécurité',
-    faq: 'FAQ',
+    pages: 'Pages du site',
+    home: 'Accueil',
+    download: 'Télécharger',
+    guide: 'Guide',
+    news: 'Nouveautés',
     lang: 'Langue',
   },
   langs: {
@@ -37,7 +47,7 @@ const fr = {
   },
   hero: {
     eyebrow: 'Launcher Windows pour ATTACK Client',
-    title: 'Minecraft PvP installé et lancé en un clic',
+    title: 'Minecraft PvP installé et lancé <span class="hl">en un clic</span>',
     lead: 'ATTACK Launcher installe Minecraft, le chargeur de mods, un pack de mods vérifié (sauf en 1.7.10) et ATTACK Client, dans un dossier de jeu séparé de ton <code>.minecraft</code>. Quatre profils indépendants : 1.8.9 et 1.7.10 (Forge), 1.21.1 et 26.3 (Fabric).',
     download: 'Télécharger pour Windows',
     version: 'Version',
@@ -46,6 +56,7 @@ const fr = {
     all: 'Toutes les versions',
     notes: 'Notes de version',
     published: 'Publiée le',
+    more: 'Vérifier le fichier, autres versions',
     note: 'Pour Windows : installateur ou version portable. Sur téléphone, ouvre cette page sur ton PC.',
   },
   verify: {
@@ -147,7 +158,7 @@ const fr = {
     s5: '<strong>Fichiers vérifiés.</strong> Chaque téléchargement est contrôlé par son hash ; un fichier sans hash, ou au mauvais hash, est refusé.',
     s6: '<strong>Une interface sans accès réseau.</strong> La page du launcher n’a pas le droit de faire de requête réseau (<code>connect-src &#39;none&#39;</code>) : tout passe par son processus principal.',
     more: 'Détail complet : ',
-    unsigned: { t: 'Le .exe n’est pas signé', p: 'Au premier lancement, Windows SmartScreen peut afficher « Windows a protégé votre ordinateur » : un certificat de signature de code coûte cher pour un projet gratuit. La marche à suivre est dans la FAQ.', link: 'Voir la FAQ' },
+    unsigned: { t: 'Le .exe n’est pas signé', p: 'Au premier lancement, Windows SmartScreen peut afficher « Windows a protégé votre ordinateur » : un certificat de signature de code coûte cher pour un projet gratuit. La marche à suivre est sur la page Télécharger.', link: 'Que faire ?' },
     split: {
       t: 'Le launcher et le mod, deux choses différentes',
       p1: 'Une fois le jeu lancé, c’est le <strong>mod ATTACK Client</strong> qui a ses propres connexions : l’API ATTACK (cosmétiques partagés et Amis) et GitHub (liste des capes réservées), plus Mojang pour prouver ton compte, comme le fait le jeu. Le partage de ta cape se coupe dans les options du mod, et rien ne part pour les Amis avant la première ouverture de leur menu. Le launcher, lui, ne contacte pas l’API ATTACK.',
@@ -197,6 +208,70 @@ const fr = {
     privacy: 'Vie privée et sécurité',
     nav: 'Liens du pied de page',
   },
+  dl: {
+    eyebrow: 'Pour Windows 10 et 11',
+    title: 'Télécharger <span class="hl">ATTACK Launcher</span>',
+    lead: 'Il te faut Minecraft Java Edition (achat ou Game Pass) et une connexion Internet pour la première installation. Le launcher n’existe que pour Windows.',
+    setup: {
+      t: 'Installateur',
+      tag: 'Conseillé',
+      b1: 'Un raccourci dans le menu Démarrer.',
+      b2: 'Les nouvelles versions se téléchargent toutes seules, vérifiées par leur SHA-512.',
+      b3: 'Rien ne s’installe pendant une partie : une bannière « Redémarrer » attend la fin.',
+      btn: 'Télécharger l’installateur',
+    },
+    portable: {
+      t: 'Version portable',
+      b1: 'Un seul fichier <code>.exe</code>, sans installation.',
+      b2: 'Elle ne peut pas se remplacer elle-même : elle affiche « Nouvelle version disponible » avec un lien vers la page des versions.',
+      btn: 'Télécharger la version portable',
+    },
+    verify: {
+      t: 'Vérifier le fichier',
+      p: 'Ne télécharge le launcher que depuis cette page ou depuis les versions du dépôt GitHub. Avant de l’ouvrir, compare son empreinte SHA-256 avec celle-ci.',
+    },
+    smart: {
+      t: 'Si SmartScreen bloque',
+      p: 'Le <code>.exe</code> n’est pas signé : un certificat de signature de code coûte cher pour un projet gratuit. Au premier lancement, Windows peut afficher « Windows a protégé votre ordinateur ».',
+      s1: 'Clique sur <strong>Informations complémentaires</strong>.',
+      s2: 'Vérifie que le fichier vient bien de cette page (compare son SHA-256 si tu as un doute).',
+      s3: 'Clique sur <strong>Exécuter quand même</strong>.',
+    },
+    more: 'Autres versions',
+  },
+  guide: {
+    title: 'Guide',
+    lead: 'De la première installation au dépannage. Le détail technique, avec les références au code, est dans le wiki.',
+    toc: 'Sommaire',
+    start: {
+      t: 'Premier lancement',
+      s1: '<strong>Choisis ta version</strong> sur l’accueil du launcher : 1.8.9 pour le PvP classique, 1.7.10 pour le PvP 1.7, 1.21.1 ou 26.3 pour le PvP moderne.',
+      s2: '<strong>Clique sur INSTALLER.</strong> Le launcher télécharge Minecraft, le chargeur, le pack de mods (sauf en 1.7.10) et ATTACK Client, et vérifie chaque fichier.',
+      s3: '<strong>Connecte ton compte</strong> dans la page Compte, ou joue sans : JOUER ouvre alors le launcher Minecraft officiel.',
+      s4: '<strong>Clique sur JOUER.</strong> En jeu, <kbd>Maj droite</kbd> ouvre le menu ATTACK.',
+    },
+    account: {
+      t: 'Compte Microsoft',
+      p: 'La connexion se fait par code d’appareil : tu saisis ton mot de passe sur le site de Microsoft, jamais dans le launcher. Le jeton de renouvellement est chiffré par Windows (DPAPI).',
+      need: 'Il faut posséder Minecraft Java Edition',
+      needMeta: 'Achat ou Game Pass.',
+    },
+    optifine: {
+      t: 'OptiFine en 1.8.9',
+      p: 'Sa licence interdit de le redistribuer : le launcher ne le télécharge jamais. L’assistant « Obtenir OptiFine » ouvre optifine.net, surveille ton dossier Téléchargements, vérifie le fichier puis le garde pour toi.',
+      versions: 'Versions reconnues : HD U M5 et HD U M6 pre2. S’il en trouve plusieurs, le launcher prend la plus récente.',
+    },
+    mods: {
+      t: 'Mods et groupes',
+      p: 'Chaque profil, sauf le 1.7.10, a un pack de mods figé. Dans les Réglages, des groupes s’activent ou se coupent : Mods PvP (latence), Packs OptiFine, Replay Mod et Shaders (Iris). Lis les règles de ton serveur avant d’activer les Mods PvP.',
+    },
+    trouble: {
+      t: 'Dépannage',
+      logsT: 'Journaux',
+      logsP: 'Le bouton Journaux de l’accueil ouvre les journaux de la dernière partie, utiles pour un rapport de bug. Le journal du launcher lui-même est ici :',
+    },
+    wiki: 'Toute la documentation dans le wiki',
+  },
   notfound: {
     title: 'Page introuvable · Page not found',
     heading: 'Page introuvable',
@@ -209,19 +284,29 @@ const fr = {
 
 const en = {
   meta: {
-    title: 'ATTACK Launcher: Minecraft PvP in one click, on 1.7.10, 1.8.9, 1.21.1 and 26.3',
-    description: 'The Windows launcher for ATTACK Client: Minecraft PvP installed and launched in one click, on 1.7.10, 1.8.9, 1.21.1 and 26.3. Files checked by hash, no telemetry in the launcher.',
     ogImage: '{{url.fr}}og-en.png', // share image: the English launcher home, at the site root (the French page is the root)
+  },
+  pages: {
+    home: {
+      title: 'ATTACK Launcher: Minecraft PvP in one click, on 1.7.10, 1.8.9, 1.21.1 and 26.3',
+      description: 'The Windows launcher for ATTACK Client: Minecraft PvP installed and launched in one click, on 1.7.10, 1.8.9, 1.21.1 and 26.3. Files checked by hash, no telemetry in the launcher.',
+    },
+    download: {
+      title: 'Download ATTACK Launcher for Windows: installer or portable version',
+      description: 'Download ATTACK Launcher for Windows: installer with automatic updates or portable version, a SHA-256 hash to check, and what to do if SmartScreen blocks it.',
+    },
+    guide: {
+      title: 'ATTACK Launcher guide: install, account, OptiFine, troubleshooting',
+      description: 'The ATTACK Launcher guide: first launch, Microsoft account, OptiFine on 1.8.9, mods and groups, troubleshooting and frequently asked questions.',
+    },
   },
   nav: {
     skip: 'Skip to content',
-    anchors: 'Page sections',
-    features: 'Features',
-    profiles: 'Profiles',
-    client: 'ATTACK Client',
-    performance: 'Performance',
-    security: 'Security',
-    faq: 'FAQ',
+    pages: 'Site pages',
+    home: 'Home',
+    download: 'Download',
+    guide: 'Guide',
+    news: 'News',
     lang: 'Language',
   },
   langs: {
@@ -230,7 +315,7 @@ const en = {
   },
   hero: {
     eyebrow: 'Windows launcher for ATTACK Client',
-    title: 'Minecraft PvP, installed and launched in one click',
+    title: 'Minecraft PvP, installed and launched <span class="hl">in one click</span>',
     lead: 'ATTACK Launcher installs Minecraft, the mod loader, a verified mod pack (except on 1.7.10) and ATTACK Client, in a game folder separate from your <code>.minecraft</code>. Four independent profiles: 1.8.9 and 1.7.10 (Forge), 1.21.1 and 26.3 (Fabric).',
     download: 'Download for Windows',
     version: 'Version',
@@ -239,6 +324,7 @@ const en = {
     all: 'All releases',
     notes: 'Release notes',
     published: 'Released on',
+    more: 'Check the file, other versions',
     note: 'For Windows: installer or portable version. On a phone, open this page on your PC.',
   },
   verify: {
@@ -340,7 +426,7 @@ const en = {
     s5: '<strong>Files are checked.</strong> Every download is checked against its hash; a file with no hash, or the wrong one, is refused.',
     s6: '<strong>An interface with no network access.</strong> The launcher page is not allowed to make network requests (<code>connect-src &#39;none&#39;</code>): everything goes through its main process.',
     more: 'Full detail: ',
-    unsigned: { t: 'The .exe is not signed', p: 'On first launch, Windows SmartScreen may show “Windows protected your PC”: a code-signing certificate is expensive for a free project. The steps to follow are in the FAQ.', link: 'See the FAQ' },
+    unsigned: { t: 'The .exe is not signed', p: 'On first launch, Windows SmartScreen may show “Windows protected your PC”: a code-signing certificate is expensive for a free project. The steps to follow are on the Download page.', link: 'What to do?' },
     split: {
       t: 'The launcher and the mod are two different things',
       p1: 'Once the game is running, the <strong>ATTACK Client mod</strong> has its own connections: the ATTACK API (shared cosmetics and Friends) and GitHub (list of reserved capes), plus Mojang to prove your account, as the game does. Sharing your cape can be switched off in the mod’s options, and nothing is sent for Friends before you first open their menu. The launcher itself does not contact the ATTACK API.',
@@ -389,6 +475,70 @@ const en = {
     wiki: 'Wiki (in French)',
     privacy: 'Privacy and security (in French)',
     nav: 'Footer links',
+  },
+  dl: {
+    eyebrow: 'For Windows 10 and 11',
+    title: 'Download <span class="hl">ATTACK Launcher</span>',
+    lead: 'You need Minecraft Java Edition (purchase or Game Pass) and an Internet connection for the first install. The launcher only exists for Windows.',
+    setup: {
+      t: 'Installer',
+      tag: 'Recommended',
+      b1: 'A Start menu shortcut.',
+      b2: 'New versions download by themselves, checked by their SHA-512.',
+      b3: 'Nothing is installed during a game: a “Restart” banner waits until you are done.',
+      btn: 'Download the installer',
+    },
+    portable: {
+      t: 'Portable version',
+      b1: 'A single <code>.exe</code> file, no installation.',
+      b2: 'It cannot replace itself: it shows “New version available” with a link to the releases page.',
+      btn: 'Download the portable version',
+    },
+    verify: {
+      t: 'Check the file',
+      p: 'Only download the launcher from this page or from the GitHub repository’s releases. Before opening it, compare its SHA-256 hash with this one.',
+    },
+    smart: {
+      t: 'If SmartScreen blocks it',
+      p: 'The <code>.exe</code> is not signed: a code-signing certificate is expensive for a free project. On first launch, Windows may show “Windows protected your PC”.',
+      s1: 'Click <strong>More info</strong>.',
+      s2: 'Check that the file really comes from this page (compare its SHA-256 if in doubt).',
+      s3: 'Click <strong>Run anyway</strong>.',
+    },
+    more: 'Other versions',
+  },
+  guide: {
+    title: 'Guide',
+    lead: 'From the first install to troubleshooting. The technical detail, with references to the code, is in the wiki (in French).',
+    toc: 'Contents',
+    start: {
+      t: 'First launch',
+      s1: '<strong>Pick your version</strong> on the launcher home: 1.8.9 for classic PvP, 1.7.10 for 1.7 PvP, 1.21.1 or 26.3 for modern PvP.',
+      s2: '<strong>Click INSTALL.</strong> The launcher downloads Minecraft, the loader, the mod pack (except on 1.7.10) and ATTACK Client, and checks every file.',
+      s3: '<strong>Sign in</strong> on the Account page, or play without an account: PLAY then opens the official Minecraft launcher.',
+      s4: '<strong>Click PLAY.</strong> In game, <kbd>Right Shift</kbd> opens the ATTACK menu.',
+    },
+    account: {
+      t: 'Microsoft account',
+      p: 'Sign-in uses a device code: you type your password on Microsoft’s own site, never in the launcher. The refresh token is encrypted by Windows (DPAPI).',
+      need: 'You need to own Minecraft Java Edition',
+      needMeta: 'Purchase or Game Pass.',
+    },
+    optifine: {
+      t: 'OptiFine on 1.8.9',
+      p: 'Its license forbids redistributing it: the launcher never downloads it. The “Get OptiFine” assistant opens optifine.net, watches your Downloads folder, checks the file and then keeps it for you.',
+      versions: 'Recognised versions: HD U M5 and HD U M6 pre2. If it finds several, the launcher takes the most recent.',
+    },
+    mods: {
+      t: 'Mods and groups',
+      p: 'Each profile except 1.7.10 has a pinned mod pack. In Settings, groups switch on or off: PvP mods (latency), OptiFine packs, Replay Mod and Shaders (Iris). Read your server’s rules before switching the PvP mods on.',
+    },
+    trouble: {
+      t: 'Troubleshooting',
+      logsT: 'Logs',
+      logsP: 'The Logs button on the home page opens the logs of the last game, useful for a bug report. The launcher’s own log is here:',
+    },
+    wiki: 'All the documentation in the wiki (in French)',
   },
   notfound: {
     title: 'Page introuvable · Page not found',

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+{{part.head}}
+</head>
+<body>
+{{part.header}}
+
+<main id="contenu" tabindex="-1">
+<div class="wrap page">
+
+<header class="page-head">
+<h1>{{t.guide.title}}</h1>
+<p class="lead">{{t.guide.lead}}</p>
+</header>
+
+<div class="guide">
+<nav class="toc" aria-labelledby="toc-title">
+<p class="toc-title" id="toc-title">{{t.guide.toc}}</p>
+<a href="#demarrer">{{t.guide.start.t}}</a>
+<a href="#compte">{{t.guide.account.t}}</a>
+<a href="#optifine">{{t.guide.optifine.t}}</a>
+<a href="#mods">{{t.guide.mods.t}}</a>
+<a href="#depannage">{{t.guide.trouble.t}}</a>
+<a href="#faq">{{t.faq.title}}</a>
+</nav>
+
+<div class="guide-body">
+<section class="block" id="demarrer" aria-labelledby="demarrer-title">
+<h2 id="demarrer-title">{{t.guide.start.t}}</h2>
+<ol class="steps steps-list">
+<li class="cut"><span>{{t.guide.start.s1}}</span></li>
+<li class="cut"><span>{{t.guide.start.s2}}</span></li>
+<li class="cut"><span>{{t.guide.start.s3}}</span></li>
+<li class="cut"><span>{{t.guide.start.s4}}</span></li>
+</ol>
+</section>
+
+<section class="block" id="compte" aria-labelledby="compte-title">
+<h2 id="compte-title">{{t.guide.account.t}}</h2>
+<p>{{t.guide.account.p}}</p>
+<p class="status status-good"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><strong>{{t.guide.account.need}}</strong> <span>{{t.guide.account.needMeta}}</span></p>
+</section>
+
+<section class="block" id="optifine" aria-labelledby="optifine-title">
+<h2 id="optifine-title">{{t.guide.optifine.t}}</h2>
+<p>{{t.guide.optifine.p}}</p>
+<p class="note">{{t.guide.optifine.versions}}</p>
+</section>
+
+<section class="block" id="mods" aria-labelledby="mods-title">
+<h2 id="mods-title">{{t.guide.mods.t}}</h2>
+<p>{{t.guide.mods.p}}</p>
+</section>
+
+<section class="block" id="depannage" aria-labelledby="depannage-title">
+<h2 id="depannage-title">{{t.guide.trouble.t}}</h2>
+<div class="grid grid-2">
+<article class="card cut"><h3>{{t.features.c7.t}}</h3><p>{{t.features.c7.p}}</p></article>
+<article class="card cut"><h3>{{t.guide.trouble.logsT}}</h3><p>{{t.guide.trouble.logsP}}</p><p><code>%APPDATA%\ATTACK Launcher\logs\updater.log</code></p></article>
+</div>
+</section>
+
+<section class="block" id="faq" aria-labelledby="faq-title">
+<h2 id="faq-title">{{t.faq.title}}</h2>
+<details class="faq-item" id="faq-smartscreen"><summary>{{t.faq.q1}}</summary><div class="faq-body">{{t.faq.a1}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q2}}</summary><div class="faq-body">{{t.faq.a2}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q3}}</summary><div class="faq-body">{{t.faq.a3}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q4}}</summary><div class="faq-body">{{t.faq.a4}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q5}}</summary><div class="faq-body">{{t.faq.a5}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q6}}</summary><div class="faq-body">{{t.faq.a6}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q7}}</summary><div class="faq-body">{{t.faq.a7}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q8}}</summary><div class="faq-body">{{t.faq.a8}}</div></details>
+<details class="faq-item"><summary>{{t.faq.q9}}</summary><div class="faq-body">{{t.faq.a9}}</div></details>
+<p class="note"><a href="https://github.com/7ShIkI3/attack-launcher/blob/main/docs/wiki/Home.md" hreflang="fr" rel="noopener noreferrer">{{t.guide.wiki}}</a></p>
+</section>
+</div>
+</div>
+
+</div>
+</main>
+
+{{part.footer}}
+</body>
+</html>

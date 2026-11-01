@@ -311,6 +311,14 @@ test('profil 1.7.10 : étiquette de carte, textes de profil sans pack et version
   i18n.setLang('fr');
 });
 
+test('puce choisie (Go, filtres, historique) : contour rouge opaque, la teinte seule ne suffit pas à la distinguer (3:1)', () => {
+  const css = read('styles.css');
+  const rule = css.match(/\.chip\.active \{([^}]*)\}/);
+  assert.ok(rule, 'règle .chip.active');
+  assert.match(rule[1], /border-color: var\(--accent\);/);
+  assert.doesNotMatch(rule[1], /--accent-line/, 'le contour translucide (60 %) ne fait que 2,14:1 contre la teinte');
+});
+
 test('profils : quatre colonnes, le nom du chargeur sous la version, sans débordement (colonne de 484 px, fenêtre minimale de 940 px)', () => {
   const css = read('styles.css');
   assert.match(css, /\.profiles \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
