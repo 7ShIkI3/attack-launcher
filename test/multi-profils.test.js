@@ -25,12 +25,16 @@ test('réglages par défaut : un dossier de jeu par profil, shaders coupés et m
   assert.equal(settings.forProfile(base).gameDir, path.join(ENV.APPDATA, '.attack'));
   assert.equal(settings.forProfile(base, 'fabric-1.21.1').gameDir, GAME_121);
   assert.equal(settings.forProfile(base, 'fabric-26.3').gameDir, path.join(ENV.APPDATA, '.attack', 'profiles', 'fabric-26.3'));
-  // profil 1.7.10 : son dossier, son dossier de jars de développement, ni shaders ni mods PvP ni OptiFine
+  // profil 1.7.10 : son dossier, son dossier de jars de développement, ni shaders ni mods PvP ; l'OptiFine du joueur comme en 1.8.9
   const old = base.profiles['forge-1.7.10'];
   assert.equal(old.gameDir, path.join(ENV.APPDATA, '.attack', 'profiles', 'forge-1.7.10'));
   assert.equal(old.devJarDir, path.join(require('node:os').homedir(), 'Documents', 'attack-forge-1710', 'build', 'libs'));
-  for (const key of ['shaders', 'pvpMods', 'optifinePacks', 'optifine', 'optifineJar']) assert.equal(key in old, false, key);
+  for (const key of ['shaders', 'pvpMods', 'optifinePacks']) assert.equal(key in old, false, key);
+  assert.deepEqual([old.optifine, old.optifineJar], [true, ''], 'OptiFine activé par défaut (sans effet tant que le joueur n’a pas de copie), aucun fichier choisi');
+  assert.deepEqual([base.profiles['forge-1.8.9'].optifine, base.profiles['forge-1.8.9'].optifineJar], [true, '']);
+  assert.equal('optifine' in base.profiles['fabric-1.21.1'], false, 'jamais sur Fabric');
   assert.equal(settings.forProfile(base, 'forge-1.7.10').gameDir, old.gameDir);
+  assert.equal(settings.forProfile(base, 'forge-1.7.10').optifine, true);
   assert.equal('shaders' in base.profiles['forge-1.8.9'], false);
   assert.equal(base.profiles['fabric-1.21.1'].shaders, false);
   assert.equal(settings.forProfile(base).shaders, false);

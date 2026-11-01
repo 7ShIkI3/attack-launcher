@@ -1,6 +1,8 @@
 'use strict';
 // Assistant OptiFine (src/main/optifine-watch.js) : sondage du dossier Téléchargements dans un dossier TEMPORAIRE, avec de fausses
 // minuteries (aucune attente réelle) et un faux jar OptiFine valide. Rien ne touche au vrai dossier Téléchargements ni au réseau.
+// Les tests historiques utilisent le guetteur 1.8.9 (valeur par défaut) ; la fin du fichier rejoue une suite pour CHAQUE spec (1.8.9, 1.7.10)
+// et fait tourner deux guetteurs sur le même dossier.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -32,6 +34,7 @@ function fakeClock() {
     now: () => time,
     /** Avance de `ms`, en lançant les minuteries échues dans l'ordre, et attend la fin de chaque sondage. */
     async advance(ms, watcher) {
+      const watchers = Array.isArray(watcher) ? watcher : [watcher]; // plusieurs guetteurs peuvent partager l'horloge
       const target = time + ms;
       for (;;) {
         const due = [...timers.entries()].filter(([, t]) => t.at <= target).sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
@@ -39,7 +42,7 @@ function fakeClock() {
         timers.delete(due[0]);
         time = due[1].at;
         due[1].fn();
-        await watcher.whenIdle();
+        for (const w of watchers) await w.whenIdle();
       }
       time = target;
     },
@@ -48,6 +51,7 @@ function fakeClock() {
 
 /** Un dossier Téléchargements factice + un dossier de données + un guetteur branché sur la VRAIE importation. */
 function setup(extra = {}) {
+  const mc = extra.mc || optifine.DEFAULT_MC; // le guetteur de cette version de Minecraft (1.8.9 par défaut)
   const root = tempDir('atk-watch-');
   const downloads = path.join(root, 'Telechargements');
   const userData = path.join(root, 'userData');
@@ -60,7 +64,7 @@ function setup(extra = {}) {
     onState: (state) => events.push(state),
     importFile: async (file) => {
       imports.push(file);
-      return optifine.importCopy(file, userData);
+      return optifine.importCopy(file, userData, mc);
     },
     setTimer: clock.setTimer,
     clearTimer: clock.clearTimer,
@@ -527,13 +531,203 @@ test('« use » ne fait rien pendant qu’une validation tourne, et jamais deux 
 
 test('aucun accès réseau : ces modules n’importent ni http, ni réseau, ni Electron, et n’appellent jamais fetch ni shell', () => {
   const allowed = new Set([
-    'node:fs', 'node:fs/promises', 'node:path', 'node:crypto', './zip', './maven', './fsretry', './optifine',
+    'node:fs', 'node:fs/promises', 'node:path', 'node:crypto', './zip', './maven', './fsretry', './optifine', './optifine-watch',
   ]);
-  for (const name of ['optifine.js', 'optifine-watch.js', 'fsretry.js']) {
+  for (const name of ['optifine.js', 'optifine-watch.js', 'optifine-assist.js', 'fsretry.js']) {
     const code = fs.readFileSync(path.join(__dirname, '..', 'src', 'main', name), 'utf8');
     const stripped = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     for (const m of stripped.matchAll(/require\(\s*'([^']+)'\s*\)/g)) assert.ok(allowed.has(m[1]), `${name} : require('${m[1]}') hors de la liste`);
     assert.equal(/\bfetch\s*\(|XMLHttpRequest|WebSocket|\bdns\b|\bnet\.|https?\.(get|request)|openExternal|from 'electron'|require\('electron'\)/.test(stripped), false, `${name} : appel réseau ou shell`);
     assert.equal(/\bhttps?:\/\/(?!optifine\.net)/.test(stripped), false, `${name} : adresse inattendue`);
   }
+});
+
+// ---------- la même suite pour CHAQUE spec : un guetteur par version de Minecraft ----------
+
+const SPEC_LIST = Object.values(optifine.SPECS);
+const manifestFor = (spec) => `Manifest-Version: 1.0\r\nMain-Class: optifine.InstallerFrame\r\nTweakClass: ${spec.tweak}\r\nTweakOrder: -1000\r\n\r\n`;
+const jarFor = (spec, salt = '') => makeZip({ 'META-INF/MANIFEST.MF': manifestFor(spec), 'optifine/OptiFineForgeTweaker.class': `classe ${salt}` });
+
+test('guetteur : la version de Minecraft est lue à la création (1.8.9 par défaut), une version inconnue est refusée', () => {
+  assert.equal(watch.createWatcher({ dir: 'x', importFile: async () => ({}) }).mc, '1.8.9');
+  assert.equal(watch.createWatcher({ mc: '1.7.10', dir: 'x', importFile: async () => ({}) }).mc, '1.7.10');
+  assert.throws(() => watch.createWatcher({ mc: '1.12.2', dir: 'x', importFile: async () => ({}) }), RangeError);
+  assert.equal(watch.ACCEPTED_NAME.test('OptiFine_1.8.9_HD_U_M5.jar'), true, 'l’ancienne constante est celle de la 1.8.9');
+});
+
+for (const spec of SPEC_LIST) {
+  const MC = spec.mc;
+  const EDITION = spec.edition;
+  const other = SPEC_LIST.find((s) => s !== spec);
+  const NAME_OK = `OptiFine_${MC}_${EDITION}.jar`;
+  const NAME_OTHER = `OptiFine_${other.mc}_${other.edition}.jar`;
+
+  test(`[${MC}] noms acceptés : OptiFine ${MC}, preview_, suffixe « (n) » retiré, insensible à la casse ; les autres versions et les fichiers partiels refusés`, () => {
+    for (const ok of [
+      NAME_OK, `OptiFine-${MC}-${EDITION}.jar`, `preview_OptiFine_${MC}_HD_U_E8_pre2.jar`, `OptiFine_${MC}_${EDITION} (1).jar`, `OptiFine_${MC}_${EDITION} (12).jar`,
+      `PREVIEW_OPTIFINE_${MC}_HD_U_E8_PRE2.JAR`, `optifine_${MC}_hd_u_l5.jar`, `OptiFine_${MC}_${EDITION}(1).jar`,
+    ]) assert.equal(watch.acceptedName(ok, MC), true, ok);
+    for (const bad of [
+      NAME_OTHER, `preview_OptiFine_${other.mc}_${other.edition}_pre2.jar`, `OptiFine_${other.mc}_${other.edition} (1).jar`, `OptiFine_${MC}.jar`,
+      `${NAME_OK}.crdownload`, `${NAME_OK}.part`, `OptiFine_${MC}_${EDITION}.tmp`, `OptiFine_${MC}_${EDITION}.zip`, `OptiFine_${MC}_${EDITION} (copie).jar`,
+      `mon ${NAME_OK}`, `autre-mod-${MC}.jar`, `OptiFine_1${MC}_x.jar`, '',
+    ]) assert.equal(watch.acceptedName(bad, MC), false, bad);
+  });
+
+  test(`[${MC}] import d’un faux jar valide : copie privée <userData>/optifine/${NAME_OK}, état « imported » avec la variante, plus aucune minuterie`, async () => {
+    const s = setup({ mc: MC });
+    await s.watcher.start();
+    const source = s.put(NAME_OK, jarFor(spec, 'vrai'));
+    await s.clock.advance(2000, s.watcher);
+    assert.deepEqual(s.states(), ['waiting', 'checking', 'imported']);
+    const last = s.events.at(-1);
+    assert.deepEqual([last.file, last.version, last.downloadsDir], [NAME_OK, EDITION, s.downloads]);
+    assert.ok(fs.readFileSync(path.join(s.userData, 'optifine', NAME_OK)).equals(fs.readFileSync(source)), 'copie identique');
+    assert.equal(s.clock.pending(), 0);
+    assert.equal(s.watcher.isActive(), false);
+    s.clean();
+  });
+
+  test(`[${MC}] suffixes « (1) » (Chrome/Edge, Firefox collé) et preview_ : repris et rangés sans le suffixe`, async () => {
+    for (const [name, stored] of [[`OptiFine_${MC}_${EDITION} (1).jar`, NAME_OK], [`OptiFine_${MC}_${EDITION}(1).jar`, NAME_OK], [`preview_OptiFine_${MC}_HD_U_E8_pre2.jar`, `preview_OptiFine_${MC}_HD_U_E8_pre2.jar`]]) {
+      const s = setup({ mc: MC });
+      await s.watcher.start();
+      s.put(name, jarFor(spec, name));
+      await s.clock.advance(2000, s.watcher);
+      assert.deepEqual(s.states(), ['waiting', 'checking', 'imported'], name);
+      assert.deepEqual(fs.readdirSync(path.join(s.userData, 'optifine')), [stored], name);
+      s.clean();
+    }
+  });
+
+  test(`[${MC}] refus : TweakClass absent ou archive illisible = « refused » avec la raison, rien n’est copié`, async () => {
+    for (const [reason, content] of [
+      ['NO_TWEAK', makeZip({ 'META-INF/MANIFEST.MF': 'Manifest-Version: 1.0\r\nTweakClass: autre.Tweaker\r\n\r\n' })],
+      ['BAD_ZIP', 'pas une archive'],
+    ]) {
+      const s = setup({ mc: MC });
+      await s.watcher.start();
+      s.put(NAME_OK, content);
+      await s.clock.advance(2000, s.watcher);
+      assert.deepEqual(s.states(), ['waiting', 'checking', 'refused'], reason);
+      assert.equal(s.events.at(-1).reason, reason);
+      assert.equal(s.events.at(-1).message, optifine.describeReason(reason, MC), 'le texte porte la version du guetteur');
+      assert.equal(fs.existsSync(path.join(s.userData, 'optifine')), false);
+      assert.equal(s.clock.pending(), 0);
+      s.clean();
+    }
+  });
+
+  test(`[${MC}] fichier déjà présent au départ : proposé (« seen »), jamais importé sans clic ; le clic l’importe ; celui de l’autre version n’est jamais proposé`, async () => {
+    const s = setup({ mc: MC });
+    s.put(NAME_OTHER, jarFor(other, 'autre')); // téléchargé il y a longtemps pour l'autre profil
+    const present = s.put(NAME_OK, jarFor(spec, 'present'));
+    const first = await s.watcher.start();
+    assert.deepEqual([first.state, first.file, first.version], ['seen', NAME_OK, EDITION]);
+    assert.equal(first.foreign, undefined, 'un OptiFine d’une autre version déjà là au départ n’est pas signalé (vieux téléchargement)');
+    await s.clock.advance(5000, s.watcher);
+    assert.deepEqual(s.states(), ['waiting', 'seen'], 'toujours en attente de clic');
+    assert.deepEqual(s.imports, []);
+    const used = await s.watcher.use();
+    assert.equal(used.ok, true);
+    assert.deepEqual(s.imports, [present]);
+    assert.equal(s.states().at(-1), 'imported');
+    s.clean();
+  });
+
+  test(`[${MC}] un OptiFine ${other.mc} qui arrive pendant l’attente n’est jamais importé : l’état « waiting » le signale (foreign) et la surveillance continue jusqu’au bon jar`, async () => {
+    const s = setup({ mc: MC });
+    await s.watcher.start();
+    s.put(NAME_OTHER, jarFor(other, 'erreur'));
+    s.put(`preview_OptiFine_${other.mc}_${other.edition}_pre1 (1).jar`, jarFor(other, 'preview'));
+    s.put(`OptiFine_${other.mc}_${other.edition}.jar.crdownload`, 'partiel'); // un fichier partiel n'est pas signalé
+    await s.clock.advance(5000, s.watcher);
+    assert.deepEqual(s.imports, [], 'aucun import');
+    assert.deepEqual(s.states(), ['waiting', 'waiting'], 'un seul rafraîchissement de l’état, pas un à chaque sondage');
+    assert.deepEqual(s.events.at(-1).foreign, [NAME_OTHER, `preview_OptiFine_${other.mc}_${other.edition}_pre1 (1).jar`].sort());
+    assert.equal(s.watcher.isActive(), true, 'la surveillance continue');
+    // le joueur télécharge enfin le bon : importé
+    s.put(NAME_OK, jarFor(spec, 'bon'));
+    await s.clock.advance(3000, s.watcher);
+    assert.equal(s.states().at(-1), 'imported');
+    assert.deepEqual(s.imports.map((f) => path.basename(f)), [NAME_OK]);
+    s.clean();
+  });
+
+  test(`[${MC}] annulation et fermeture : toutes les minuteries sont arrêtées`, async () => {
+    const s = setup({ mc: MC });
+    await s.watcher.start();
+    assert.ok(s.clock.pending() > 0);
+    s.watcher.cancel();
+    assert.equal(s.states().at(-1), 'cancelled');
+    assert.equal(s.clock.pending(), 0);
+    await s.watcher.start();
+    s.watcher.dispose();
+    assert.equal(s.clock.pending(), 0);
+    assert.equal(s.watcher.isActive(), false);
+    s.clean();
+  });
+}
+
+test('deux guetteurs (1.8.9 et 1.7.10) sur le même dossier Téléchargements : chacun n’importe que le sien, l’autre est signalé mais jamais importé', async () => {
+  const root = tempDir('atk-watch2-');
+  const downloads = path.join(root, 'Telechargements');
+  const userData = path.join(root, 'userData');
+  fs.mkdirSync(downloads, { recursive: true });
+  const clock = fakeClock();
+  const make = (mc) => {
+    const events = [];
+    const imports = [];
+    const watcher = watch.createWatcher({
+      mc, dir: downloads, setTimer: clock.setTimer, clearTimer: clock.clearTimer,
+      onState: (state) => events.push(state),
+      importFile: async (file) => { imports.push(path.basename(file)); return optifine.importCopy(file, userData, mc); },
+    });
+    return { watcher, events, imports, states: () => events.map((e) => e.state) };
+  };
+  const a = make('1.8.9');
+  const b = make('1.7.10');
+  const advance = (ms) => clock.advance(ms, [a.watcher, b.watcher]);
+  await a.watcher.start();
+  await b.watcher.start();
+  assert.equal(a.watcher.isActive() && b.watcher.isActive(), true, 'deux guetteurs actifs en même temps');
+  const spec89 = optifine.forVersion('1.8.9');
+  const spec710 = optifine.forVersion('1.7.10');
+  fs.writeFileSync(path.join(downloads, 'OptiFine_1.8.9_HD_U_M5.jar'), jarFor(spec89, 'a'));
+  await advance(3000);
+  assert.deepEqual(a.imports, ['OptiFine_1.8.9_HD_U_M5.jar']);
+  assert.deepEqual(b.imports, [], 'le guetteur 1.7.10 ne prend pas l’OptiFine 1.8.9');
+  assert.equal(a.states().at(-1), 'imported');
+  assert.equal(b.states().at(-1), 'waiting');
+  assert.deepEqual(b.events.at(-1).foreign, ['OptiFine_1.8.9_HD_U_M5.jar'], 'mais il le signale');
+  assert.equal(b.watcher.isActive(), true);
+  fs.writeFileSync(path.join(downloads, 'OptiFine_1.7.10_HD_U_E7.jar'), jarFor(spec710, 'b'));
+  await advance(3000);
+  assert.deepEqual(b.imports, ['OptiFine_1.7.10_HD_U_E7.jar']);
+  assert.deepEqual(a.imports, ['OptiFine_1.8.9_HD_U_M5.jar'], 'et le 1.8.9, déjà fini, ne bouge plus');
+  assert.deepEqual(fs.readdirSync(path.join(userData, 'optifine')).sort(), ['OptiFine_1.7.10_HD_U_E7.jar', 'OptiFine_1.8.9_HD_U_M5.jar']);
+  a.watcher.dispose();
+  b.watcher.dispose();
+  assert.equal(clock.pending(), 0);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('deux guetteurs : le même jar téléchargé sous deux noms de versions n’est pas pris deux fois ; chaque état reste celui de son guetteur', async () => {
+  const root = tempDir('atk-watch3-');
+  const downloads = path.join(root, 'Telechargements');
+  fs.mkdirSync(downloads, { recursive: true });
+  const clock = fakeClock();
+  const imported = { '1.8.9': [], '1.7.10': [] };
+  const watchers = Object.keys(imported).map((mc) => watch.createWatcher({
+    mc, dir: downloads, setTimer: clock.setTimer, clearTimer: clock.clearTimer,
+    importFile: async (file) => { imported[mc].push(path.basename(file)); return { version: 'x' }; },
+  }));
+  for (const w of watchers) await w.start();
+  // les deux jars arrivent ensemble, dans le même sondage
+  fs.writeFileSync(path.join(downloads, 'OptiFine_1.8.9_HD_U_M5.jar'), jarFor(optifine.forVersion('1.8.9'), '1'));
+  fs.writeFileSync(path.join(downloads, 'OptiFine_1.7.10_HD_U_E7.jar'), jarFor(optifine.forVersion('1.7.10'), '2'));
+  await clock.advance(4000, watchers);
+  assert.deepEqual(imported, { '1.8.9': ['OptiFine_1.8.9_HD_U_M5.jar'], '1.7.10': ['OptiFine_1.7.10_HD_U_E7.jar'] });
+  for (const w of watchers) w.dispose();
+  fs.rmSync(root, { recursive: true, force: true });
 });

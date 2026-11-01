@@ -326,18 +326,22 @@ async function installGameOptions(gameDir, profile = null, lang = null) {
 }
 
 /**
- * OptiFine (profil 1.8.9) : copie dans <gameDir>/mods la copie d'OptiFine que le joueur possède déjà (jamais téléchargée), ou
+ * OptiFine (profils 1.8.9 et 1.7.10) : copie dans <gameDir>/mods la copie d'OptiFine que le joueur possède déjà (jamais téléchargée), ou
  * retire celle que le launcher y avait copiée quand l'option est coupée (voir optifine.js). Le jar copié est suivi dans l'état
  * (`optifine`). Un échec est journalisé sans faire échouer l'installation (le jeu marche sans OptiFine) : l'état n'est pas
- * modifié et la prochaine installation réessaie.
+ * modifié et la prochaine installation réessaie. `profile` : entrée du catalogue (ou son identifiant) dont la spec d'OptiFine dit quelle
+ * version de Minecraft est attendue ; Forge 1.8.9 par défaut.
  * Renvoie { action: 'copied' | 'kept' | 'removed' | 'own' | 'missing' | 'disabled' | 'error', name?, source?, error? }.
  */
-async function installOptifine(gameDir, minecraftDir, settings = {}) {
+async function installOptifine(gameDir, minecraftDir, settings = {}, profileOption) {
+  const profile = resolveProfile(profileOption);
   try {
+    if (!catalog.hasOptifine(profile)) throw new Error(`Le profil ${profile.id} n'a pas d'OptiFine`);
     const state = await readState(gameDir);
     const result = await optifine.apply({
       minecraftDir,
       gameDir,
+      mc: profile.mc,
       enabled: settings.optifine !== false,
       chosen: settings.optifineJar || '',
       tracked: state?.optifine || null,
@@ -505,11 +509,11 @@ async function install(options) {
   } else {
     loaderLibraries = (await installForge(minecraftDir, report, net, profile)).libraries;
   }
-  // pack de mods du profil (Fabric comme Forge 1.8.9), puis OptiFine du joueur (1.8.9) et réglages de départ d'options.txt
+  // pack de mods du profil (Fabric comme Forge 1.8.9), puis OptiFine du joueur (1.8.9 et 1.7.10) et réglages de départ d'options.txt
   const packResult = profile.pack ? await installPack(gameDir, profile, settings, report, net) : null;
   // WalksyLib (groupe PvP) : sa vérification de mises à jour est coupée avant son premier démarrage
   const walksylib = packResult?.info.mods.some((m) => m.slug === 'walksylib') ? await installWalksyLibConfig(gameDir) : undefined;
-  if (catalog.hasOptifine(profile)) optifineResult = await installOptifine(gameDir, minecraftDir, settings);
+  if (catalog.hasOptifine(profile)) optifineResult = await installOptifine(gameDir, minecraftDir, settings, profile);
   const gameOptions = await installGameOptions(gameDir, profile, settings.lang);
   const modInfo = await installMod(gameDir, settings, report, net, profile, options.appVersion, releaseAsset);
   await installProfile(minecraftDir, gameDir, settings, icon, report, profile);
@@ -581,8 +585,10 @@ async function packStatus(gameDir, profile, options, state) {
 
 /**
  * État rapide (présence des fichiers, sans hash) pour l'écran d'accueil. `profile` : catalogue, Forge 1.8.9 par défaut.
- * Réglages du profil : shaders, pvpMods, optifinePacks, replayMod (groupes du pack) ; optifine et optifineJar (profil 1.8.9 :
- * la copie d'OptiFine du joueur, voir optifine.js). Le résultat contient `optifine` pour ce profil.
+ * Réglages du profil : shaders, pvpMods, optifinePacks, replayMod (groupes du pack) ; optifine et optifineJar (profils 1.8.9 et 1.7.10 :
+ * la copie d'OptiFine du joueur, voir optifine.js). Le résultat contient `optifine` pour ces profils, avec `modOutdated` quand OptiFine
+ * est actif alors que le mod ATTACK installé est plus ancien que la version minimale de la spec : l'installation est alors à refaire
+ * (elle met le mod à jour).
  */
 async function status({
   minecraftDir, gameDir, profile: profileOption, shaders = false, pvpMods = true, optifinePacks = true, replayMod = false,
@@ -624,13 +630,18 @@ async function status({
     modSource: state?.mod?.source || null,
     installedAt: state?.installedAt || null,
   };
-  // OptiFine du joueur (1.8.9) : à copier, à remplacer ou à retirer = l'installation a quelque chose à faire
+  // OptiFine du joueur : à copier, à remplacer ou à retirer = l'installation a quelque chose à faire
   if (catalog.hasOptifine(profile)) {
-    result.optifine = await optifine.inspect({ minecraftDir, gameDir, enabled: optifineEnabled, chosen: optifineJar, tracked: state?.optifine || null });
+    const view = await optifine.inspect({ minecraftDir, gameDir, enabled: optifineEnabled, chosen: optifineJar, tracked: state?.optifine || null, mc });
+    // OptiFine actif (copie posée, copie du joueur déjà dans mods, ou copie à poser) avec un mod ATTACK plus ancien que la version minimale
+    // de la spec : le mod n'a pas les adaptations pour OptiFine, l'installation (qui reprend le mod de la release) est à refaire
+    const active = view.enabled && (view.installed || Boolean(view.own) || view.wantCopy);
+    result.optifine = { ...view, modOutdated: Boolean(view.minMod) && active && mod.olderThan(result.modVersion, view.minMod) };
   }
   // nom historique du chargeur (forge / fabric) à côté de `loader`
   result[profile.loader.type] = result.loader;
-  result.installed = result.minecraft && result.loader && result.pack !== false && result.mod && result.profile && !result.optifine?.pending;
+  result.installed = result.minecraft && result.loader && result.pack !== false && result.mod && result.profile && !result.optifine?.pending
+    && !result.optifine?.modOutdated;
   return result;
 }
 

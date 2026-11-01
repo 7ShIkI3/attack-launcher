@@ -163,6 +163,7 @@ async function boot({ info, settings, status, accounts }) {
   const assistCalls = [];
   const assistHandlers = [];
   const accountHandlers = [];
+  const mcOf = (profileId) => (info.profiles.find((p) => p.id === profileId) || {}).mc;
   const attack = {
     info: async () => info,
     getSettings: async () => settings,
@@ -186,10 +187,15 @@ async function boot({ info, settings, status, accounts }) {
     update: { state: async () => ({ phase: 'off' }) },
     onProgress: noop, onAuthEvent: noop, onAccountsChanged: (callback) => { accountHandlers.push(callback); }, onUpdateState: noop, onWindowState: noop,
     onOptifineAssist: (callback) => { assistHandlers.push(callback); },
+    // contrat IPC : chaque appel nomme son profil (profileId) ; assistCalls garde [appel, profileId, options?]
+    pickOptifine: async (profileId) => { assistCalls.push(['pick', profileId]); return { ok: false, code: 'CANCELLED', profileId }; },
     optifineAssist: {
-      start: async (options) => { assistCalls.push(['start', options]); return { ok: true, state: 'waiting', downloadsDir: 'D:\\Dl' }; },
-      use: async () => { assistCalls.push(['use']); return { ok: true }; },
-      cancel: async () => { assistCalls.push(['cancel']); return { ok: true }; },
+      start: async (profileId, options) => {
+        assistCalls.push(['start', profileId, options]);
+        return { ok: true, profileId, mc: mcOf(profileId), state: 'waiting', downloadsDir: 'D:\\Dl' };
+      },
+      use: async (profileId) => { assistCalls.push(['use', profileId]); return { ok: true, profileId }; },
+      cancel: async (profileId) => { assistCalls.push(['cancel', profileId]); return { ok: true, profileId }; },
     },
   };
   const window = { attack, addEventListener: noop };
@@ -207,9 +213,11 @@ async function boot({ info, settings, status, accounts }) {
   for (let i = 0; i < 100 && !statusRead; i++) await tick();
   for (let i = 0; i < 5; i++) await tick();
   assert.equal(byId('message').textContent, '', 'la page n’a pas affiché d’erreur au chargement');
-  // événement de l'assistant OptiFine venu du processus principal ; attend la fin des rendus qu'il déclenche
+  // événement de l'assistant OptiFine venu du processus principal ({ profileId, mc, ...état }) ; attend la fin des rendus qu'il déclenche.
+  // Sans profileId, c'est celui du profil affiché (comme le fait le processus principal pour le guetteur de ce profil).
   const emitAssist = async (state) => {
-    for (const handler of assistHandlers) await handler(state);
+    const profileId = state.profileId || settings.profileId;
+    for (const handler of assistHandlers) await handler({ profileId, mc: mcOf(profileId), ...state });
     for (let i = 0; i < 5; i++) await tick();
   };
   // liste de comptes changée côté processus principal ; attend la fin des rendus
@@ -473,7 +481,7 @@ test('assistant OptiFine : chaque état a son titre, son texte ou ses étapes et
   assert.match(settingsCard().textContent, /OptiFine_1\.8\.9_HD_U_M5\.jar était déjà dans D:\\Dl/);
   assert.deepEqual(labelsOf(settingsCard()), ['Utiliser ce fichier', 'Annuler']);
   await clickLabel(settingsCard(), 'Utiliser ce fichier');
-  assert.deepEqual(plain(page.assistCalls.at(-1)), ['use']);
+  assert.deepEqual(plain(page.assistCalls.at(-1)), ['use', 'forge-1.8.9']);
 
   await page.emitAssist({ state: 'checking', file: 'OptiFine_1.8.9_HD_U_M5.jar', downloadsDir: 'D:\\Dl' });
   assert.match(settingsCard().textContent, /Vérification/);
@@ -490,12 +498,12 @@ test('assistant OptiFine : chaque état a son titre, son texte ou ses étapes et
   assert.match(settingsCard().textContent, /10 minutes/);
   assert.deepEqual(labelsOf(settingsCard()), ['Attendre encore', 'Choisir le fichier…']);
   await clickLabel(settingsCard(), 'Attendre encore');
-  assert.deepEqual(plain(page.assistCalls.at(-1)), ['start', { browser: false }], '« Attendre encore » ne rouvre pas le navigateur');
+  assert.deepEqual(plain(page.assistCalls.at(-1)), ['start', 'forge-1.8.9', { browser: false }], '« Attendre encore » ne rouvre pas le navigateur');
 
   await page.emitAssist({ state: 'cancelled', downloadsDir: 'D:\\Dl' });
   assert.deepEqual(labelsOf(settingsCard()), ['Relancer', 'Choisir le fichier…']);
   await clickLabel(settingsCard(), 'Relancer');
-  assert.deepEqual(plain(page.assistCalls.at(-1)), ['start', { browser: true }]);
+  assert.deepEqual(plain(page.assistCalls.at(-1)), ['start', 'forge-1.8.9', { browser: true }]);
 
   await page.emitAssist({ state: 'error', reason: 'DIR_UNREADABLE', downloadsDir: 'D:\\Dl' });
   assert.match(settingsCard().textContent, /Le dossier Téléchargements est illisible\u00a0: D:\\Dl/);
@@ -505,7 +513,7 @@ test('assistant OptiFine : chaque état a son titre, son texte ou ses étapes et
   // « Obtenir OptiFine » (carte Réglages) lance la surveillance ET ouvre optifine.net (le processus principal décide)
   byId('optifine-download').disabled = false;
   await byId('optifine-download').listeners.click[0]();
-  assert.deepEqual(plain(page.assistCalls.at(-1)), ['start', { browser: true }]);
+  assert.deepEqual(plain(page.assistCalls.at(-1)), ['start', 'forge-1.8.9', { browser: true }]);
   fs.rmSync(dirs.root, { recursive: true, force: true });
 });
 
@@ -862,7 +870,7 @@ test('assistant OptiFine, import réussi sur la page Mods : le focus suit l’as
 
 const OLD = catalog.get('forge-1.7.10');
 
-/** Installation 1.7.10 complète : Minecraft, Forge, jar attack-forge-1.0.0 et profil du launcher, sans pack ni OptiFine. */
+/** Installation 1.7.10 complète : Minecraft, Forge, jar attack-forge-1.0.0 et profil du launcher, sans pack ; le joueur n'a pas d'OptiFine. */
 function installed1710() {
   const root = tempDir('atk-dom-');
   const put = (rel, content = 'x') => {
@@ -931,17 +939,18 @@ test('accueil : quatre cartes de profil, la 1.7.10 en dernier avec « PvP 1.7 »
   fs.rmSync(dirs.root, { recursive: true, force: true });
 });
 
-test('profil 1.7.10 : installé = « Tout est prêt », aucune ligne « Pack de mods » ni OptiFine, jamais « 0 mod »', async () => {
+test('profil 1.7.10 : installé = « Tout est prêt », une ligne OptiFine (introuvable = information, pas un blocage), aucune ligne « Pack de mods », jamais « 0 mod »', async () => {
   const dirs = installed1710();
   const { status, page } = await render1710(dirs);
   assert.equal(status.installed, true);
   assert.equal(page.byId('ready-main').textContent, 'Tout est prêt');
   assert.equal(page.byId('play-label').textContent, 'JOUER');
   const rows = page.byId('ready-pop').children.map((row) => [row.children[1].children[0].textContent, /\bbad\b/.test(row.className)]);
-  assert.deepEqual(rows, [['Minecraft 1.7.10', false], ['Forge 10.13.4.1614', false], ['ATTACK Client', false], ['Profil du launcher', false]]);
+  assert.deepEqual(rows, [['Minecraft 1.7.10', false], ['Forge 10.13.4.1614', false], ['OptiFine', false], ['ATTACK Client', false], ['Profil du launcher', false]]);
+  assert.equal(page.byId('ready-pop').children[2].children[1].children[1].textContent, 'introuvable', 'sans copie du joueur : rien à faire');
   assert.equal(page.byId('ready-sum').textContent, 'ATTACK Client v1.0.0', 'la version du jar, lue dans son nom, et pas de compteur de mods');
-  // rail « Profil actuel » : la mémoire, Java 8, « Aucun » pack, la version du mod ; pas de case OptiFine
-  assert.deepEqual(railCells(page), { Mémoire: '2 Go', Java: '8 · fourni', 'Pack de mods': 'Aucun', 'ATTACK Client': 'v1.0.0' });
+  // rail « Profil actuel » : la mémoire, Java 8, « Aucun » pack, la version du mod, puis OptiFine
+  assert.deepEqual(railCells(page), { Mémoire: '2 Go', Java: '8 · fourni', 'Pack de mods': 'Aucun', 'ATTACK Client': 'v1.0.0', OptiFine: 'introuvable' });
   assert.ok(!/0 mod/.test(page.byId('pc-grid').textContent));
   // Réglages : pas de carte « Pack de mods », mémoire conseillée comme en 1.8.9, texte avec la bonne version
   assert.equal(page.byId('pack-card').classList.contains('hidden'), true);
@@ -960,14 +969,14 @@ test('profil 1.7.10 : jar du mod absent = « À installer : ATTACK Client », et
   fs.rmSync(dirs.root, { recursive: true, force: true });
 });
 
-test('page Mods du profil 1.7.10 : tous les modules de la page Mods sauf Mouse Delay Fix et Titles, dans l’ordre de MODS, sans OptiFine ni pack', async () => {
+test('page Mods du profil 1.7.10 : OptiFine, puis tous les modules de la page Mods sauf Mouse Delay Fix et Titles, dans l’ordre de MODS, sans pack', async () => {
   const data = (() => {
     const sandbox = { window: {} };
     vm.createContext(sandbox);
     vm.runInContext(fs.readFileSync(path.join(RENDERER, 'data.js'), 'utf8'), sandbox, { filename: 'data.js' });
     return sandbox.window.AttackData;
   })();
-  // la référence est MODS lui-même, pas une liste du profil : le mod 1.7.10 a tout le contenu du mod 1.8.9 sauf OptiFine, moins deux modules
+  // la référence est MODS lui-même, pas une liste du profil : le mod 1.7.10 a tout le contenu du mod 1.8.9, moins deux modules ; OptiFine est la copie du joueur
   const expected = Array.from(data.MODS).map((m) => m.name).filter((n) => n !== 'Mouse Delay Fix' && n !== 'Titles');
   assert.equal(expected.length, data.MODS.length - 2);
   const dirs = installed1710();
@@ -980,12 +989,14 @@ test('page Mods du profil 1.7.10 : tous les modules de la page Mods sauf Mouse D
 
   const names = modCardNames(page);
   assert.equal(names[0], 'ATTACK Client');
-  assert.deepEqual(names.slice(1), expected, 'tous les modules de MODS sauf deux, dans l’ordre de la page Mods (aucune liste « lite »)');
-  assert.equal(names.length, 1 + expected.length);
-  for (const gone of ['Mouse Delay Fix', 'Titles', 'OptiFine']) assert.ok(!names.includes(gone), `${gone} n’est pas dans la liste 1.7.10`);
+  assert.equal(names[1], 'OptiFine', 'la carte OptiFine du joueur suit ATTACK Client');
+  assert.deepEqual(names.slice(2), expected, 'tous les modules de MODS sauf deux, dans l’ordre de la page Mods (aucune liste « lite »)');
+  assert.equal(names.length, 2 + expected.length);
+  for (const gone of ['Mouse Delay Fix', 'Titles']) assert.ok(!names.includes(gone), `${gone} n’est pas dans la liste 1.7.10`);
   // les modules interdits en classé, les Amis, la Minimap, les Waypoints, le flou de mouvement et FPS Boost y sont (ils n'étaient pas dans la liste « lite »)
   for (const present of ['No Jump Delay', 'No Hit Delay', 'Perspective', 'Amis', 'Minimap', 'Waypoints', 'Motion Blur', 'FPS Boost', 'Capes ATTACK', 'ToggleSprint', 'Zoom', 'Personnalisation']) assert.ok(names.includes(present), `${present} est dans la liste 1.7.10`);
-  assert.match(page.byId('mods-count').textContent, new RegExp(`^1 mod · ${expected.length} modules en jeu`));
+  // deux cartes de mods (ATTACK Client et la carte OptiFine, qui porte l'assistant), comme en 1.8.9 sans copie
+  assert.match(page.byId('mods-count').textContent, new RegExp(`^2 mods · ${expected.length} modules en jeu`));
   // Animations 1.7 : le texte propre à la 1.7.10 (position, style, vitesse du coup ; blocage et pose natifs) ; les autres gardent celui de MODS
   const cardOf = (name) => page.byId('mods-grid').children.find((card) => card.children[0].children[1].textContent === name);
   assert.match(cardOf('Animations 1.7').textContent, /Position, style et vitesse du coup réglables/);
@@ -1014,7 +1025,7 @@ test('profil 1.7.10 en anglais : titre, sous-titre et rail', async () => {
   const { page } = await render1710(dirs, { lang: 'en' });
   assert.equal(page.byId('mods-title').textContent, 'Mods of the 1.7.10 profile');
   assert.match(page.byId('mods-subtitle').textContent, /no mod pack/);
-  assert.deepEqual(railCells(page), { Memory: '2 GB', Java: '8 · bundled', 'Mod pack': 'None', 'ATTACK Client': 'v1.0.0' });
+  assert.deepEqual(railCells(page), { Memory: '2 GB', Java: '8 · bundled', 'Mod pack': 'None', 'ATTACK Client': 'v1.0.0', OptiFine: 'not found' });
   assert.equal(page.byId('ready-sum').textContent, 'ATTACK Client v1.0.0');
   assert.match(page.byId('ram-help').textContent, /^2 to 3 GB is enough for 1\.7\.10\./);
   fs.rmSync(dirs.root, { recursive: true, force: true });
@@ -1031,7 +1042,7 @@ test('profil 1.7.10 : « Mods et licences » ne montre aucun tableau de pack, se
   assert.ok(!/Modrinth/.test(page.byId('credits-credit').textContent));
   assert.match(text, /ATTACK Client/);
   const firstCells = page.byId('credits-list').children.filter((row) => /credit-row/.test(row.className)).map((row) => row.children[0].textContent);
-  assert.ok(!firstCells.includes('OptiFine'), 'pas de ligne OptiFine pour ce profil');
+  assert.ok(firstCells.includes('OptiFine'), 'la ligne OptiFine (licence) accompagne ce profil, comme en 1.8.9');
   assert.ok(firstCells.includes('ATTACK Client'));
   const full = installed189();
   const view = await render(full, {});
@@ -1040,4 +1051,64 @@ test('profil 1.7.10 : « Mods et licences » ne montre aucun tableau de pack, se
   assert.match(view.page.byId('credits-credit').textContent, /Modrinth/);
   assert.match(view.page.byId('credits-list').textContent, /Pack de mods du profil 1\.8\.9/);
   for (const d of [dirs, full]) fs.rmSync(d.root, { recursive: true, force: true });
+});
+
+// ---------- OptiFine par profil : le contrat IPC porte le profileId, les assistants sont isolés ----------
+
+test('assistants OptiFine : chaque appel (obtenir, utiliser, annuler, choisir le fichier) nomme le profil affiché, et l’état d’un autre profil ne s’affiche pas', async () => {
+  const dirs = installed1710();
+  const { page } = await render1710(dirs);
+  const { byId } = page;
+  const settingsCard = () => byId('optifine-assist');
+  assert.equal(byId('optifine-card').classList.contains('hidden'), false, 'la carte OptiFine existe aussi pour la 1.7.10');
+
+  // « Obtenir OptiFine » : la page demande la surveillance du profil 1.7.10, pas du profil par défaut
+  byId('optifine-download').disabled = false;
+  await byId('optifine-download').listeners.click[0]();
+  assert.deepEqual(plain(page.assistCalls.at(-1)), ['start', 'forge-1.7.10', { browser: true }]);
+
+  // un état émis pour la 1.8.9 pendant que la 1.7.10 est affichée : rangé sous la 1.8.9, rien ne change dans la carte de la 1.7.10
+  const beforeText = settingsCard().textContent;
+  await page.emitAssist({ profileId: 'forge-1.8.9', mc: '1.8.9', state: 'refused', file: 'OptiFine_1.8.9_HD_U_M5.jar', reason: 'NO_TWEAK', downloadsDir: 'D:\\Dl' });
+  assert.equal(settingsCard().textContent, beforeText, 'l’assistant de la 1.8.9 n’habille pas la carte de la 1.7.10');
+  assert.doesNotMatch(page.byId('optifine-live').textContent, /refus|refused|Refus/i);
+
+  // celui de la 1.7.10 s'affiche, avec ses boutons ; « Utiliser ce fichier » et « Annuler » nomment la 1.7.10
+  await page.emitAssist({ profileId: 'forge-1.7.10', mc: '1.7.10', state: 'seen', file: 'OptiFine_1.7.10_HD_U_E7.jar', version: 'HD_U_E7', downloadsDir: 'D:\\Dl' });
+  assert.match(settingsCard().textContent, /OptiFine_1\.7\.10_HD_U_E7\.jar/);
+  const click = async (label) => {
+    const node = nodesOf(settingsCard()).find((n) => n.tagName === 'button' && n.textContent === label);
+    assert.ok(node, label);
+    await node.listeners.click[0]();
+  };
+  await click('Utiliser ce fichier');
+  assert.deepEqual(plain(page.assistCalls.at(-1)), ['use', 'forge-1.7.10']);
+  await click('Annuler');
+  assert.deepEqual(plain(page.assistCalls.at(-1)), ['cancel', 'forge-1.7.10']);
+
+  // « Choisir le fichier… » : le profil est capturé avant la boîte de dialogue
+  await byId('optifine-pick').listeners.click[0]();
+  assert.deepEqual(plain(page.assistCalls.at(-1)), ['pick', 'forge-1.7.10']);
+
+  // l'état sans profileId (ancien processus principal) est rangé sous le profil affiché, sans planter
+  await page.emitAssist({ profileId: undefined, state: 'waiting', downloadsDir: 'D:\\Dl' });
+  assert.match(settingsCard().textContent, /D:\\Dl/);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
+});
+
+test('profil 1.7.10 avec la copie du joueur : OptiFine HD U E7 compté dans le jeu, ligne OptiFine prête, carte avec son interrupteur', async () => {
+  const dirs = installed1710();
+  const jar = path.join(dirs.minecraftDir, 'libraries', 'optifine', 'OptiFine', '1.7.10_HD_U_E7', 'OptiFine-1.7.10_HD_U_E7.jar');
+  fs.mkdirSync(path.dirname(jar), { recursive: true });
+  fs.writeFileSync(jar, makeZip({ 'META-INF/MANIFEST.MF': MANIFEST, 'optifine/OptiFineForgeTweaker.class': 'classe' }));
+  // le mod 1.0.0 est installé : OptiFine copié, mais la mise à jour du mod est demandée (modOutdated) tant qu'il n'est pas en 1.1.0
+  await installer.installOptifine(dirs.gameDir, dirs.minecraftDir, {}, OLD);
+  const { status, page } = await render1710(dirs);
+  assert.deepEqual([status.optifine.installed, status.optifine.found, status.optifine.modOutdated, status.optifine.minMod, status.optifine.edition], [true, true, true, '1.1.0', 'HD_U_E7']);
+  assert.equal(status.installed, false, 'mod 1.0.0 + OptiFine : mise à jour du mod nécessaire');
+  assert.equal(page.byId('play-label').textContent, 'INSTALLER');
+  assert.equal(railCells(page).OptiFine, 'HD U E7');
+  assert.deepEqual(railCells(page)['ATTACK Client'], 'v1.0.0');
+  assert.ok(modCardNames(page).includes('OptiFine'));
+  fs.rmSync(dirs.root, { recursive: true, force: true });
 });

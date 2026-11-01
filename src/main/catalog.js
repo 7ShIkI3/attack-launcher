@@ -2,7 +2,9 @@
 // Catalogue des profils du launcher : une version de Minecraft, son chargeur de mods (Forge ou Fabric), son dossier
 // de jeu, la règle qui désigne le jar ATTACK dans une release GitHub et le pack de mods figé (src/main/packs/), s'il en a un
 // (le profil 1.7.10 n'en a pas).
-// Module pur : aucune lecture de fichier ni réseau, pour rester facile à tester.
+// Module pur : aucune lecture de fichier ni réseau, pour rester facile à tester. Il ne lit que la table de specs d'OptiFine (optifine.js),
+// qui ne fait rien au chargement : les profils avec OptiFine y trouvent leur spec { mc, edition, tweak, minMod }.
+const optifine = require('./optifine');
 
 /** Version de Fabric Loader fixée pour tous les profils Fabric. */
 const FABRIC_LOADER_VERSION = '0.19.5';
@@ -47,14 +49,16 @@ const FORGE_1_8_9 = {
     devDir: ['Documents', 'pvp-essentials', 'build', 'libs'],
   },
   pack: 'forge-1.8.9',
-  // OptiFine : jamais téléchargé (sa licence l'interdit), seulement la copie que le joueur possède déjà (src/main/optifine.js)
-  optifine: true,
+  // OptiFine : jamais téléchargé (sa licence l'interdit), seulement la copie que le joueur possède déjà (src/main/optifine.js).
+  // La spec { mc, edition, tweak, minMod } est celle de la table SPECS d'optifine.js : une seule source.
+  optifine: optifine.forVersion('1.8.9'),
 };
 
 /**
  * Minecraft 1.7.10 + Forge 10.13.4.1614 (Java 8, LWJGL 2.9.1). Même format d'installateur Forge que la 1.8.9 : aucun changement dans
- * forge.js. Profil SANS pack de mods ni OptiFine (v1) : seulement le mod ATTACK 1.7.10 (tout le contenu du mod 1.8.9 sauf OptiFine), dont le jar s'appelle
- * attack-forge-<version>+mc1.7.10.jar (jamais attack-client*, qui est la règle du profil 1.8.9 : voir les tests de test/catalog.test.js).
+ * forge.js. Profil SANS pack de mods : le mod ATTACK 1.7.10, dont le jar s'appelle attack-forge-<version>+mc1.7.10.jar (jamais
+ * attack-client*, qui est la règle du profil 1.8.9 : voir les tests de test/catalog.test.js), et, comme en 1.8.9, la copie d'OptiFine du
+ * joueur (HD U E7, avec le mod 1.1.0 au moins : voir la spec).
  */
 const FORGE_1_7_10 = {
   id: 'forge-1.7.10',
@@ -81,7 +85,7 @@ const FORGE_1_7_10 = {
     devDir: ['Documents', 'attack-forge-1710', 'build', 'libs'],
   },
   pack: null,
-  optifine: false,
+  optifine: optifine.forVersion('1.7.10'),
 };
 
 function fabricProfile(mc, javaMajor) {
@@ -152,7 +156,7 @@ function isFabric(profile) {
   return profile.loader.type === 'fabric';
 }
 
-/** Vrai pour le profil qui peut utiliser la copie d'OptiFine du joueur (Forge 1.8.9). */
+/** Vrai pour les profils qui peuvent utiliser la copie d'OptiFine du joueur (Forge 1.8.9 et 1.7.10) : ceux qui ont une spec `optifine`. */
 function hasOptifine(profile) {
   return Boolean(profile.optifine);
 }
@@ -210,6 +214,8 @@ function view(profile) {
     jarGlob: profile.attackJar.glob,
     hasPack: hasPack(profile),
     hasOptifine: hasOptifine(profile),
+    // spec d'OptiFine { mc, edition, tweak, minMod? } (données pures), ou null : la page n'écrit plus la version en dur
+    optifine: profile.optifine ? { ...profile.optifine } : null,
   };
 }
 
