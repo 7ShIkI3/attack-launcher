@@ -599,9 +599,12 @@
     if (!date) return '';
     const now = new Date();
     if (today && sameDay(date, now)) return t('home.today');
-    return new Intl.DateTimeFormat(window.I18n.lang === 'en' ? 'en-GB' : 'fr-FR', {
+    const fr = window.I18n.lang !== 'en';
+    const parts = new Intl.DateTimeFormat(fr ? 'fr-FR' : 'en-GB', {
       day: 'numeric', month: long ? 'long' : 'short', ...(date.getFullYear() !== now.getFullYear() || long ? { year: 'numeric' } : {}),
-    }).format(date);
+    }).formatToParts(date);
+    // « 1er nov. » : Intl écrit « 1 nov. » en français
+    return parts.map((part) => (fr && part.type === 'day' && part.value === '1' ? '1er' : part.value)).join('');
   }
 
   const NEWS_ON_HOME = 3;

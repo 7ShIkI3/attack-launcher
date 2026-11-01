@@ -305,6 +305,10 @@ test('formats : taille en unités binaires et date selon la langue', () => {
   assert.equal(site.formatSize(112763722, 'en'), '107.5\u00a0MB');
   assert.equal(site.formatDate(new Date('2026-10-25T12:51:34Z'), 'fr'), '25 octobre 2026');
   assert.equal(site.formatDate(new Date('2026-10-25T12:51:34Z'), 'en'), 'October 25, 2026');
+  assert.equal(site.formatDate(new Date('2026-11-01T00:00:00Z'), 'fr'), '1er novembre 2026', 'le premier du mois : « 1er »');
+  assert.equal(site.formatDate(new Date('2026-11-01T00:00:00Z'), 'en'), 'November 1, 2026');
+  assert.equal(site.formatDate(new Date('2026-11-11T00:00:00Z'), 'fr'), '11 novembre 2026', 'seul le jour 1 change, pas 11 ni 21');
+  assert.equal(site.formatDate(new Date('2026-12-21T00:00:00Z'), 'fr'), '21 décembre 2026');
   assert.equal(site.escapeHtml('<a href="x">&\'</a>'), '&lt;a href=&quot;x&quot;&gt;&amp;&#39;&lt;/a&gt;');
 });
 
@@ -501,14 +505,14 @@ test('actualités : les 3 entrées les plus récentes du CHANGELOG, dans la lang
   const en = await miniPage('{{html.news}}', {}, 'en/index.html');
   assert.equal(fr.match(/<article class="news-item">/g).length, 3);
   assert.equal(en.match(/<article class="news-item">/g).length, 3);
-  assert.ok(fr.includes('Launcher 0.8.0') && fr.includes('Le profil 1.7.10') && fr.includes('31 octobre 2026'));
-  assert.ok(fr.includes('Launcher 0.7.0') && fr.includes('Assistant OptiFine, interface soignée') && fr.includes('30 octobre 2026'));
-  assert.ok(fr.includes('ATTACK Client 1.7.10 1.0.0') && fr.includes('Le mod ATTACK arrive en 1.7.10'), 'le mod 1.7.10 livré avec le launcher 0.8.0 est la deuxième entrée');
-  assert.ok(!fr.includes('ATTACK Client 3.6.0'), 'les versions du client livrées avec le launcher précédent sortent des 3 plus récentes');
-  assert.ok(en.includes('The 1.7.10 profile') && en.includes('October 31, 2026') && en.includes('OptiFine assistant, refined interface'));
-  assert.ok(en.includes('ATTACK Client 1.7.10 1.0.0') && en.includes('The ATTACK mod comes to 1.7.10'));
+  assert.ok(fr.includes('Launcher 0.8.1') && fr.includes('Le design ATTACK') && fr.includes('1er novembre 2026'));
+  assert.ok(fr.includes('ATTACK Client 3.7.0') && fr.includes('Le menu au design ATTACK'), 'le mod Fabric livré avec le launcher 0.8.1 est la deuxième entrée');
+  assert.ok(fr.includes('ATTACK Client 2.8.0') && fr.includes('Le même menu en 1.8.9'), 'puis le mod 1.8.9');
+  assert.ok(!fr.includes('Launcher 0.8.0') && !fr.includes('ATTACK Client 1.7.10 1.0.0'), 'les entrées du launcher précédent sortent des 3 plus récentes');
+  assert.ok(en.includes('The ATTACK design') && en.includes('November 1, 2026') && en.includes('The menu in the ATTACK design'));
+  assert.ok(en.includes('ATTACK Client 2.8.0') && en.includes('The same menu on 1.8.9'));
   assert.ok(!/lite/i.test(fr) && !/lite/i.test(en), 'plus de version « lite »');
-  assert.ok(fr.includes('datetime="2026-10-31"') && fr.includes('class="news-tag news-tag-new"'));
+  assert.ok(fr.includes('datetime="2026-11-01"') && fr.includes('class="news-tag news-tag-new"'));
 });
 
 test('logos : SVG décoratif, identifiants de dégradés uniques par occurrence', async () => {

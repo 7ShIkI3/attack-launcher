@@ -72,7 +72,9 @@ function formatSize(bytes, lang) {
 }
 
 function formatDate(date, lang) {
-  return new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en-US', { dateStyle: 'long', timeZone: 'UTC' }).format(date);
+  const parts = new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en-US', { dateStyle: 'long', timeZone: 'UTC' }).formatToParts(date);
+  // en français, le premier du mois s'écrit « 1er novembre », pas « 1 novembre » comme le donne Intl
+  return parts.map((part) => (lang === 'fr' && part.type === 'day' && part.value === '1' ? '1er' : part.value)).join('');
 }
 
 // --- release GitHub ----------------------------------------------------------------------------------------------
