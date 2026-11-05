@@ -124,6 +124,15 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     // mod 1.7.10 1.1.0 : OptiFine HD U E7, zoom sur C, Animations, comportement 1.0.0 sans OptiFine
     for (const needle of ['1.7.10', 'OptiFine', 'HD U E7', 'options.txt', 'Animations', '1.0.0']) assert.ok(mod110[lang].includes(needle), `mod 1.7.10 1.1.0 (${lang}) : ${needle}`);
     assert.match(mod110[lang], /\bC\b/, `mod 1.7.10 1.1.0 (${lang}) : la touche C`);
+    // textes ramenés à ce qui est mesuré : la touche zoom d'OptiFine 1.7.10 E7 est Ctrl gauche (jamais C), « un seul zoom » au vrai clavier n'est pas
+    // prouvé, une autre édition est « non testée » (jamais « elle démarre »), les limites et les changements sans OptiFine sont dits
+    const mod = mod110[lang];
+    assert.match(mod, lang === 'fr' ? /Ctrl gauche/ : /left Ctrl/, `mod 1.7.10 1.1.0 (${lang}) : la touche d'OptiFine est Ctrl gauche`);
+    assert.match(mod, lang === 'fr' ? /pas un vrai clavier/ : /not a real keyboard/, `mod 1.7.10 1.1.0 (${lang}) : un seul zoom au clavier réel non prouvé`);
+    assert.match(mod, lang === 'fr' ? /reconnue mais pas testée/ : /recognized but not tested/, `mod 1.7.10 1.1.0 (${lang}) : une autre édition n'est pas testée`);
+    assert.doesNotMatch(mod, lang === 'fr' ? /démarre, mais/ : /starts, but/, `mod 1.7.10 1.1.0 (${lang}) : rien d'affirmé sur une autre édition`);
+    assert.match(mod, /Show Capes/, `mod 1.7.10 1.1.0 (${lang}) : limite des capes`);
+    assert.match(mod, lang === 'fr' ? /pack de ressources demande OptiFine/ : /resource pack asks for OptiFine/, `mod 1.7.10 1.1.0 (${lang}) : changements sans OptiFine`);
     assert.match(data.CHANGELOG[3][lang], /1\.21\.1 (et|and) 26\.3/, `3.7.0 (${lang}) : les deux versions Fabric`);
     assert.match(data.CHANGELOG[4][lang], /1\.8\.9/, `2.8.0 (${lang}) : la 1.8.9`);
     // la refonte du design (0.8.1, 3.7.0, 2.8.0) ne touche pas la 1.7.10

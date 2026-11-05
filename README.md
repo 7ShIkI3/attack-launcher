@@ -129,7 +129,9 @@ côté de la première ligne, puis sur « Download » et « Conserver » si le n
 Téléchargements, le vérifie et le range. Un fichier déjà présent est seulement proposé, jamais importé sans ton clic. Un
 OptiFine d'une autre version de Minecraft est signalé, jamais importé. Une autre édition que celle testée avec ATTACK Client
 est acceptée, mais signalée « non testée ». En 1.7.10, OptiFine demande le mod ATTACK 1.7.10 1.1.0 ou plus : l'installation
-le met à jour. Le lien « Pourquoi ? » explique en trois points pourquoi le launcher ne le télécharge pas lui-même. En 1.21.1
+le met à jour. Avec HD U E7 (la seule édition 1.7.10 essayée en jeu), le mod met la touche de zoom d'OptiFine sur « Aucune » en
+jeu tant que son Zoom (touche C) est activé : `options.txt` garde ton choix, et aucun vrai clavier n'est simulé par les essais. Les
+limites mesurées sont dans le wiki [Installation et mises à jour](docs/wiki/Installation-et-mises-a-jour.md). Le lien « Pourquoi ? » explique en trois points pourquoi le launcher ne le télécharge pas lui-même. En 1.21.1
 et 26.3, le groupe **Packs OptiFine** (Continuity, Entity Texture Features, Entity Model Features) lit les packs de
 ressources au format OptiFine sans OptiFine.
 
@@ -229,7 +231,7 @@ CDN de Modrinth (fichiers figés) et de GitHub sont autorisées.
 **Dans le jeu, pas dans le launcher** : WalksyLib (mod PvP du pack Fabric) interroge `api.modrinth.com` au démarrage du jeu
 pour chercher des mises à jour. Le launcher écrit une fois sa configuration de départ pour couper cette vérification, seulement
 si ce fichier n'existe pas ; tu peux la rallumer dans les réglages de WalksyLib. Mod Menu et Crystal Optimizer ont chacun leur
-propre vérification de mises à jour, laissée telle quelle.
+propre vérification de mises à jour, laissée telle quelle. OptiFine, si tu l'utilises, vérifie lui-même sa version au démarrage du jeu (son journal affiche « Checking for new version » puis « Version found ») : c'est une connexion d'OptiFine, ni du launcher ni du mod ATTACK Client. Relevé avec OptiFine HD U E7 en 1.7.10 ; le serveur contacté n'a pas été relevé, et rien n'a été mesuré pour les autres éditions.
 
 **Refuser ou effacer** : n'ajoute aucun compte (JOUER passe alors par le launcher officiel) ; clique
 **Déconnecter** pour effacer un compte et son jeton chiffré ; désinstalle le launcher et supprime `%APPDATA%\ATTACK Launcher`,

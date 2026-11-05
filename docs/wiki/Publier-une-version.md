@@ -145,7 +145,7 @@ Le profil 1.7.10 demande, avec OptiFine, une version minimale du mod ATTACK (`mi
 `src/main/optifine.js`) : tant que le mod installé est plus ancien, `status()` renvoie `installed = faux` et JOUER reste bloqué
 sur INSTALLER. Le mod passe donc **avant** le launcher, dans cet ordre :
 
-1. le mod 1.1.0 est publié et **vérifié en jeu avec OptiFine HD U E7** (zoom, module Animations, passes Fast Render et shaders) ;
+1. le mod 1.1.0 est publié et **vérifié en jeu avec OptiFine HD U E7** (neutralisation du zoom, module Animations, passes Fast Render et shaders ; le mod les a mesurées sur le jar E7 de Raphaël, 12 passes vertes, voir `docs/COMPAT.md` du mod) ;
 2. le jar `attack-forge-1.1.0+mc1.7.10.jar` entre dans la release du launcher (jamais un jar resté en 1.0.0) ;
 3. les notes de version sont relues, puis la branche du launcher est fusionnée et la release publiée.
 
@@ -156,8 +156,8 @@ Points **bloquants** avant de fusionner ou de publier un launcher qui porte cett
   factice, version 0.0.0, est toléré par ce dernier.
 - **Chaque affirmation des notes est relue contre ce qui a été mesuré** : entrées « Launcher 0.8.2 » et « ATTACK Client 1.7.10 1.1.0 »
   de `src/renderer/data.js`, « Éditions testées avec ATTACK Client » dans `site/i18n.js`, README et wiki
-  [Installation et mises à jour](Installation-et-mises-a-jour.md). En particulier : la touche de zoom d'OptiFine sur « Aucune » tant
-  que le Zoom ATTACK est actif (touche C), « le module Animations marche avec OptiFine » et « édition testée HD U E7 ». Ce qui n'a
+  [Installation et mises à jour](Installation-et-mises-a-jour.md). En particulier : la touche de zoom d'OptiFine (Ctrl gauche par défaut, jamais C) sur « Aucune » tant
+  que le Zoom ATTACK (touche C) est actif ; « un seul zoom au vrai clavier » n'est **pas** prouvé automatiquement (formule prudente) ; Animations « mêmes poses avec et sans OptiFine » (écart 0, mesuré) ; « édition testée HD U E7 » ; une autre édition n'a ni le garde de zoom ni le correctif des shaders. Ce qui n'a
   pas été vu en jeu avec E7 est retiré ou reformulé en limite connue avant la fusion.
 
 

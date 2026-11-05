@@ -162,7 +162,7 @@ const fr = {
     split: {
       t: 'Le launcher et le mod, deux choses différentes',
       p1: 'Une fois le jeu lancé, c’est le <strong>mod ATTACK Client</strong> qui a ses propres connexions : l’API ATTACK (cosmétiques partagés et Amis) et GitHub (liste des capes réservées), plus Mojang pour prouver ton compte, comme le fait le jeu. Le partage de ta cape se coupe dans les options du mod, et rien ne part pour les Amis avant la première ouverture de leur menu. Le launcher, lui, ne contacte pas l’API ATTACK.',
-      p2: 'Certains mods du pack ont aussi leur propre vérification de mises à jour : WalksyLib interroge <code>api.modrinth.com</code> au démarrage du jeu (le launcher coupe cette vérification dans sa configuration de départ), Mod Menu et Crystal Optimizer ont chacun la leur, laissée telle quelle.',
+      p2: 'Certains mods du pack ont aussi leur propre vérification de mises à jour : WalksyLib interroge <code>api.modrinth.com</code> au démarrage du jeu (le launcher coupe cette vérification dans sa configuration de départ), Mod Menu et Crystal Optimizer ont chacun la leur, laissée telle quelle. OptiFine, si tu l’utilises, vérifie aussi sa version au démarrage du jeu (son journal affiche « Checking for new version » puis « Version found ») : c’est une connexion d’OptiFine lui-même, ni du launcher ni du mod ATTACK Client. Relevé avec OptiFine HD U E7 en 1.7.10 ; le serveur contacté n’a pas été relevé.',
     },
     site: { t: 'Ce site', p: 'Ce site n’utilise ni cookie, ni statistiques, ni ressource tierce : pas de script, et même la police vient du site. Il est hébergé par GitHub Pages, qui voit ton adresse IP comme tout hébergeur.' },
   },
@@ -259,7 +259,7 @@ const fr = {
     optifine: {
       t: 'OptiFine en 1.8.9 et en 1.7.10',
       p: 'Sa licence interdit de le redistribuer : le launcher ne le télécharge jamais. L’assistant « Obtenir OptiFine » ouvre optifine.net, surveille ton dossier Téléchargements, vérifie le fichier puis le garde pour toi. Chaque profil a son assistant : il ne prend que l’OptiFine de sa version de Minecraft, et signale celui d’une autre version sans jamais l’importer.',
-      versions: 'Éditions testées avec ATTACK Client : HD U M5 en 1.8.9, HD U E7 en 1.7.10. Une autre édition d’OptiFine pour la même version est acceptée, mais signalée « non testée ». S’il en trouve plusieurs, le launcher prend la plus récente. En 1.7.10, OptiFine demande le mod ATTACK Client 1.7.10 1.1.0 ou plus : l’installation le met à jour.',
+      versions: 'Éditions testées avec ATTACK Client : HD U M5 en 1.8.9, HD U E7 en 1.7.10. Une autre édition d’OptiFine pour la même version est acceptée, mais signalée « non testée ». S’il en trouve plusieurs, le launcher prend la plus récente. En 1.7.10, OptiFine demande le mod ATTACK Client 1.7.10 1.1.0 ou plus : l’installation le met à jour. Avec OptiFine HD U E7, le mod met la touche de zoom d’OptiFine sur « Aucune » en jeu tant que le module Zoom d’ATTACK (touche C) est activé ; une autre édition n’a pas cette adaptation.',
     },
     mods: {
       t: 'Mods et groupes',
@@ -430,7 +430,7 @@ const en = {
     split: {
       t: 'The launcher and the mod are two different things',
       p1: 'Once the game is running, the <strong>ATTACK Client mod</strong> has its own connections: the ATTACK API (shared cosmetics and Friends) and GitHub (list of reserved capes), plus Mojang to prove your account, as the game does. Sharing your cape can be switched off in the mod’s options, and nothing is sent for Friends before you first open their menu. The launcher itself does not contact the ATTACK API.',
-      p2: 'Some pack mods also have their own update check: WalksyLib queries <code>api.modrinth.com</code> when the game starts (the launcher switches this check off in its starting configuration), and Mod Menu and Crystal Optimizer each have theirs, left as is.',
+      p2: 'Some pack mods also have their own update check: WalksyLib queries <code>api.modrinth.com</code> when the game starts (the launcher switches this check off in its starting configuration), and Mod Menu and Crystal Optimizer each have theirs, left as is. OptiFine, if you use it, also checks its version when the game starts (its log shows “Checking for new version” then “Version found”): that is a connection made by OptiFine itself, not by the launcher or the ATTACK Client mod. Observed with OptiFine HD U E7 on 1.7.10; the server it contacts was not recorded.',
     },
     site: { t: 'This site', p: 'This site uses no cookies, no statistics and no third-party resources: no script, and even the font comes from the site itself. It is hosted on GitHub Pages, which sees your IP address like any host.' },
   },
@@ -527,7 +527,7 @@ const en = {
     optifine: {
       t: 'OptiFine on 1.8.9 and on 1.7.10',
       p: 'Its license forbids redistributing it: the launcher never downloads it. The “Get OptiFine” assistant opens optifine.net, watches your Downloads folder, checks the file and then keeps it for you. Each profile has its own assistant: it only takes the OptiFine for its Minecraft version, and flags one for another version without ever importing it.',
-      versions: 'Editions tested with ATTACK Client: HD U M5 on 1.8.9, HD U E7 on 1.7.10. Another OptiFine edition for the same version is accepted, but flagged “untested”. If it finds several, the launcher takes the most recent. On 1.7.10, OptiFine needs the ATTACK Client 1.7.10 1.1.0 mod or newer: the installation updates it.',
+      versions: 'Editions tested with ATTACK Client: HD U M5 on 1.8.9, HD U E7 on 1.7.10. Another OptiFine edition for the same version is accepted, but flagged “untested”. If it finds several, the launcher takes the most recent. On 1.7.10, OptiFine needs the ATTACK Client 1.7.10 1.1.0 mod or newer: the installation updates it. With OptiFine HD U E7, the mod sets OptiFine’s zoom key to “None” in game while ATTACK’s Zoom module (C key) is on; another edition does not get this adaptation.',
     },
     mods: {
       t: 'Mods and groups',

@@ -23,6 +23,7 @@ vérifiée dans le code ; les références sont de la forme `fichier:ligne` (les
   rallumer dans l'écran de réglages de WalksyLib. WalksyLib recopie ce fichier dans son fichier partagé
   `%APPDATA%\WalksyLib\walksylib.json` s'il n'y a pas encore de réglage d'apparence : un réglage déjà là n'est jamais changé.
   Mod Menu et Crystal Optimizer ont chacun leur propre vérification de mises à jour, laissée telle quelle.
+- **OptiFine** (si tu en as une copie) vérifie lui-même sa version au démarrage du jeu : son journal affiche « Checking for new version » puis « Version found ». Cette connexion est celle d'OptiFine, pas du launcher ni du mod ATTACK Client ; elle est indépendante du launcher. Relevé avec OptiFine HD U E7 en 1.7.10 ; le serveur contacté n'a pas été relevé, et rien n'a été mesuré pour les autres éditions.
 - Il ne voit **jamais ton mot de passe** Microsoft.
 - Le jeton Minecraft reste **en mémoire** ; le jeton de renouvellement est **chiffré par Windows**.
 - Tout fichier téléchargé est **vérifié par un hash** ; la page d'interface **n'a pas le droit de faire de requête réseau**.

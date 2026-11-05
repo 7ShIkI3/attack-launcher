@@ -274,7 +274,7 @@ et cache de validation (la clé contient la version : un refus pour la 1.7.10 n'
    annonce plus, ou qui ment sur sa taille, est refusé sans geler le launcher) avec
    `TweakClass: optifine.OptiFineForgeTweaker`, nom contenant la version du profil. Un fichier refusé est expliqué (pas un .jar,
    mauvaise version, pas une archive, trop gros, pas OptiFine pour Forge), avec la version du profil dans le message. Une **autre
-   édition** que celle de la spec (HD U E8 en 1.7.10, HD U L5 ou M6 pre2 en 1.8.9…) est **acceptée** si le manifeste est bon, mais
+   édition** que celle de la spec (HD U E3 en 1.7.10, HD U L5 ou M6 pre2 en 1.8.9…) est **acceptée** si le manifeste est bon, mais
    signalée « non testée » (ligne du détail en information, texte de la carte) : elle ne bloque rien.
 3. **Copie** dans `<dossier de jeu>\mods\` (fichier temporaire puis renommage, empreinte SHA-256 relue), **suivie dans
    `attack-launcher.json`** (`optifine` : nom, origine, SHA-256, taille). Quand le réglage **OptiFine** est coupé, ou qu'une
@@ -301,6 +301,33 @@ et cache de validation (la clé contient la version : un refus pour la 1.7.10 n'
 Un joueur qui avait déjà un OptiFine 1.7.10 dans son `.minecraft` (installé avec l'installateur d'OptiFine) verra « À installer »
 **une fois** après la mise à jour du launcher : le réglage est actif par défaut en 1.7.10, la copie est trouvée dans `libraries` et
 il faut l'ajouter au jeu (et mettre le mod à jour, voir ci-dessus).
+
+### Ce que le mod 1.7.10 1.1.0 fait avec OptiFine (mesuré, et ce qui ne l'est pas)
+
+Source : `docs/COMPAT.md` du dépôt du mod (lots M0 à M7), mesuré en jeu sur `OptiFine_1.7.10_HD_U_E7.jar` (le jar du mainteneur, copié sous
+`%TEMP%`, SHA-256 relevé avant et après), jamais sur un OptiFine téléchargé par les essais. Le lancement par le launcher a aussi été
+essayé : `install-test --profile forge-1.7.10 --optifine <jar> --cycle` (mod 1.1.0 local : `installed` vrai, `modOutdated` faux ; avec
+un jar 1.0.0 : refus), puis `launch-test` (écran titre en 13 s, 4 mods, ATTACK chargé, ligne « Loading tweaker
+optifine.OptiFineForgeTweaker from OptiFine-1.7.10_HD_U_E7.jar »).
+
+- **Mesuré** : OptiFine est chargé avant le mod (`TweakOrder` -1000), aucun échec Mixin, aucune classe retombée en vanilla ; les 53 crochets
+  du mod sont appelés hors exemptions documentées (le 53e, LoginGuard, l'est au selftest ; avec les shaders, enterHand et leaveHand valent 0 et sont remplacés par deux crochets propres à OptiFine) ; 12 passes d'auto-test vertes (réglages par défaut,
+  Fast Render, shaders, avec la référence sans OptiFine) ; poses d'Animations identiques à la référence (écart maximal 0 sur 176 éléments) ;
+  verre connecté rendu clair (mur de verre blanc : 3 746 pixels de différence sans Clear Glass, 0 avec) ; plus d'écran noir en Fast Render
+  (Motion Blur, Color Saturation et Container Blur sont coupés avec une notification) ; la touche de zoom d'OptiFine vaut 0 en mémoire tant
+  que le Zoom ATTACK est actif, `options.txt` garde le code du joueur (29, Ctrl gauche, par défaut).
+- **Zoom, formule prudente** : la décision est « la touche de zoom d'OptiFine sur « Aucune » tant que le Zoom ATTACK est actif », pour qu'un
+  seul zoom réponde. La touche d'OptiFine 1.7.10 E7 est **Ctrl gauche** par défaut (comme le sprint), jamais C. Que Ctrl déclenche le zoom
+  d'OptiFine sans cette neutralisation, ou que C zoome deux fois avec une touche réassignée, n'est **pas mesuré** : les essais ne simulent
+  aucun vrai clavier.
+- **Limites** : capes ATTACK contre « Show Capes », Environment Changer et FPS Boost contre les options vidéo d'OptiFine (recouvrements
+  non corrigés, non mesurés) ; avec les shaders, seul le pack interne est essayé ; verre teinté et vitres seulement dans l'atlas ; une autre
+  édition qu'E7 est reconnue mais **non essayée**, sans garde de zoom ni correctif des shaders (le garde de Fast Render et le verre connecté
+  valent pour toute édition détectée).
+- **Sans OptiFine**, le mod 1.1.0 change deux choses visibles : une carte avertit (une fois par pack et par session) qu'un pack de ressources
+  demande OptiFine, et Animations présente la main en première personne aux mods d'objets personnalisés, comme Forge seul. Le reste se
+  comporte comme en 1.0.0.
+- **Vie privée** : OptiFine fait lui-même un appel au démarrage (« Checking for new version »), indépendant du launcher et du mod.
 
 ### L'assistant « Obtenir OptiFine » (`src/main/optifine-watch.js`, `optifine-assist.js`)
 
