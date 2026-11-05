@@ -1216,7 +1216,9 @@
       badge.textContent = t('optifine.badgeMissing');
       text = t('optifine.textMissing', vars);
     }
-    if (of && of.untested && (of.found || of.own || of.kept)) text = `${text} ${t('optifine.untested', vars)}`; // édition non vérifiée : acceptée, signalée
+    // édition non vérifiée : acceptée, signalée. Un profil à version minimale du mod (minMod : la 1.7.10) a des adaptations du mod propres à
+    // l'édition testée (zoom, shaders) : le joueur d'une autre édition doit savoir qu'il ne les a pas
+    if (of && of.untested && (of.found || of.own || of.kept)) text = `${text} ${t(of.minMod ? 'optifine.untestedNoAdapt' : 'optifine.untested', vars)}`;
     $('optifine-text').textContent = text;
     const refused = of && of.chosenError && OPTIFINE_REASONS.includes(of.chosenError);
     const warnings = [

@@ -1330,6 +1330,8 @@ test('édition d’OptiFine qui n’est pas celle vérifiée avec le mod : accep
   assert.match(row.className, /\binfo\b/);
   assert.equal(page.byId('ready-main').textContent, 'Tout est prêt');
   assert.match(page.byId('optifine-text').textContent, /Cette édition n’est pas celle testée avec ATTACK Client \(OptiFine HD U E7\)/);
+  // en 1.7.10, le mod n'adapte le zoom et les shaders qu'à l'édition testée : le joueur d'une autre édition le lit dans la carte, pas seulement dans le wiki
+  assert.match(page.byId('optifine-text').textContent, /n’a pas été essayée, et le mod ne lui applique ni la neutralisation du zoom d’OptiFine ni le correctif des shaders\./);
   // l'édition vérifiée n'est pas signalée
   const dirsOk = installed1710();
   putOptifine(dirsOk, '1.7.10', 'HD_U_E7');
@@ -1337,6 +1339,20 @@ test('édition d’OptiFine qui n’est pas celle vérifiée avec le mod : accep
   const ok = await render1710(dirsOk);
   assert.doesNotMatch(ok.page.byId('optifine-text').textContent, /testée/);
   for (const d of [dirs, dirsOk]) fs.rmSync(d.root, { recursive: true, force: true });
+});
+
+test('édition d’OptiFine non testée en 1.8.9 : la carte ne parle pas d’adaptations du zoom et des shaders (elles sont propres au mod 1.7.10)', async () => {
+  const dirs = installed189();
+  fs.rmSync(path.dirname(dirs.source), { recursive: true, force: true });
+  fs.mkdirSync(path.join(dirs.minecraftDir, 'libraries', 'optifine', 'OptiFine', '1.8.9_HD_U_M7'), { recursive: true });
+  fs.writeFileSync(path.join(dirs.minecraftDir, 'libraries', 'optifine', 'OptiFine', '1.8.9_HD_U_M7', 'OptiFine-1.8.9_HD_U_M7.jar'),
+    makeZip({ 'META-INF/MANIFEST.MF': MANIFEST, 'optifine/OptiFineForgeTweaker.class': 'classe' }));
+  await installer.installOptifine(dirs.gameDir, dirs.minecraftDir, {});
+  const view = await render(dirs, {});
+  assert.equal(view.status.optifine.untested, true);
+  assert.match(view.page.byId('optifine-text').textContent, /Cette édition n’est pas celle testée avec ATTACK Client \(OptiFine HD U M5\)\s: elle est acceptée, mais n’a pas été essayée\./);
+  assert.doesNotMatch(view.page.byId('optifine-text').textContent, /neutralisation|shaders/);
+  fs.rmSync(dirs.root, { recursive: true, force: true });
 });
 
 test('profil 1.7.10 : « Mods et licences » dit que seuls ATTACK Client et la copie d’OptiFine du joueur sont installés (fr et en)', async () => {

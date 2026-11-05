@@ -103,16 +103,25 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     assert.ok(entry.date === '' || /^\d{4}-\d{2}-\d{2}$/.test(entry.date), `${entry.version} : date`);
   }
   assert.equal(new Set(data.CHANGELOG.map((e) => e.version)).size, data.CHANGELOG.length, 'versions uniques');
-  // 0.8.2 : OptiFine en 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.1.0 qu'elle exige avec OptiFine (même date).
+  // 0.8.2 : OptiFine en 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.1.0 qu'elle exige avec OptiFine (même date : le jour des
+  // mesures, 05/11 ; à remettre au jour de la publication, voir « Publier une version »).
   // Puis 0.8.1 : la refonte du design, suivie des deux versions d'ATTACK Client qu'elle livre (même date) : Fabric (3.7.0) d'abord, puis la 1.8.9 (2.8.0).
   assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 6), (e) => [e.version, e.date, e.tag]), [
-    ['Launcher 0.8.2', '2026-11-01', 'new'],
-    ['ATTACK Client 1.7.10 1.1.0', '2026-11-01', 'new'],
+    ['Launcher 0.8.2', '2026-11-05', 'new'],
+    ['ATTACK Client 1.7.10 1.1.0', '2026-11-05', 'new'],
     ['Launcher 0.8.1', '2026-11-01', 'new'],
     ['ATTACK Client 3.7.0', '2026-11-01', 'new'],
     ['ATTACK Client 2.8.0', '2026-11-01', 'new'],
     ['Launcher 0.8.0', '2026-10-31', 'new'],
   ]);
+  // une date de publication ne recule pas dans le fichier (le site et l'application trient dessus) et n'est jamais dans le futur
+  const dates = Array.from(data.CHANGELOG, (e) => e.date).filter(Boolean); // Array.from : les tableaux de data.js viennent d'un autre contexte
+  assert.deepEqual(dates, [...dates].sort().reverse(), 'entrées de la plus récente à la plus ancienne');
+  assert.ok(dates[0] <= new Date().toISOString().slice(0, 10), 'aucune entrée datée du futur');
+  // chaque entrée est affichée telle quelle dans les actualités du site : un paragraphe lisible, pas un rapport de mesures (le détail est dans le wiki)
+  for (const entry of data.CHANGELOG) {
+    for (const lang of ['fr', 'en']) assert.ok(entry[lang].length <= 1100, `${entry.version} (${lang}) : ${entry[lang].length} caractères, 1 100 au plus`);
+  }
   const [launcher082, mod110] = data.CHANGELOG;
   for (const lang of ['fr', 'en']) {
     // 0.8.2 : le profil 1.7.10 a OptiFine (la copie du joueur, HD U E7), activé par défaut, « à installer » une fois, mod 1.1.0 au moins
@@ -128,7 +137,11 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     // prouvé, une autre édition est « non testée » (jamais « elle démarre »), les limites et les changements sans OptiFine sont dits
     const mod = mod110[lang];
     assert.match(mod, lang === 'fr' ? /Ctrl gauche/ : /left Ctrl/, `mod 1.7.10 1.1.0 (${lang}) : la touche d'OptiFine est Ctrl gauche`);
-    assert.match(mod, lang === 'fr' ? /pas un vrai clavier/ : /not a real keyboard/, `mod 1.7.10 1.1.0 (${lang}) : un seul zoom au clavier réel non prouvé`);
+    // le but de la neutralisation (éviter un double zoom) ne se lit pas comme un résultat : que le zoom d'OptiFine soit coupé n'est pas mesuré
+    assert.match(mod, lang === 'fr' ? /pour éviter un double zoom/ : /to avoid a double zoom/, `mod 1.7.10 1.1.0 (${lang}) : but de la neutralisation`);
+    assert.match(mod, lang === 'fr' ? /que cela coupe bien le zoom d’OptiFine n’est pas mesuré/ : /that this really turns OptiFine’s zoom off is not measured/, `mod 1.7.10 1.1.0 (${lang}) : coupure du zoom d'OptiFine non mesurée`);
+    assert.doesNotMatch(mod, lang === 'fr' ? /seul zoom réponde/ : /only one zoom answers/, `mod 1.7.10 1.1.0 (${lang}) : plus de « un seul zoom »`);
+    assert.match(mod, lang === 'fr' ? /sans adaptation du zoom ni des shaders/ : /no zoom or shader adaptation/, `mod 1.7.10 1.1.0 (${lang}) : une autre édition n'a pas les adaptations`);
     assert.match(mod, lang === 'fr' ? /reconnue mais pas testée/ : /recognized but not tested/, `mod 1.7.10 1.1.0 (${lang}) : une autre édition n'est pas testée`);
     assert.doesNotMatch(mod, lang === 'fr' ? /démarre, mais/ : /starts, but/, `mod 1.7.10 1.1.0 (${lang}) : rien d'affirmé sur une autre édition`);
     assert.match(mod, /Show Capes/, `mod 1.7.10 1.1.0 (${lang}) : limite des capes`);
