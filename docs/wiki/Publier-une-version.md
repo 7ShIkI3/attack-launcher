@@ -48,6 +48,9 @@ flowchart TD
      `src/main/optifine.js` (1.1.0 pour la 1.7.10). Une release qui garde le mod 1.0.0 enfermerait dans la boucle INSTALLER tous les
      joueurs qui ont OptiFine 1.7.10 : le launcher bloque JOUER tant que le mod installé est plus ancien. Le jar 1.7.10 de la release
      doit donc être le mod publié et vérifié avec OptiFine, jamais un jar resté en 1.0.0 ;
+   - **point bloquant** : pour ce même jar, `--measured forge-1.7.10=<SHA-256>` (le « Jar testé » de `docs/COMPAT.md` du mod) : le jar de la
+     release doit avoir **exactement** ce hash. Un jar reconstruit après les essais a un autre SHA-256 (autre horodatage, autre commit) :
+     « mesuré / 213 OK / 0 pixel » porterait sur un autre binaire. Sans `--measured`, le script avertit sans refuser ;
    - aucun jar n'est reconnu par deux profils, et aucun profil n'en reconnaît deux. Un jar mal nommé est signalé comme
      dangereux : `attack-client-1710-1.0.0.jar` (le nom que Gradle donne par défaut au mod 1.7.10) est reconnu par la règle large du
      profil 1.8.9 (`attack-client*.jar`) et serait installé à sa place ;
@@ -145,7 +148,7 @@ Le profil 1.7.10 demande, avec OptiFine, une version minimale du mod ATTACK (`mi
 `src/main/optifine.js`) : tant que le mod installé est plus ancien, `status()` renvoie `installed = faux` et JOUER reste bloqué
 sur INSTALLER. Le mod passe donc **avant** le launcher, dans cet ordre :
 
-1. le mod 1.1.0 est publié et **vérifié en jeu avec OptiFine HD U E7** (neutralisation du zoom, module Animations, passes Fast Render et shaders ; le mod les a mesurées sur le jar E7 de Raphaël, 12 passes vertes, voir `docs/COMPAT.md` du mod) ;
+1. le mod 1.1.0 est publié et **vérifié en jeu avec OptiFine HD U E7** (neutralisation du zoom, module Animations, passes Fast Render et shaders ; le mod les a mesurées sur le jar E7 de Raphaël, voir « Mesures » dans `docs/COMPAT.md` du mod : `selftest` 47 OK dans 4 modes, `modtest` 196 OK en référence et 213 OK avec E7, `screentest` 148 OK en référence et 149 OK avec E7). **Ces chiffres valent pour un jar précis** : son SHA-256 doit être écrit dans `docs/COMPAT.md` du mod (« Jar testé ») et être celui du jar mis dans la release ;
 2. le jar `attack-forge-1.1.0+mc1.7.10.jar` entre dans la release du launcher (jamais un jar resté en 1.0.0) ;
 3. les notes de version sont relues, puis la branche du launcher est fusionnée et la release publiée.
 
@@ -157,8 +160,18 @@ Points **bloquants** avant de fusionner ou de publier un launcher qui porte cett
 - **Chaque affirmation des notes est relue contre ce qui a été mesuré** : entrées « Launcher 0.8.2 » et « ATTACK Client 1.7.10 1.1.0 »
   de `src/renderer/data.js`, « Éditions testées avec ATTACK Client » dans `site/i18n.js`, README et wiki
   [Installation et mises à jour](Installation-et-mises-a-jour.md). En particulier : la touche de zoom d'OptiFine (Ctrl gauche par défaut, jamais C) sur « Aucune » tant
-  que le Zoom ATTACK (touche C) est actif ; « un seul zoom au vrai clavier » n'est **pas** prouvé automatiquement (formule prudente) ; Animations « mêmes poses avec et sans OptiFine » (écart 0, mesuré) ; « édition testée HD U E7 » ; une autre édition n'a ni le garde de zoom ni le correctif des shaders. Ce qui n'a
+  que le Zoom ATTACK (touche C) est actif, « pour éviter un double zoom » (le but, jamais un résultat : que cela coupe le zoom d'OptiFine n'est **pas** mesuré) ; Animations « mêmes poses avec et sans OptiFine » (écart 0, mesuré) ; « édition testée HD U E7 » ; une autre édition n'a ni le garde de zoom ni le correctif des shaders (la carte « non testée » du launcher le dit aussi). Ce qui n'a
   pas été vu en jeu avec E7 est retiré ou reformulé en limite connue avant la fusion.
+- **Essai de zoom à la main (30 secondes, clavier réel, E7)** : fenêtre du jeu active, module Zoom d'ATTACK allumé, maintenir **C** (le champ
+  de vision doit être ÷ 4, pas ÷ 16), puis relâcher et maintenir **Ctrl gauche** (OptiFine ne doit pas zoomer). Écris le résultat dans
+  `docs/COMPAT.md` du mod, avec le SHA-256 du jar essayé. Tant que cet essai n'est pas consigné, les textes gardent « n'est pas mesuré »
+  (ils le disent aujourd'hui) ; s'il montre que Ctrl zoome encore, la neutralisation ne sert à rien en 1.7.10 : corriger le mod et les textes
+  avant de publier.
+- **Dates des notes** : les entrées « Launcher 0.8.2 » et « ATTACK Client 1.7.10 1.1.0 » de `src/renderer/data.js` portent la date des
+  mesures, pas celle de la publication. Au moment de publier, mets-y le jour de la publication (`date`), puis les deux assertions qui la
+  figent : `test/renderer.test.js` (liste des six premières entrées) et `test/site.test.js` (actualités : `5 novembre 2026`, `November 5, 2026`,
+  `datetime="2026-11-05"`). Chaque entrée est affichée telle quelle dans les actualités du site : au plus 1 100 caractères (un test le garde),
+  le détail va dans le wiki.
 
 
 ## Mettre à jour un pack de mods

@@ -311,13 +311,15 @@ un jar 1.0.0 : refus), puis `launch-test` (écran titre en 13 s, 4 mods, ATTACK 
 optifine.OptiFineForgeTweaker from OptiFine-1.7.10_HD_U_E7.jar »).
 
 - **Mesuré** : OptiFine est chargé avant le mod (`TweakOrder` -1000), aucun échec Mixin, aucune classe retombée en vanilla ; les 53 crochets
-  du mod sont appelés hors exemptions documentées (le 53e, LoginGuard, l'est au selftest ; avec les shaders, enterHand et leaveHand valent 0 et sont remplacés par deux crochets propres à OptiFine) ; 12 passes d'auto-test vertes (réglages par défaut,
-  Fast Render, shaders, avec la référence sans OptiFine) ; poses d'Animations identiques à la référence (écart maximal 0 sur 176 éléments) ;
+  du mod sont appelés hors exemptions documentées (le 53e, LoginGuard, l'est au selftest ; avec les shaders, enterHand et leaveHand valent 0 et sont remplacés par deux crochets propres à OptiFine) ; auto-tests du jar final (section « Mesures » de `docs/COMPAT.md` du mod) :
+  `selftest` 47 OK dans les 4 modes (référence sans OptiFine, réglages par défaut, Fast Render, shaders), `modtest` 196 OK en référence et 213 OK avec E7
+  (trois modes), `screentest` 148 OK en référence et 149 OK avec E7 (ce décompte vient de COMPAT.md, qui ne dit pas pour quels modes OptiFine) ; poses d'Animations identiques à la référence (écart maximal 0 sur 176 éléments) ;
   verre connecté rendu clair (mur de verre blanc : 3 746 pixels de différence sans Clear Glass, 0 avec) ; plus d'écran noir en Fast Render
   (Motion Blur, Color Saturation et Container Blur sont coupés avec une notification) ; la touche de zoom d'OptiFine vaut 0 en mémoire tant
   que le Zoom ATTACK est actif, `options.txt` garde le code du joueur (29, Ctrl gauche, par défaut).
-- **Zoom, formule prudente** : la décision est « la touche de zoom d'OptiFine sur « Aucune » tant que le Zoom ATTACK est actif », pour qu'un
-  seul zoom réponde. La touche d'OptiFine 1.7.10 E7 est **Ctrl gauche** par défaut (comme le sprint), jamais C. Que Ctrl déclenche le zoom
+- **Zoom, formule prudente** : la décision est « la touche de zoom d'OptiFine sur « Aucune » tant que le Zoom ATTACK est actif », pour éviter
+  un double zoom ; que cela coupe bien le zoom d'OptiFine **n'est pas mesuré** (OptiFine lit peut-être sa touche par `getIsKeyPressed()`,
+  peut-être par une copie du code faite au démarrage : avec une copie, la neutralisation en mémoire ne la coupe pas). La touche d'OptiFine 1.7.10 E7 est **Ctrl gauche** par défaut (comme le sprint), jamais C. Que Ctrl déclenche le zoom
   d'OptiFine sans cette neutralisation, ou que C zoome deux fois avec une touche réassignée, n'est **pas mesuré** : les essais ne simulent
   aucun vrai clavier.
 - **Limites** : capes ATTACK contre « Show Capes », Environment Changer et FPS Boost contre les options vidéo d'OptiFine (recouvrements

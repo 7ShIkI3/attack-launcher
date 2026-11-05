@@ -29,10 +29,12 @@ function release({ jars = JARS, extra = [], digest = true, tag = 'v0.8.0', draft
 }
 /** SHA256SUMS qui a une ligne par nom donné. */
 const sums = (names = JARS) => `${names.map((n) => `${sha(n)}  ${n}`).join('\n')}\n`;
-const run = (raw, sumsText, extra) => check.checkRelease(check.normalizeRelease(raw), sumsText, extra);
+const run = (raw, sumsText, extra, options) => check.checkRelease(check.normalizeRelease(raw), sumsText, extra, options);
+// le SHA-256 « mesuré en jeu » de chaque jar de test (release() donne à chaque jar le digest sha(nom)) : sans lui, la release de la 1.7.10 a un avertissement
+const MEASURED = { measured: { 'forge-1.7.10': sha(MOD_1710) } };
 
 test('release complète : chaque profil trouve son jar, SHA256SUMS a une ligne par jar, aucune erreur ni avertissement', () => {
-  const result = run(release(), sums());
+  const result = run(release(), sums(), undefined, MEASURED);
   assert.deepEqual(result.errors, []);
   assert.deepEqual(result.warnings, []);
   assert.equal(result.tag, 'v0.8.0');
@@ -143,7 +145,7 @@ test('SHA256SUMS : absent, sans ligne pour un jar, en double, contraire au diges
   assert.match(run(release(), sums().replace(MOD_1710, 'attack-forge-1.1.0-mc1.7.10.jar')).errors.join('\n'), /pas de ligne pour « attack-forge-1\.1\.0\+mc1\.7\.10\.jar »/);
   // format « * » (mode binaire de sha256sum) accepté ; ligne d'un jar qui n'est plus dans la release : avertissement seulement
   const binary = sums().replace(`  ${JARS[1]}`, ` *${JARS[1]}`);
-  const lenient = run(release(), `${binary}${sha('vieux')}  attack-client-1.0.0.jar\n`);
+  const lenient = run(release(), `${binary}${sha('vieux')}  attack-client-1.0.0.jar\n`, undefined, MEASURED);
   assert.deepEqual(lenient.errors, []);
   assert.deepEqual(lenient.warnings, ['SHA256SUMS a une ligne pour « attack-client-1.0.0.jar », qui n\'est le jar d\'aucun profil de cette release.']);
 });
@@ -172,7 +174,7 @@ test('jar orphelin : erreur s’il s’appelle attack*, simple avertissement sin
 
   const raw = release();
   raw.assets = raw.assets.filter((a) => !/latest\.yml|Portable/.test(a.name));
-  const missing = run(raw, sums());
+  const missing = run(raw, sums(), undefined, MEASURED);
   assert.deepEqual(missing.errors, []);
   assert.deepEqual(missing.warnings.map((w) => w.replace(/\. Chaque.*$/, '')), ['Fichier du launcher absent : Portable.exe', 'Fichier du launcher absent : latest.yml']);
 });
@@ -191,8 +193,15 @@ test('formats d’entrée : gh (tagName, url) et API GitHub (tag_name, browser_d
 });
 
 test('ligne de commande : options, tag unique, --file et un tag incompatibles', () => {
-  assert.deepEqual(check.parseArgs([]), { tag: null, repo: '7ShIkI3/attack-launcher', file: null, sums: null });
-  assert.deepEqual(check.parseArgs(['v0.8.0', '--repo', 'a/b', '--sums', 's.txt']), { tag: 'v0.8.0', repo: 'a/b', file: null, sums: 's.txt' });
+  assert.deepEqual(check.parseArgs([]), { tag: null, repo: '7ShIkI3/attack-launcher', file: null, sums: null, measured: {} });
+  assert.deepEqual(check.parseArgs(['v0.8.0', '--repo', 'a/b', '--sums', 's.txt']), { tag: 'v0.8.0', repo: 'a/b', file: null, sums: 's.txt', measured: {} });
+  // --measured <profil>=<sha256> : répétable, hexadécimal sur 64 caractères (rangé en minuscules), jamais deux hash pour un profil
+  const hash = 'AB'.repeat(32);
+  assert.deepEqual(check.parseArgs(['--measured', `forge-1.7.10=${hash}`, '--measured', `forge-1.8.9=${hash.toLowerCase()}`]).measured, { 'forge-1.7.10': hash.toLowerCase(), 'forge-1.8.9': hash.toLowerCase() });
+  assert.throws(() => check.parseArgs(['--measured']), /--measured attend/);
+  assert.throws(() => check.parseArgs(['--measured', 'forge-1.7.10=abc']), /--measured attend/);
+  assert.throws(() => check.parseArgs(['--measured', hash]), /--measured attend/);
+  assert.throws(() => check.parseArgs(['--measured', `forge-1.7.10=${hash}`, '--measured', `forge-1.7.10=${'cd'.repeat(32)}`]), /deux SHA-256 différents/);
   assert.throws(() => check.parseArgs(['--inconnue']), /Option inconnue/);
   assert.throws(() => check.parseArgs(['v1', 'v2']), /Argument en trop/);
   assert.throws(() => check.parseArgs(['--file']), /attend une valeur/);
@@ -259,6 +268,22 @@ test('package.json : npm run check-release, et la procédure de publication le c
   assert.equal(pkg.scripts['check-release'], 'node scripts/check-release.js');
   const wiki = fs.readFileSync(path.join(__dirname, '..', 'docs', 'wiki', 'Publier-une-version.md'), 'utf8');
   assert.match(wiki, /check-release/);
+});
+
+test('procédure de publication OptiFine 1.7.10 : le jar publié est le jar mesuré, essai de zoom à la main, dates des notes, plus de décompte de passes inventé', () => {
+  const read = (name) => fs.readFileSync(path.join(__dirname, '..', 'docs', 'wiki', name), 'utf8');
+  const wiki = read('Publier-une-version.md');
+  assert.match(wiki, /--measured forge-1\.7\.10=<SHA-256>/, 'le contrôle du SHA-256 du jar mesuré est dans la liste bloquante');
+  assert.match(wiki, /« Jar testé » de `docs\/COMPAT\.md`/, 'où lire le SHA-256 mesuré');
+  assert.match(wiki, /Essai de zoom à la main/);
+  assert.match(wiki, /Ctrl gauche/);
+  assert.match(wiki, /\*\*Dates des notes\*\*/, 'la date des entrées 0.8.2 et mod 1.1.0 est à remettre à la publication');
+  assert.match(wiki, /test\/site\.test\.js/);
+  // le « 12 passes » de la matrice du lot M7 portait sur un autre jar : seuls les décomptes relevés sur le jar final sont cités
+  for (const name of ['Publier-une-version.md', 'Installation-et-mises-a-jour.md']) assert.doesNotMatch(read(name), /12 passes/, `${name} : décompte de passes non relevé sur le jar final`);
+  assert.match(read('Installation-et-mises-a-jour.md'), /`selftest` 47 OK dans les 4 modes[^]*`modtest` 196 OK en référence et 213 OK avec E7[^]*`screentest` 148 OK en référence et 149 OK avec E7/);
+  // le but du zoom n'est pas écrit comme un résultat
+  assert.doesNotMatch(read('Installation-et-mises-a-jour.md'), /pour qu'un\s+seul zoom réponde/);
 });
 
 // ---------- fichiers « <jar>.sha256 » joints à la release (le launcher les lit quand GitHub ne donne pas de digest) ----------
@@ -362,5 +387,47 @@ test('--file : « sha256files » tient lieu des fichiers <jar>.sha256 ; absent, 
   const out = [];
   assert.equal(check.main(['--file', file], { out: (t) => out.push(t) }), 1);
   assert.match(out[0], /attack-fabric-3\.6\.0\+mc26\.3\.jar\.sha256 et SHA256SUMS ne sont pas le même SHA-256/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('--measured : le jar de la release est celui qui a été mesuré en jeu avec OptiFine, sinon erreur (un jar reconstruit après les essais a un autre SHA-256)', () => {
+  // le jar de la release est celui des essais : rien à dire
+  const same = run(release(), sums(), undefined, MEASURED);
+  assert.deepEqual(same.errors, []);
+  assert.deepEqual(same.warnings, []);
+  // le jar a été reconstruit après les passes : autre hash, la phrase « vérifié en jeu avec E7 » porterait sur un autre binaire
+  const rebuilt = run(release(), sums(), undefined, { measured: { 'forge-1.7.10': sha('jar essaye avant la reconstruction') } });
+  assert.equal(rebuilt.errors.length, 1, rebuilt.errors.join('\n'));
+  assert.match(rebuilt.errors[0], /^Profil forge-1\.7\.10 : « attack-forge-1\.1\.0\+mc1\.7\.10\.jar » \(SHA-256 [0-9a-f]{12}…\) n'est pas le jar mesuré en jeu/);
+  assert.match(rebuilt.errors[0], /Rejoue-les sur ce jar/);
+  // le hash majuscule (comme dans COMPAT.md) est le même hash
+  assert.deepEqual(run(release(), sums(), undefined, { measured: { 'forge-1.7.10': sha(MOD_1710).toUpperCase() } }).errors, []);
+  // le hash vient aussi de SHA256SUMS quand GitHub n'a pas de digest (brouillon)
+  const draft = run(release({ digest: false }), sums(), undefined, MEASURED);
+  assert.deepEqual(draft.errors, []);
+  assert.equal(run(release({ digest: false }), sums(), undefined, { measured: { 'forge-1.7.10': sha('autre') } }).errors.length, 1);
+  // sans --measured : pas d'erreur, mais un avertissement pour le profil qui a un mod minimal avec OptiFine (et pour lui seul)
+  const none = run(release(), sums());
+  assert.deepEqual(none.errors, []);
+  assert.equal(none.warnings.length, 1, none.warnings.join('\n'));
+  assert.match(none.warnings[0], /^Profil forge-1\.7\.10 : aucun SHA-256 mesuré fourni \(--measured forge-1\.7\.10=<sha256>\)/);
+  assert.match(check.format(none), /AVERTISSEMENT : Profil forge-1\.7\.10 : aucun SHA-256 mesuré/);
+  // un profil inconnu dans --measured est une erreur (faute de frappe : le contrôle ne serait jamais fait)
+  assert.match(run(release(), sums(), undefined, { measured: { 'forge-1.7.1': sha(MOD_1710) } }).errors.join('\n'), /--measured : « forge-1\.7\.1 » n'est pas un profil du catalogue/);
+});
+
+test('programme : --measured avec le bon et le mauvais hash (code 0 puis 1)', () => {
+  const dir = tempDir();
+  const file = path.join(dir, 'release.json');
+  fs.writeFileSync(file, JSON.stringify({ ...release(), sha256sums: sums() }));
+  let out = spawnSync(process.execPath, [SCRIPT, '--file', file, '--measured', `forge-1.7.10=${sha(MOD_1710)}`], { encoding: 'utf8' });
+  assert.equal(out.status, 0, out.stdout + out.stderr);
+  assert.doesNotMatch(out.stdout, /AVERTISSEMENT/);
+  out = spawnSync(process.execPath, [SCRIPT, '--file', file, '--measured', `forge-1.7.10=${'0'.repeat(64)}`], { encoding: 'utf8' });
+  assert.equal(out.status, 1);
+  assert.match(out.stdout, /ERREUR : Profil forge-1\.7\.10 : « attack-forge-1\.1\.0\+mc1\.7\.10\.jar » .* n'est pas le jar mesuré en jeu/);
+  out = spawnSync(process.execPath, [SCRIPT, '--file', file, '--measured', 'forge-1.7.10=trop-court'], { encoding: 'utf8' });
+  assert.equal(out.status, 1);
+  assert.match(out.stderr, /--measured attend/);
   fs.rmSync(dir, { recursive: true, force: true });
 });

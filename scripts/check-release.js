@@ -1,6 +1,6 @@
 'use strict';
 // Contrôle d'une release GitHub AVANT de la publier (ou après) : chaque profil du catalogue y trouve-t-il SON jar ?
-//   node scripts/check-release.js [<tag>] [--repo <proprio/dépôt>] [--file <release.json>] [--sums <SHA256SUMS>]
+//   node scripts/check-release.js [<tag>] [--repo <proprio/dépôt>] [--file <release.json>] [--sums <SHA256SUMS>] [--measured <profil>=<sha256>]
 //   npm run check-release -- v0.8.0
 // <tag>     release à contrôler, brouillon compris : lue avec `gh release view <tag> --json tagName,isDraft,isPrerelease,assets`
 //           (gh doit être connecté à GitHub). Sans tag : la dernière release publiée.
@@ -8,6 +8,8 @@
 // --file    au lieu de gh : un fichier JSON, sortie de `gh release view --json …` ou réponse de l'API GitHub (essais, hors ligne). Un champ
 //           « sha256sums » (texte) peut y tenir lieu de SHA256SUMS, un champ « sha256files » ({ "<jar>.sha256": texte }) de ses fichiers <jar>.sha256.
 // --sums    fichier SHA256SUMS déjà téléchargé ; sans lui, SHA256SUMS est lu dans la release (`gh release download --output -`).
+// --measured  (répétable) le SHA-256 du jar d'un profil tel qu'il a été ESSAYÉ en jeu, recopié de « Jar testé » dans docs/COMPAT.md du mod :
+//           le jar de la release doit avoir exactement ce hash (voir le contrôle 5).
 // Contrôles (la moindre erreur = code de sortie 1) :
 //   1. mod.parseRelease() trouve un jar pour CHAQUE profil du catalogue, avec un SHA-256 (digest GitHub ou fichier de sommes) ;
 //   1b. pour un profil avec OptiFine, la version de son jar n'est pas plus ancienne que `minMod` de sa spec (src/main/optifine.js) :
@@ -17,6 +19,8 @@
 //   3. SHA256SUMS existe et a UNE ligne par jar de profil (« <sha256>  <nom exact> »), cohérente avec le digest GitHub ;
 //   4. quand une release joint un fichier « <jar>.sha256 » (le launcher le lit à la place du digest GitHub, absent d'un brouillon), il
 //      doit donner le même SHA-256 que SHA256SUMS (et que le digest s'il y en a un) : un seul hash pour un jar, quelle que soit la source.
+//   5. pour un profil dont la spec OptiFine a un `minMod` (la 1.7.10), le jar de la release a le SHA-256 donné par `--measured` : c'est le
+//      jar mesuré avec OptiFine, pas un jar reconstruit après coup (sans `--measured`, un avertissement le rappelle).
 // Les fichiers du launcher (Setup, blockmap, latest.yml, Portable) manquants sont signalés en avertissement.
 // Ce script ne publie ni ne modifie rien ; il ne télécharge que SHA256SUMS et les fichiers <jar>.sha256 (quelques centaines d'octets), et
 // seulement avec `gh`.
@@ -80,9 +84,10 @@ const sidecarName = (jarName) => `${jarName}.sha256`;
  * Applique tous les contrôles. `release` : sortie de normalizeRelease ; `sumsText` : contenu de SHA256SUMS (undefined = absent ou illisible) ;
  * `sidecars` : contenu des fichiers « <jar>.sha256 » joints à la release, { nom du fichier : texte } (une entrée absente ou undefined =
  * fichier joint mais illisible) ; sans cet argument (undefined), ces fichiers ne sont pas contrôlés (release lue dans un fichier JSON).
+ * `measured` : { id de profil : SHA-256 du jar essayé en jeu } (contrôle 5).
  * Renvoie { tag, draft, prerelease, files, profiles: [{ id, jar, version, size, sha256 }], errors, warnings }.
  */
-function checkRelease(release, sumsText, sidecars = release.sha256files) {
+function checkRelease(release, sumsText, sidecars = release.sha256files, { measured = {} } = {}) {
   const errors = [];
   const warnings = [];
   const names = release.assets.map((a) => a.name);
@@ -175,6 +180,27 @@ function checkRelease(release, sumsText, sidecars = release.sha256files) {
     if (!entry.sha256) entry.sha256 = hash;
   }
 
+  // 5. le jar publié est celui qui a été mesuré : la phrase « vérifié en jeu avec OptiFine » des notes porte sur CE binaire. Un jar reconstruit
+  // après les essais (même source, autre horodatage ou autre commit) a un autre SHA-256 : les passes sont à rejouer avant de publier.
+  const known = new Set(catalog.list().map((p) => p.id));
+  for (const id of Object.keys(measured)) {
+    if (!known.has(id)) errors.push(`--measured : « ${id} » n'est pas un profil du catalogue (${[...known].join(', ')}).`);
+  }
+  for (const entry of result.profiles) {
+    const wanted = measured[entry.id] === undefined ? undefined : String(measured[entry.id]).toLowerCase();
+    if (wanted === undefined) {
+      if (catalog.get(entry.id).optifine?.minMod) {
+        warnings.push(`Profil ${entry.id} : aucun SHA-256 mesuré fourni (--measured ${entry.id}=<sha256>) : rien ne prouve que « ${entry.jar} » est le jar essayé avec OptiFine. `
+          + 'Recopie « Jar testé » de docs/COMPAT.md du mod.');
+      }
+    } else if (!entry.sha256) {
+      errors.push(`Profil ${entry.id} : le SHA-256 de « ${entry.jar} » est inconnu, il ne peut pas être comparé au jar mesuré.`);
+    } else if (entry.sha256 !== wanted) {
+      errors.push(`Profil ${entry.id} : « ${entry.jar} » (SHA-256 ${entry.sha256.slice(0, 12)}…) n'est pas le jar mesuré en jeu (${wanted.slice(0, 12)}…) : `
+        + 'les passes OptiFine portent sur un autre binaire. Rejoue-les sur ce jar et consigne son SHA-256 dans docs/COMPAT.md du mod, ou publie le jar mesuré.');
+    }
+  }
+
   // le launcher lui-même : sans eux, les mises à jour automatiques et le site ne marchent pas
   for (const [pattern, label] of FILE_LAUNCHER) {
     if (!names.some((n) => pattern.test(n))) warnings.push(`Fichier du launcher absent : ${label}. Chaque release doit le contenir (voir Publier-une-version).`);
@@ -238,12 +264,18 @@ function readRelease({ tag, repo = GITHUB_REPO, file, sumsFile, run = runGh } = 
   return { release, sumsText, sidecars };
 }
 
-/** Options de la ligne de commande : { tag, repo, file, sums }. */
+/** Options de la ligne de commande : { tag, repo, file, sums, measured: { profil : sha256 } }. */
 function parseArgs(argv) {
-  const options = { tag: null, repo: GITHUB_REPO, file: null, sums: null };
+  const options = { tag: null, repo: GITHUB_REPO, file: null, sums: null, measured: {} };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--repo' || arg === '--file' || arg === '--sums') {
+    if (arg === '--measured') {
+      const value = argv[++i];
+      const match = /^([a-z0-9][a-z0-9._-]*)=([0-9a-f]{64})$/i.exec(value || '');
+      if (!match) throw new Error('--measured attend <profil>=<sha256 en 64 caractères hexadécimaux>');
+      if (options.measured[match[1]] && options.measured[match[1]] !== match[2].toLowerCase()) throw new Error(`--measured : deux SHA-256 différents pour ${match[1]}`);
+      options.measured[match[1]] = match[2].toLowerCase();
+    } else if (arg === '--repo' || arg === '--file' || arg === '--sums') {
       const value = argv[++i];
       if (!value || value.startsWith('--')) throw new Error(`${arg} attend une valeur`);
       options[arg.slice(2)] = value;
@@ -263,7 +295,7 @@ function parseArgs(argv) {
 function main(argv, { out = console.log, run = runGh } = {}) {
   const options = parseArgs(argv);
   const { release, sumsText, sidecars } = readRelease({ tag: options.tag, repo: options.repo, file: options.file, sumsFile: options.sums, run });
-  const result = checkRelease(release, sumsText, sidecars);
+  const result = checkRelease(release, sumsText, sidecars, { measured: options.measured });
   out(format(result));
   return result.errors.length === 0 ? 0 : 1;
 }
