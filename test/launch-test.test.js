@@ -68,3 +68,16 @@ test('le TweakClass du critère est celui de la spec : le changer dans optifine.
   assert.equal(/['"`]optifine\.OptiFineForgeTweaker['"`]/.test(code), false, 'aucune copie en dur du TweakClass dans le code de launch-test.js');
   assert.match(code, /optifine\.forVersion\(profile\.mc\)\.tweak/);
 });
+
+test('lancement réel d’OptiFine 1.7.10 HD U E7 (journal relevé le 05/11 par launch-test) : la ligne de Forge est reconnue, les lignes voisines du lanceur ne comptent pas', () => {
+  const profile = catalog.get('forge-1.7.10');
+  const options = { tweak: optifine.forVersion('1.7.10').tweak };
+  const event = (logger, message) => `  <log4j:Event logger="${logger}" timestamp="1793884590810" level="INFO" thread="main">\n    <log4j:Message><![CDATA[${message}]]></log4j:Message>\n  </log4j:Event>\n`;
+  // ces deux lignes de LaunchWrapper nomment le tweaker d'OptiFine sans prouver que Forge l'a pris dans mods : elles ne suffisent pas
+  const neighbours = event('LaunchWrapper', 'Loading tweak class name optifine.OptiFineForgeTweaker') + event('LaunchWrapper', 'Calling tweak class optifine.OptiFineForgeTweaker');
+  const ready = event('FML', LOADED);
+  assert.equal(launch.readLog(neighbours + ready, profile, options).tweaker, false);
+  // la copie du launcher s'appelle OptiFine-1.7.10_HD_U_E7.jar (trait d'union) : c'est le nom qui figure dans la vraie ligne
+  const real = event('FML', 'Loading tweaker optifine.OptiFineForgeTweaker from OptiFine-1.7.10_HD_U_E7.jar');
+  assert.equal(launch.readLog(neighbours + real + ready, profile, options).tweaker, true);
+});
