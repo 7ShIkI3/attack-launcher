@@ -167,9 +167,9 @@ Points **bloquants** avant de fusionner ou de publier un launcher qui porte cett
   `docs/COMPAT.md` du mod, avec le SHA-256 du jar essayé. Tant que cet essai n'est pas consigné, les textes gardent « n'est pas mesuré »
   (ils le disent aujourd'hui) ; s'il montre que Ctrl zoome encore, la neutralisation ne sert à rien en 1.7.10 : corriger le mod et les textes
   avant de publier.
-- **Dates des notes** : les entrées « Launcher 0.8.2 » et « ATTACK Client 1.7.10 1.1.0 » de `src/renderer/data.js` portent la date des
+- **Dates des notes** : les entrées « Launcher 0.8.3 », « Launcher 0.8.2 » et « ATTACK Client 1.7.10 1.1.0 » de `src/renderer/data.js` portent la date des
   mesures, pas celle de la publication. Au moment de publier, mets-y le jour de la publication (`date`), puis les deux assertions qui la
-  figent : `test/renderer.test.js` (liste des six premières entrées) et `test/site.test.js` (actualités : `5 novembre 2026`, `November 5, 2026`,
+  figent : `test/renderer.test.js` (liste des sept premières entrées) et `test/site.test.js` (actualités : `5 novembre 2026`, `November 5, 2026`,
   `datetime="2026-11-05"`). Chaque entrée est affichée telle quelle dans les actualités du site : au plus 1 100 caractères (un test le garde),
   le détail va dans le wiki.
 

@@ -103,10 +103,12 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     assert.ok(entry.date === '' || /^\d{4}-\d{2}-\d{2}$/.test(entry.date), `${entry.version} : date`);
   }
   assert.equal(new Set(data.CHANGELOG.map((e) => e.version)).size, data.CHANGELOG.length, 'versions uniques');
-  // 0.8.2 : OptiFine en 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.1.0 qu'elle exige avec OptiFine (même date : le jour des
+  // 0.8.3 : la VSync du profil 1.7.10 (même jour que la 0.8.2 : le jour des mesures, à remettre au jour de la publication).
+  // Puis 0.8.2 : OptiFine en 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.1.0 qu'elle exige avec OptiFine (même date : le jour des
   // mesures, 05/11 ; à remettre au jour de la publication, voir « Publier une version »).
   // Puis 0.8.1 : la refonte du design, suivie des deux versions d'ATTACK Client qu'elle livre (même date) : Fabric (3.7.0) d'abord, puis la 1.8.9 (2.8.0).
-  assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 6), (e) => [e.version, e.date, e.tag]), [
+  assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 7), (e) => [e.version, e.date, e.tag]), [
+    ['Launcher 0.8.3', '2026-11-05', 'perf'],
     ['Launcher 0.8.2', '2026-11-05', 'new'],
     ['ATTACK Client 1.7.10 1.1.0', '2026-11-05', 'new'],
     ['Launcher 0.8.1', '2026-11-01', 'new'],
@@ -122,7 +124,16 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
   for (const entry of data.CHANGELOG) {
     for (const lang of ['fr', 'en']) assert.ok(entry[lang].length <= 1100, `${entry.version} (${lang}) : ${entry[lang].length} caractères, 1 100 au plus`);
   }
-  const [launcher082, mod110] = data.CHANGELOG;
+  const [launcher083, launcher082, mod110] = data.CHANGELOG;
+  for (const lang of ['fr', 'en']) {
+    // 0.8.3 : VSync coupée une fois en 1.7.10 (si elle est encore à la valeur de Minecraft), limite de FPS levée, choix du joueur et 1.8.9 intacts
+    const text = launcher083[lang];
+    assert.match(text, /1\.7\.10/, `0.8.3 (${lang}) : le profil 1.7.10`);
+    assert.match(text, lang === 'fr' ? /VSync est coupée une seule fois si elle est encore à la valeur de Minecraft/ : /VSync is turned off once if it is still at Minecraft’s value/, `0.8.3 (${lang}) : une seule fois, valeur de Minecraft`);
+    assert.match(text, lang === 'fr' ? /limite de FPS est débridée, comme pour Fabric/ : /FPS limit is lifted, as on Fabric/, `0.8.3 (${lang}) : limite de FPS, comme pour Fabric`);
+    assert.match(text, lang === 'fr' ? /jamais modifié/ : /never changed/, `0.8.3 (${lang}) : choix du joueur`);
+    assert.match(text, lang === 'fr' ? /1\.8\.9 n’est pas touché/ : /1\.8\.9 profile is left alone/, `0.8.3 (${lang}) : la 1.8.9 n'est pas touchée`);
+  }
   for (const lang of ['fr', 'en']) {
     // 0.8.2 : le profil 1.7.10 a OptiFine (la copie du joueur, HD U E7), activé par défaut, « à installer » une fois, mod 1.1.0 au moins
     const text = launcher082[lang];
@@ -146,10 +157,10 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     assert.doesNotMatch(mod, lang === 'fr' ? /démarre, mais/ : /starts, but/, `mod 1.7.10 1.1.0 (${lang}) : rien d'affirmé sur une autre édition`);
     assert.match(mod, /Show Capes/, `mod 1.7.10 1.1.0 (${lang}) : limite des capes`);
     assert.match(mod, lang === 'fr' ? /pack de ressources demande OptiFine/ : /resource pack asks for OptiFine/, `mod 1.7.10 1.1.0 (${lang}) : changements sans OptiFine`);
-    assert.match(data.CHANGELOG[3][lang], /1\.21\.1 (et|and) 26\.3/, `3.7.0 (${lang}) : les deux versions Fabric`);
-    assert.match(data.CHANGELOG[4][lang], /1\.8\.9/, `2.8.0 (${lang}) : la 1.8.9`);
+    assert.match(data.CHANGELOG[4][lang], /1\.21\.1 (et|and) 26\.3/, `3.7.0 (${lang}) : les deux versions Fabric`);
+    assert.match(data.CHANGELOG[5][lang], /1\.8\.9/, `2.8.0 (${lang}) : la 1.8.9`);
     // la refonte du design (0.8.1, 3.7.0, 2.8.0) ne touche pas la 1.7.10
-    for (const entry of data.CHANGELOG.slice(2, 5)) assert.equal(/1\.7\.10/.test(entry[lang]), false, `${entry.version} (${lang}) : la 1.7.10 n'a pas la refonte`);
+    for (const entry of data.CHANGELOG.slice(3, 6)) assert.equal(/1\.7\.10/.test(entry[lang]), false, `${entry.version} (${lang}) : la 1.7.10 n'a pas la refonte`);
   }
   // 0.8.0 : le profil 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.0.0 qu'il installe (même date), puis de la 0.7.0
   const from080 = data.CHANGELOG.findIndex((e) => e.version === 'Launcher 0.8.0');
@@ -180,7 +191,7 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     ['ATTACK Client 2.7.0', data.CHANGELOG[from070].date, 'new'],
   ]);
   // la page découpe chaque texte en puces (une phrase chacune) : aucun texte n'est un bloc unique
-  for (const entry of data.CHANGELOG.slice(0, 3).concat(data.CHANGELOG.slice(from080, from080 + 2), data.CHANGELOG.slice(from070 + 1, from070 + 3))) {
+  for (const entry of data.CHANGELOG.slice(0, 4).concat(data.CHANGELOG.slice(from080, from080 + 2), data.CHANGELOG.slice(from070 + 1, from070 + 3))) {
     for (const lang of ['fr', 'en']) assert.ok(entry[lang].split(/(?<=[.!?])\s+(?=[A-ZÉÈÀ«“"(])/).length >= 3, `${entry.version} (${lang}) : plusieurs phrases`);
   }
 });

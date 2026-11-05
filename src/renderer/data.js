@@ -102,6 +102,12 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.8.3', date: '2026-11-05',
+      title_fr: 'VSync coupée en 1.7.10', title_en: 'VSync off on 1.7.10', tag: 'perf',
+      fr: 'En 1.7.10, la VSync est coupée une seule fois si elle est encore à la valeur de Minecraft, et la limite de FPS est débridée, comme pour Fabric. Un réglage que tu as choisi n’est jamais modifié, et un nouveau dossier de jeu démarre déjà sans VSync. Le profil 1.8.9 n’est pas touché.',
+      en: 'On 1.7.10, VSync is turned off once if it is still at Minecraft’s value, and the FPS limit is lifted, as on Fabric. A setting you chose is never changed, and a new game folder already starts without VSync. The 1.8.9 profile is left alone.',
+    },
+    {
       version: 'Launcher 0.8.2', date: '2026-11-05',
       title_fr: 'OptiFine en 1.7.10', title_en: 'OptiFine on 1.7.10', tag: 'new',
       fr: 'Le profil 1.7.10 peut maintenant utiliser OptiFine, comme la 1.8.9, avec ta propre copie : le launcher ne la télécharge toujours pas, sa licence l’interdit. L’assistant « Obtenir OptiFine » ouvre optifine.net, repère OptiFine HD U E7 dans ton dossier Téléchargements, le vérifie et en garde une copie privée. Chaque profil a son assistant et ses réglages : un OptiFine 1.8.9 déposé pour la 1.7.10 n’est jamais pris, il est signalé. Le réglage « Utiliser OptiFine » est activé par défaut en 1.7.10, comme en 1.8.9, et ne fait rien tant que tu n’as pas de copie. Si tu as déjà un OptiFine 1.7.10 dans ton dossier .minecraft, le launcher affichera « À installer » une fois pour l’ajouter au jeu. Avec OptiFine, il faut le mod ATTACK Client 1.7.10 1.1.0 ou plus récent : l’installation le met à jour. Les textes, les crédits et les contrôles d’OptiFine suivent la version du profil.',
