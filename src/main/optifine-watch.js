@@ -1,6 +1,7 @@
 'use strict';
-// Assistant OptiFine : surveille le dossier Téléchargements pendant que le joueur télécharge LUI-MÊME OptiFine 1.8.9 sur optifine.net
-// (sa licence interdit au launcher de le redistribuer ou de le récupérer à sa place), puis le valide et le range en copie privée.
+// Assistant OptiFine : surveille le dossier Téléchargements pendant que le joueur télécharge LUI-MÊME OptiFine (1.8.9 ou 1.7.10, selon
+// l'option `mc` du guetteur : un guetteur par profil) sur optifine.net (sa licence interdit au launcher de le redistribuer ou de le
+// récupérer à sa place), puis le valide et le range en copie privée.
 // Module en Node pur : ni Electron, ni accès réseau, aucun « shell ». Dossier, validation, import, horloge et minuteries sont injectables,
 // pour que les tests tournent dans un dossier temporaire avec de fausses minuteries.
 //
@@ -10,7 +11,8 @@
 //  - sondage toutes les secondes pendant 10 minutes (« Attendre encore » = start() à nouveau). Un jar NOUVEAU (ou modifié) dont le nom est
 //               accepté et qui est stable sur deux sondages est validé (optifine.validate), puis importé : « imported » ou « refused ».
 //               Un jar momentanément verrouillé (antivirus, OneDrive : illisible, EBUSY, EPERM, EACCES) est repris aux 5 sondages
-//               suivants avant le refus ou l'erreur.
+//               suivants avant le refus ou l'erreur. Un OptiFine d'une AUTRE version de Minecraft qui arrive pendant l'attente n'est jamais
+//               importé : il est signalé (champ `foreign` de l'état) et la surveillance continue.
 //  - cancel() / fin du délai / fermeture de l'app (dispose) : toutes les minuteries sont arrêtées.
 const fsp = require('node:fs/promises');
 const path = require('node:path');
@@ -22,17 +24,24 @@ const TIMEOUT_MS = 10 * 60 * 1000;
 const LOCK_RETRIES = 5;
 const LOCK_CODES = ['EBUSY', 'EPERM', 'EACCES'];
 /**
- * Nom accepté une fois le suffixe « (n) » du navigateur retiré (« M5 (1).jar » de Chrome/Edge, « M5(1).jar » collé de Firefox) :
- * OptiFine_1.8.9_HD_U_M5.jar, preview_OptiFine_1.8.9_HD_U_M6_pre2.jar…
+ * Nom accepté pour une version de Minecraft, une fois le suffixe « (n) » du navigateur retiré (« M5 (1).jar » de Chrome/Edge,
+ * « M5(1).jar » collé de Firefox) : OptiFine_1.8.9_HD_U_M5.jar, preview_OptiFine_1.7.10_HD_U_E8_pre1.jar…
  */
-const ACCEPTED_NAME = /^(preview_)?optifine[_-]1\.8\.9[_-][\w.+-]+\.jar$/i;
+const acceptedPattern = (mc) => new RegExp(`^(preview_)?optifine[_-]${mc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[_-][\\w.+-]+\\.jar$`, 'i');
+const PATTERNS = new Map(); // version de Minecraft -> expression régulière
+function patternFor(mc) {
+  if (!PATTERNS.has(mc)) PATTERNS.set(mc, acceptedPattern(mc));
+  return PATTERNS.get(mc);
+}
+/** Nom accepté pour la 1.8.9 (l'ancienne constante, gardée pour les appelants historiques). */
+const ACCEPTED_NAME = patternFor(optifine.DEFAULT_MC);
 /** Fichiers temporaires des navigateurs : jamais pris pour un jar fini. */
 const TEMPORARY = /\.(crdownload|part|tmp)$/i;
 
-/** Ce nom désigne-t-il un OptiFine 1.8.9 (hors fichier temporaire) ? */
-function acceptedName(name) {
+/** Ce nom désigne-t-il un OptiFine de cette version de Minecraft (1.8.9 sans argument), hors fichier temporaire ? */
+function acceptedName(name, mc = optifine.DEFAULT_MC) {
   const text = String(name);
-  return !TEMPORARY.test(text) && ACCEPTED_NAME.test(optifine.stripCopySuffix(text));
+  return !TEMPORARY.test(text) && patternFor(mc).test(optifine.stripCopySuffix(text));
 }
 
 const signature = (candidate) => `${candidate.size}:${candidate.mtimeMs}`;
@@ -41,16 +50,20 @@ const newestFirst = (a, b) => b.mtimeMs - a.mtimeMs || a.name.localeCompare(b.na
 const lockedError = (error) => Boolean(error) && (error.reason === 'UNREADABLE' || LOCK_CODES.includes(error.code));
 
 /**
- * options : { dir (chaîne ou fonction), importFile(file, checked) -> Promise, onState(état), validate, setTimer, clearTimer, fsApi,
- *             pollMs, timeoutMs }. Renvoie { start, use, cancel, dispose, snapshot, whenIdle }.
- * Les états émis : { state, downloadsDir, file?, version?, reason?, message? } avec state = waiting | seen | checking | imported |
+ * options : { mc (version de Minecraft, 1.8.9 par défaut : filtre des noms et validation), dir (chaîne ou fonction),
+ *             importFile(file, checked) -> Promise, onState(état), validate (par défaut optifine.validate pour `mc`), setTimer, clearTimer,
+ *             fsApi, pollMs, timeoutMs }. Renvoie { mc, start, use, cancel, dispose, snapshot, whenIdle, isActive }.
+ * Les états émis : { state, downloadsDir, file?, version?, reason?, message?, foreign? } avec state = waiting | seen | checking | imported |
  * refused | timeout | cancelled | error (et « idle » avant le premier start). `file` est un nom de fichier, jamais un chemin.
+ * `foreign` : noms des OptiFine d'une autre version de Minecraft arrivés dans le dossier depuis le départ (jamais importés).
  */
 function createWatcher(options) {
+  const mc = options.mc === undefined ? optifine.DEFAULT_MC : options.mc;
+  if (!optifine.forVersion(mc)) throw new RangeError(`OptiFine n'est pas pris en charge pour Minecraft ${mc}`);
   const {
     importFile,
     onState = () => {},
-    validate = optifine.validate,
+    validate = (file) => optifine.validate(file, mc),
     setTimer = setTimeout,
     clearTimer = clearTimeout,
     fsApi = fsp,
@@ -68,6 +81,8 @@ function createWatcher(options) {
   let lastSeen = new Map(); // nom -> signature vue au sondage précédent (stabilité sur deux sondages)
   let proposal = null; // jar déjà présent au départ, proposé : { file, name, version }
   let retry = null; // jar momentanément verrouillé, repris au sondage suivant : { name, file, left }
+  let baselineForeign = new Set(); // OptiFine d'une autre version déjà là au départ : de vieux téléchargements, jamais signalés
+  let foreignSeen = []; // OptiFine d'une autre version arrivés depuis le départ, déjà signalés
   let inflight = Promise.resolve();
   let current = { state: 'idle', downloadsDir: dirOf() };
 
@@ -125,7 +140,7 @@ function createWatcher(options) {
 
   /** Jar candidat d'un nom du dossier, ou null : nom refusé, temporaire, vide, trop gros, `.part` voisin, ou pas un fichier ordinaire. */
   async function candidate(dir, name, lowerNames) {
-    if (!acceptedName(name)) return null;
+    if (!acceptedName(name, mc)) return null;
     if (lowerNames.has(`${name}.part`.toLowerCase())) return null; // Firefox : le téléchargement n'est pas fini
     let stat;
     try {
@@ -189,6 +204,13 @@ function createWatcher(options) {
     }
   }
 
+  /** Republie l'état courant avec la liste à jour des OptiFine d'une autre version arrivés pendant l'attente. */
+  function signalForeign(list) {
+    foreignSeen = list;
+    const { state, downloadsDir, ...extra } = current;
+    emit(state, { ...extra, foreign: list });
+  }
+
   async function poll(id) {
     if (id !== run || !active) return;
     if (busy) {
@@ -216,6 +238,7 @@ function createWatcher(options) {
     if (id !== run) return;
     if (names !== null) {
       const lowerNames = new Set(names.map((n) => String(n).toLowerCase()));
+      const foreignNow = names.map(String).filter((n) => !TEMPORARY.test(n) && optifine.isForeignName(n, mc));
       const found = [];
       for (const name of names) {
         const item = await candidate(dir, String(name), lowerNames);
@@ -224,9 +247,12 @@ function createWatcher(options) {
       if (id !== run) return;
       if (baseline === null) {
         baseline = new Map(found.map((c) => [c.name, signature(c)]));
+        baselineForeign = new Set(foreignNow);
         await proposeExisting(id, found);
         if (id !== run) return;
       } else {
+        const arrived = foreignNow.filter((n) => !baselineForeign.has(n)).sort();
+        if (arrived.join('\n') !== foreignSeen.join('\n')) signalForeign(arrived);
         const fresh = found.filter((c) => baseline.get(c.name) !== signature(c));
         const stable = fresh.filter((c) => lastSeen.get(c.name) === signature(c)).sort(newestFirst);
         lastSeen = new Map(fresh.map((c) => [c.name, signature(c)]));
@@ -254,6 +280,8 @@ function createWatcher(options) {
     lastSeen = new Map();
     proposal = null;
     retry = null;
+    baselineForeign = new Set();
+    foreignSeen = [];
     emit('waiting');
     deadlineTimer = timer(() => expire(id), timeoutMs);
     inflight = poll(id);
@@ -285,7 +313,7 @@ function createWatcher(options) {
     clearTimers();
   }
 
-  return { start, use, cancel, dispose, snapshot: () => ({ ...current }), whenIdle: () => inflight, isActive: () => active };
+  return { mc, start, use, cancel, dispose, snapshot: () => ({ ...current }), whenIdle: () => inflight, isActive: () => active };
 }
 
 module.exports = { POLL_MS, TIMEOUT_MS, LOCK_RETRIES, ACCEPTED_NAME, acceptedName, createWatcher };

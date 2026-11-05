@@ -11,7 +11,7 @@ const C = require('./constants');
 const catalog = require('./catalog');
 const modpack = require('./modpack');
 const optifine = require('./optifine');
-const optifineWatch = require('./optifine-watch');
+const optifineAssist = require('./optifine-assist');
 const installer = require('./installer');
 const settingsStore = require('./settings');
 const profiles = require('./profiles');
@@ -47,7 +47,7 @@ let accounts = null;
 let launching = false; // lancement direct en préparation (Java, connexion)
 const games = new Map(); // parties lancées directement et encore ouvertes : processus -> dossier de jeu du profil
 let updater = null; // contrôleur des mises à jour du launcher
-let assist = null; // assistant OptiFine : un seul guetteur du dossier Téléchargements (créé au premier usage)
+let assists = null; // assistants OptiFine : un guetteur du dossier Téléchargements par profil (créés au premier usage, voir registerIpc)
 const transport = auth.createTransport();
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
@@ -60,6 +60,12 @@ function openOptifinePage() {
   if (process.env.ATTACK_SCREENSHOT_DIR || process.env.ATTACK_NO_BROWSER) return false;
   shell.openExternal(optifine.DOWNLOAD_URL);
   return true;
+}
+
+/** Profil du catalogue qui a OptiFine, ou null (identifiant absent, inconnu, ou profil sans OptiFine : Fabric). */
+function optifineProfile(profileId) {
+  const profile = typeof profileId === 'string' ? catalog.find(profileId) : undefined;
+  return profile && catalog.hasOptifine(profile) ? profile : null;
 }
 
 /** Profil choisi (catalogue) et ses réglages effectifs à plat : dossier de jeu, Java, jars de développement, groupes du pack, OptiFine. */
@@ -262,50 +268,45 @@ function registerIpc() {
     return installer.status({ minecraftDir, gameDir: eff.gameDir, profile, ...statusOptions(eff) });
   });
 
-  // --- OptiFine (profil 1.8.9) : la copie du joueur, jamais téléchargée ---
-  handle('optifine:pick', async () => {
-    if (!catalog.hasOptifine(currentProfile())) return { ok: false, code: 'NO_OPTIFINE', message: 'OptiFine : profil 1.8.9 seulement.' };
+  // --- OptiFine (profils 1.8.9 et 1.7.10) : la copie du joueur, jamais téléchargée ---
+  // Chaque appel nomme son profil (`profileId`), jamais « le profil affiché » : la boîte de dialogue et les assistants durent, le joueur
+  // peut changer de profil entre-temps. Un identifiant inconnu, ou d'un profil sans OptiFine, est refusé (NO_OPTIFINE).
+  handle('optifine:pick', async (_event, profileId) => {
+    const profile = optifineProfile(profileId); // capturé AVANT la boîte de dialogue
+    if (!profile) return optifineAssist.noOptifine(profileId);
+    const { id, mc } = profile;
     const result = await dialog.showOpenDialog(win, {
-      title: 'Choisir OptiFine pour Minecraft 1.8.9 (.jar)',
+      title: `Choisir OptiFine pour Minecraft ${mc} (.jar)`,
       properties: ['openFile'],
       defaultPath: downloadsDir(),
-      filters: [{ name: 'OptiFine 1.8.9', extensions: ['jar'] }],
+      filters: [{ name: `OptiFine ${mc}`, extensions: ['jar'] }],
     });
-    if (result.canceled || !result.filePaths[0]) return { ok: false, code: 'CANCELLED' };
-    const checked = await optifine.validate(result.filePaths[0]);
-    if (!checked.ok) return { ok: false, code: `OPTIFINE_${checked.reason}`, message: checked.message };
-    await applySettings({ optifineJar: checked.file, optifine: true });
-    return { ok: true, name: checked.name };
+    if (result.canceled || !result.filePaths[0]) return { ok: false, code: 'CANCELLED', profileId: id, mc };
+    const checked = await optifine.validate(result.filePaths[0], mc);
+    if (!checked.ok) return { ok: false, code: `OPTIFINE_${checked.reason}`, message: checked.message, profileId: id, mc };
+    // écrit dans les réglages du profil désigné, pas dans ceux du profil affiché maintenant
+    await applySettings({ profiles: { [id]: { optifineJar: checked.file, optifine: true } } });
+    return { ok: true, name: checked.name, profileId: id, mc };
   });
   handle('shell:openOptifine', () => openOptifinePage());
 
-  // Assistant : le joueur télécharge OptiFine sur optifine.net, le launcher repère le jar dans Téléchargements, le valide et en garde
+  // Assistants : le joueur télécharge OptiFine sur optifine.net, le launcher repère le jar dans Téléchargements, le valide et en garde
   // une copie privée (<userData>/optifine). Aucun appel réseau : seulement l'ouverture de la page dans le navigateur du joueur.
-  const optifineProfileId = () => catalog.list().find((profile) => catalog.hasOptifine(profile)).id;
-  function optifineAssist() {
-    if (!assist) {
-      assist = optifineWatch.createWatcher({
-        dir: downloadsDir,
-        onState: (state) => send('optifine:assist', state),
-        importFile: async (file) => {
-          const copy = await optifine.importCopy(file, app.getPath('userData'));
-          await applySettings({ profiles: { [optifineProfileId()]: { optifineJar: copy.file, optifine: true } } });
-          return copy;
-        },
-      });
-    }
-    return assist;
-  }
-  handle('optifine:assistStart', async (_event, options) => {
-    if (!catalog.hasOptifine(currentProfile())) return { ok: false, code: 'NO_OPTIFINE', message: 'OptiFine : profil 1.8.9 seulement.' };
-    const watcher = optifineAssist();
-    const first = !watcher.isActive();
-    const state = await watcher.start(); // l'état de départ est lu AVANT d'ouvrir la page : un jar déjà présent est proposé, pas importé
-    if (first && !(options && options.browser === false)) openOptifinePage();
-    return { ok: true, ...state };
+  // Un guetteur par profil (optifine-assist.js) ; l'événement `optifine:assist` porte { profileId, mc, ...état }.
+  assists = optifineAssist.createAssistRegistry({
+    resolveProfile: (profileId) => {
+      const profile = optifineProfile(profileId);
+      return profile ? { id: profile.id, mc: profile.mc } : null;
+    },
+    dir: downloadsDir,
+    importCopy: (file, mc) => optifine.importCopy(file, app.getPath('userData'), mc),
+    saveChoice: (profileId, copy) => applySettings({ profiles: { [profileId]: { optifineJar: copy.file, optifine: true } } }),
+    emit: (state) => send('optifine:assist', state),
+    openPage: openOptifinePage,
   });
-  handle('optifine:assistUse', () => optifineAssist().use());
-  handle('optifine:assistCancel', () => ({ ok: true, ...optifineAssist().cancel() }));
+  handle('optifine:assistStart', (_event, profileId, options) => assists.start(profileId, options));
+  handle('optifine:assistUse', (_event, profileId) => assists.use(profileId));
+  handle('optifine:assistCancel', (_event, profileId) => assists.cancel(profileId));
 
   handle('install:run', async (event) => {
     if (installing) return { ok: false, code: 'BUSY', message: 'Installation déjà en cours' };
@@ -647,7 +648,7 @@ function createWindow() {
   }
   win.on('closed', () => {
     win = null;
-    assist?.dispose(); // plus de page pour afficher l'assistant : les minuteries s'arrêtent
+    assists?.dispose(); // plus de page pour afficher les assistants : les minuteries s'arrêtent
   });
   win.loadFile(INDEX_HTML);
   if (process.env.ATTACK_SCREENSHOT_DIR) {
@@ -762,7 +763,8 @@ async function captureScreens() {
     await js("window.showPage('settings'); window.selectSettingsTab('profile'); document.getElementById('optifine-download').click()");
     await wait(900);
     if (mode !== 'waiting' && process.env.ATTACK_SCREENSHOT_OPTIFINE_JAR) {
-      await fsp.copyFile(process.env.ATTACK_SCREENSHOT_OPTIFINE_JAR, path.join(downloadsDir(), 'OptiFine_1.8.9_HD_U_M5.jar'));
+      // le jar factice porte le nom d'OptiFine du profil capturé (OptiFine_1.8.9_HD_U_M5.jar, OptiFine_1.7.10_HD_U_E7.jar…) : voir scripts/screenshot.js
+      await fsp.copyFile(process.env.ATTACK_SCREENSHOT_OPTIFINE_JAR, path.join(downloadsDir(), path.basename(process.env.ATTACK_SCREENSHOT_OPTIFINE_JAR)));
       await wait(4500); // deux sondages d'une seconde (fichier stable), puis la vérification et la copie
     }
     await js("document.getElementById('optifine-card').scrollIntoView({ block: 'center' })");
@@ -812,7 +814,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('window-all-closed', () => app.quit());
   // mise à jour prête : la fermeture ne l'installe que si aucune partie ni installation ne tourne
   app.on('before-quit', (event) => {
-    assist?.dispose();
+    assists?.dispose();
     if (!updater?.needsQuitCheck()) return;
     event.preventDefault();
     updater.prepareQuit().finally(() => app.quit());

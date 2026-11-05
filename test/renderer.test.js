@@ -103,18 +103,53 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     assert.ok(entry.date === '' || /^\d{4}-\d{2}-\d{2}$/.test(entry.date), `${entry.version} : date`);
   }
   assert.equal(new Set(data.CHANGELOG.map((e) => e.version)).size, data.CHANGELOG.length, 'versions uniques');
-  // 0.8.1 : la refonte du design ; son entrée est suivie des deux versions d'ATTACK Client qu'elle livre (même date) :
-  // Fabric (3.7.0) d'abord, puis la 1.8.9 (2.8.0). Le mod 1.7.10 n'a pas changé : il n'a pas d'entrée.
-  assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 4), (e) => [e.version, e.date, e.tag]), [
+  // 0.8.2 : OptiFine en 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.1.0 qu'elle exige avec OptiFine (même date : le jour des
+  // mesures, 05/11 ; à remettre au jour de la publication, voir « Publier une version »).
+  // Puis 0.8.1 : la refonte du design, suivie des deux versions d'ATTACK Client qu'elle livre (même date) : Fabric (3.7.0) d'abord, puis la 1.8.9 (2.8.0).
+  assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 6), (e) => [e.version, e.date, e.tag]), [
+    ['Launcher 0.8.2', '2026-11-05', 'new'],
+    ['ATTACK Client 1.7.10 1.1.0', '2026-11-05', 'new'],
     ['Launcher 0.8.1', '2026-11-01', 'new'],
     ['ATTACK Client 3.7.0', '2026-11-01', 'new'],
     ['ATTACK Client 2.8.0', '2026-11-01', 'new'],
     ['Launcher 0.8.0', '2026-10-31', 'new'],
   ]);
+  // une date de publication ne recule pas dans le fichier (le site et l'application trient dessus) et n'est jamais dans le futur
+  const dates = Array.from(data.CHANGELOG, (e) => e.date).filter(Boolean); // Array.from : les tableaux de data.js viennent d'un autre contexte
+  assert.deepEqual(dates, [...dates].sort().reverse(), 'entrées de la plus récente à la plus ancienne');
+  assert.ok(dates[0] <= new Date().toISOString().slice(0, 10), 'aucune entrée datée du futur');
+  // chaque entrée est affichée telle quelle dans les actualités du site : un paragraphe lisible, pas un rapport de mesures (le détail est dans le wiki)
+  for (const entry of data.CHANGELOG) {
+    for (const lang of ['fr', 'en']) assert.ok(entry[lang].length <= 1100, `${entry.version} (${lang}) : ${entry[lang].length} caractères, 1 100 au plus`);
+  }
+  const [launcher082, mod110] = data.CHANGELOG;
   for (const lang of ['fr', 'en']) {
-    assert.match(data.CHANGELOG[1][lang], /1\.21\.1 (et|and) 26\.3/, `3.7.0 (${lang}) : les deux versions Fabric`);
-    assert.match(data.CHANGELOG[2][lang], /1\.8\.9/, `2.8.0 (${lang}) : la 1.8.9`);
-    for (const entry of data.CHANGELOG.slice(0, 3)) assert.equal(/1\.7\.10/.test(entry[lang]), false, `${entry.version} (${lang}) : la 1.7.10 n'a pas la refonte`);
+    // 0.8.2 : le profil 1.7.10 a OptiFine (la copie du joueur, HD U E7), activé par défaut, « à installer » une fois, mod 1.1.0 au moins
+    const text = launcher082[lang];
+    for (const needle of ['1.7.10', '1.8.9', 'OptiFine', 'HD U E7', 'optifine.net', '1.1.0', '.minecraft']) assert.ok(text.includes(needle), `0.8.2 (${lang}) : ${needle}`);
+    assert.match(text, lang === 'fr' ? /par défaut/ : /on by default/, `0.8.2 (${lang}) : activé par défaut`);
+    assert.match(text, lang === 'fr' ? /« À installer » une fois/ : /“To install” once/, `0.8.2 (${lang}) : « à installer » une fois si le joueur a déjà OptiFine`);
+    assert.match(text, lang === 'fr' ? /ne la télécharge toujours pas/ : /still does not download it/, `0.8.2 (${lang}) : jamais téléchargé`);
+    // mod 1.7.10 1.1.0 : OptiFine HD U E7, zoom sur C, Animations, comportement 1.0.0 sans OptiFine
+    for (const needle of ['1.7.10', 'OptiFine', 'HD U E7', 'options.txt', 'Animations', '1.0.0']) assert.ok(mod110[lang].includes(needle), `mod 1.7.10 1.1.0 (${lang}) : ${needle}`);
+    assert.match(mod110[lang], /\bC\b/, `mod 1.7.10 1.1.0 (${lang}) : la touche C`);
+    // textes ramenés à ce qui est mesuré : la touche zoom d'OptiFine 1.7.10 E7 est Ctrl gauche (jamais C), « un seul zoom » au vrai clavier n'est pas
+    // prouvé, une autre édition est « non testée » (jamais « elle démarre »), les limites et les changements sans OptiFine sont dits
+    const mod = mod110[lang];
+    assert.match(mod, lang === 'fr' ? /Ctrl gauche/ : /left Ctrl/, `mod 1.7.10 1.1.0 (${lang}) : la touche d'OptiFine est Ctrl gauche`);
+    // le but de la neutralisation (éviter un double zoom) ne se lit pas comme un résultat : que le zoom d'OptiFine soit coupé n'est pas mesuré
+    assert.match(mod, lang === 'fr' ? /pour éviter un double zoom/ : /to avoid a double zoom/, `mod 1.7.10 1.1.0 (${lang}) : but de la neutralisation`);
+    assert.match(mod, lang === 'fr' ? /que cela coupe bien le zoom d’OptiFine n’est pas mesuré/ : /that this really turns OptiFine’s zoom off is not measured/, `mod 1.7.10 1.1.0 (${lang}) : coupure du zoom d'OptiFine non mesurée`);
+    assert.doesNotMatch(mod, lang === 'fr' ? /seul zoom réponde/ : /only one zoom answers/, `mod 1.7.10 1.1.0 (${lang}) : plus de « un seul zoom »`);
+    assert.match(mod, lang === 'fr' ? /sans adaptation du zoom ni des shaders/ : /no zoom or shader adaptation/, `mod 1.7.10 1.1.0 (${lang}) : une autre édition n'a pas les adaptations`);
+    assert.match(mod, lang === 'fr' ? /reconnue mais pas testée/ : /recognized but not tested/, `mod 1.7.10 1.1.0 (${lang}) : une autre édition n'est pas testée`);
+    assert.doesNotMatch(mod, lang === 'fr' ? /démarre, mais/ : /starts, but/, `mod 1.7.10 1.1.0 (${lang}) : rien d'affirmé sur une autre édition`);
+    assert.match(mod, /Show Capes/, `mod 1.7.10 1.1.0 (${lang}) : limite des capes`);
+    assert.match(mod, lang === 'fr' ? /pack de ressources demande OptiFine/ : /resource pack asks for OptiFine/, `mod 1.7.10 1.1.0 (${lang}) : changements sans OptiFine`);
+    assert.match(data.CHANGELOG[3][lang], /1\.21\.1 (et|and) 26\.3/, `3.7.0 (${lang}) : les deux versions Fabric`);
+    assert.match(data.CHANGELOG[4][lang], /1\.8\.9/, `2.8.0 (${lang}) : la 1.8.9`);
+    // la refonte du design (0.8.1, 3.7.0, 2.8.0) ne touche pas la 1.7.10
+    for (const entry of data.CHANGELOG.slice(2, 5)) assert.equal(/1\.7\.10/.test(entry[lang]), false, `${entry.version} (${lang}) : la 1.7.10 n'a pas la refonte`);
   }
   // 0.8.0 : le profil 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.0.0 qu'il installe (même date), puis de la 0.7.0
   const from080 = data.CHANGELOG.findIndex((e) => e.version === 'Launcher 0.8.0');

@@ -7,6 +7,7 @@ const catalog = require('../src/main/catalog');
 const paths = require('../src/main/paths');
 const settings = require('../src/main/settings');
 const mod = require('../src/main/mod');
+const optifine = require('../src/main/optifine');
 const C = require('../src/main/constants');
 
 test('4 profils : Forge 1.8.9 (inchangé), Fabric 1.21.1 / 26.3 avec Fabric Loader 0.19.5, puis Forge 1.7.10', () => {
@@ -22,7 +23,10 @@ test('4 profils : Forge 1.8.9 (inchangé), Fabric 1.21.1 / 26.3 avec Fabric Load
   assert.equal(forge.name, 'ATTACK Client');
   assert.equal(forge.gameDirName, '.attack');
   assert.equal(forge.pack, 'forge-1.8.9', 'le profil 1.8.9 a lui aussi un pack de mods');
-  assert.equal(forge.optifine, true, 'et l’OptiFine du joueur');
+  // et l'OptiFine du joueur : sa spec par version (une seule source, la table SPECS d'optifine.js)
+  assert.deepEqual(forge.optifine, { mc: '1.8.9', edition: 'HD_U_M5', tweak: 'optifine.OptiFineForgeTweaker' });
+  assert.equal(forge.optifine, optifine.forVersion('1.8.9'), 'le catalogue reprend la spec telle quelle');
+  assert.equal(catalog.hasOptifine(forge), true);
 
   for (const mc of ['1.21.1', '26.3']) {
     const p = catalog.get(`fabric-${mc}`);
@@ -41,7 +45,7 @@ test('4 profils : Forge 1.8.9 (inchangé), Fabric 1.21.1 / 26.3 avec Fabric Load
   }
 });
 
-test('profil Forge 1.7.10 : Forge 10.13.4.1614, Java 8, jar attack-forge-<version>+mc1.7.10.jar, ni pack ni OptiFine', () => {
+test('profil Forge 1.7.10 : Forge 10.13.4.1614, Java 8, jar attack-forge-<version>+mc1.7.10.jar, sans pack, avec l’OptiFine du joueur (HD U E7, mod 1.1.0 au moins)', () => {
   const p = catalog.get('forge-1.7.10');
   assert.equal(p.label, '1.7.10');
   assert.equal(p.name, 'ATTACK 1.7.10');
@@ -54,7 +58,10 @@ test('profil Forge 1.7.10 : Forge 10.13.4.1614, Java 8, jar attack-forge-<versio
   assert.equal(p.gameDirName, '.attack/profiles/forge-1.7.10');
   assert.equal(p.modFile, 'attack-forge.jar');
   assert.equal(p.pack, null, 'pas de pack de mods en v1');
-  assert.equal(Boolean(p.optifine), false, 'ni OptiFine');
+  // OptiFine : copie du joueur, spec propre à la 1.7.10 (jar HD_U_E7), centralisée dans optifine.js
+  assert.deepEqual(p.optifine, { mc: '1.7.10', edition: 'HD_U_E7', tweak: 'optifine.OptiFineForgeTweaker', minMod: '1.1.0' });
+  assert.equal(p.optifine, optifine.forVersion('1.7.10'));
+  assert.equal(catalog.hasOptifine(p), true);
   assert.equal(catalog.hasPack(p), false);
   assert.equal(catalog.hasPack(catalog.get('forge-1.8.9')), true);
   assert.deepEqual(p.attackJar, {
@@ -220,9 +227,14 @@ test('vue pour l’interface : ni fonction ni expression régulière', () => {
   assert.equal(catalog.view(catalog.get('fabric-1.21.1')).hasPack, true);
   assert.equal(catalog.view(catalog.get('forge-1.8.9')).hasPack, true);
   assert.equal(catalog.view(catalog.get('forge-1.8.9')).hasOptifine, true);
-  assert.equal(catalog.view(catalog.get('fabric-1.21.1')).hasOptifine, false, 'OptiFine : profil 1.8.9 seulement');
+  assert.equal(catalog.view(catalog.get('fabric-1.21.1')).hasOptifine, false, 'OptiFine : profils Forge seulement');
+  assert.equal(catalog.view(catalog.get('fabric-1.21.1')).optifine, null);
+  // la vue donne la spec en données pures (copie : la page ne peut pas modifier la table)
+  assert.deepEqual(catalog.view(catalog.get('forge-1.8.9')).optifine, { mc: '1.8.9', edition: 'HD_U_M5', tweak: 'optifine.OptiFineForgeTweaker' });
+  assert.deepEqual(catalog.view(catalog.get('forge-1.7.10')).optifine, { mc: '1.7.10', edition: 'HD_U_E7', tweak: 'optifine.OptiFineForgeTweaker', minMod: '1.1.0' });
+  assert.notEqual(catalog.view(catalog.get('forge-1.7.10')).optifine, catalog.get('forge-1.7.10').optifine);
   assert.equal(catalog.view(catalog.get('forge-1.7.10')).hasPack, false);
-  assert.equal(catalog.view(catalog.get('forge-1.7.10')).hasOptifine, false);
+  assert.equal(catalog.view(catalog.get('forge-1.7.10')).hasOptifine, true);
   assert.equal(catalog.view(catalog.get('forge-1.7.10')).loaderType, 'forge');
   assert.equal(catalog.view(catalog.get('forge-1.7.10')).jarGlob, 'attack-forge-*+mc1.7.10.jar');
   assert.equal(catalog.hasOptifine(catalog.get('fabric-26.3')), false);

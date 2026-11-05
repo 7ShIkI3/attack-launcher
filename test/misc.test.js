@@ -141,6 +141,17 @@ test('état d’installation sur un dossier vide', async () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+test('version minimale du mod (OptiFine) : olderThan compare en semver, une version illisible n’est jamais « trop ancienne »', () => {
+  assert.equal(mod.olderThan('1.0.0', '1.1.0'), true);
+  assert.equal(mod.olderThan('1.0.9', '1.1.0'), true);
+  assert.equal(mod.olderThan('1.1.0-beta.1', '1.1.0'), true, 'une préversion passe avant la version finale');
+  assert.equal(mod.olderThan('1.1.0', '1.1.0'), false);
+  assert.equal(mod.olderThan('1.1.1', '1.1.0'), false);
+  assert.equal(mod.olderThan('2.0.0', '1.1.0'), false);
+  assert.equal(mod.olderThan('1.10.0', '1.9.0'), false, 'comparaison numérique, pas alphabétique');
+  for (const unreadable of [null, undefined, '', 'dev', 'v?']) assert.equal(mod.olderThan(unreadable, '1.1.0'), false, String(unreadable));
+});
+
 test('version du mod affichée : celle du jar, sans « v » en double', async () => {
   const url = 'https://github.com/7ShIkI3/attack-launcher/releases/download/v0.3.0/attack-client-2.1.0.jar';
   assert.equal(mod.installedVersion({ source: 'release', version: 'v0.3.0', file: url }), '2.1.0');

@@ -4,12 +4,16 @@
 // Le dossier doit contenir .minecraft et le dossier de jeu du profil (voir scripts/install-test.js). Installe le
 // runtime Java officiel du profil (Java 8, 21 ou 25) dans <dossier>/runtime, lance le jeu et attend l'écran titre dans
 // le journal. Sans --keep, le jeu est fermé ensuite.
+// Quand un OptiFine de la version du profil est dans mods (profils Forge 1.8.9 et 1.7.10), le journal doit aussi montrer que Forge a
+// chargé son tweaker : « Loading tweaker <TweakClass de la spec> » (TweakClass lu dans la spec d'optifine.js, optifine.OptiFineForgeTweaker
+// en 1.8.9 comme en 1.7.10). Sans cette ligne, OptiFine est dans mods mais n'est pas chargé : échec.
 const fs = require('node:fs');
 const path = require('node:path');
 const { installRuntime } = require('../src/main/runtime');
 const { launchGame, javaComponent } = require('../src/main/game');
 const { offlineUuid } = require('../src/main/accounts');
 const catalog = require('../src/main/catalog');
+const optifine = require('../src/main/optifine');
 const { gameDirFor } = require('./install-test');
 
 // Forge : fin du chargement de Forge (le 1er « Sound engine started » arrive avant l'écran titre).
@@ -22,11 +26,41 @@ const FABRIC_ATTACK_LISTED = /^\s*-\s+attack\s+\S+/m;
 // Forge écrit un faux « Crash Report » (Loading screen debug info) au démarrage : on cherche le vrai marqueur.
 const CRASH = /#@!@# Game crashed!|Exception in thread "main"|Could not find or load main class|Incompatible mod set|Incompatible mods found|Mod resolution failed|Mod discovery failed/;
 
-/** Analyse le journal du jeu : { ready, mods, attack } ; ready = écran titre atteint. */
-function readLog(log, profile) {
+/** Ligne que Forge écrit quand il charge le tweaker d'un jar de mods (« Loading tweaker optifine.OptiFineForgeTweaker from OptiFine_…jar »). */
+function tweakerLine(tweak) {
+  return new RegExp(`Loading tweaker ${String(tweak).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w.])`);
+}
+
+/**
+ * OptiFine posé dans le dossier mods d'un profil : { name, tweak } (nom du jar, TweakClass attendu d'après la spec de sa version), ou null
+ * (profil sans OptiFine, ou aucun jar OptiFine de cette version dans mods).
+ */
+function optifineInMods(gameDir, profile) {
+  if (!catalog.hasOptifine(profile)) return null;
+  let names = [];
+  try {
+    names = fs.readdirSync(path.join(gameDir, 'mods'));
+  } catch {
+    return null;
+  }
+  const name = names.find((n) => /\.jar$/i.test(n) && optifine.nameMatches(n, profile.mc));
+  return name ? { name, tweak: optifine.forVersion(profile.mc).tweak } : null;
+}
+
+/**
+ * Analyse le journal du jeu : { ready, mods, attack, tweaker } ; ready = écran titre atteint ; tweaker = le tweaker d'OptiFine a été chargé
+ * (null quand `options.tweak` n'est pas donné : aucun OptiFine attendu).
+ */
+function readLog(log, profile, options = {}) {
   if (profile.loader.type === 'forge') {
     const loaded = FORGE_TITLE.exec(log);
-    return { ready: Boolean(loaded), mods: loaded ? Number(loaded[1]) : null, attack: /FMLFileResourcePack:ATTACK Client/.test(log), loader: 'Forge' };
+    return {
+      ready: Boolean(loaded),
+      mods: loaded ? Number(loaded[1]) : null,
+      attack: /FMLFileResourcePack:ATTACK Client/.test(log),
+      tweaker: options.tweak ? tweakerLine(options.tweak).test(log) : null,
+      loader: 'Forge',
+    };
   }
   const loaded = FABRIC_LOADED.exec(log);
   return {
@@ -50,6 +84,8 @@ async function main() {
   const gameDir = gameDirFor(root, profile);
   const versionId = profile.loader.versionId;
   if (!fs.existsSync(path.join(minecraftDir, 'versions', versionId))) throw new Error('Installation de test introuvable');
+  const withOptifine = optifineInMods(gameDir, profile);
+  if (withOptifine) console.log(`OptiFine dans mods (${withOptifine.name}) : le journal doit montrer « Loading tweaker ${withOptifine.tweak} »`);
 
   const component = await javaComponent(minecraftDir, versionId);
   console.log(`Profil ${profile.id} : runtime Java ${component} officiel…`);
@@ -78,13 +114,18 @@ async function main() {
   for (;;) {
     await new Promise((r) => setTimeout(r, 1000));
     const log = fs.readFileSync(logFile, 'utf8');
-    const state = readLog(log, profile);
+    const state = readLog(log, profile, { tweak: withOptifine?.tweak });
     if (state.ready) {
       console.log(`ÉCRAN TITRE atteint en ${((Date.now() - started) / 1000).toFixed(1)} s (${state.loader} : ${state.mods} mods chargés, ` +
-        `ATTACK ${state.attack ? 'chargé' : 'ABSENT'})`);
+        `ATTACK ${state.attack ? 'chargé' : 'ABSENT'}${withOptifine ? `, tweaker d'OptiFine ${state.tweaker ? 'chargé' : 'ABSENT'}` : ''})`);
       if (!state.attack) {
         stop();
         throw new Error('ATTACK ne figure pas parmi les mods chargés');
+      }
+      if (withOptifine && !state.tweaker) {
+        stop();
+        throw new Error(`OptiFine (${withOptifine.name}) est dans mods mais « Loading tweaker ${withOptifine.tweak} » est absent du journal ` +
+          `(TweakClass lu dans la spec d'optifine.js)`);
       }
       break;
     }
@@ -111,4 +152,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { readLog };
+module.exports = { readLog, tweakerLine, optifineInMods };

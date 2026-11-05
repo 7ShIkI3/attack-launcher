@@ -32,14 +32,16 @@ ta place :
 - **Tout s'installe en un clic (INSTALLER)** : Minecraft, le chargeur de mods, le pack de mods du profil et le mod ATTACK
   Client, dans un dossier de jeu séparé de ton `.minecraft`. Chaque fichier téléchargé est vérifié par son empreinte (hash).
 - **Un pack de mods par profil, réglable** : trois profils ont un pack figé (Phosphor Legacy et Client Side Sounds en
-  1.8.9 ; Fabric API, Sodium, Lithium et d'autres en 1.21.1 et 26.3) ; le profil 1.7.10 n'a ni pack ni OptiFine, seulement le
-  mod ATTACK 1.7.10 (tout le contenu du mod 1.8.9, sauf OptiFine). Des groupes s'activent ou se coupent dans les
+  1.8.9 ; Fabric API, Sodium, Lithium et d'autres en 1.21.1 et 26.3) ; le profil 1.7.10 n'a pas de pack : le mod ATTACK
+  1.7.10 (tout le contenu du mod 1.8.9) et, si tu en as une, ta copie d'OptiFine. Des groupes s'activent ou se coupent dans les
   Réglages : **Mods PvP (latence)** et **Packs OptiFine** (activés par défaut, profils Fabric), **Replay Mod** (coupé, les
   trois profils) et **Shaders (Iris)** (coupé, profils Fabric). Ils s'appliquent à la prochaine installation.
-- **OptiFine en 1.8.9, avec ta propre copie** : le launcher repère l'OptiFine que tu as téléchargé (ou celui que tu
-  choisis), le valide, puis le copie dans le dossier `mods` du profil. Il ne le télécharge jamais. Un **assistant**
-  (« Obtenir OptiFine ») ouvre optifine.net dans ton navigateur, surveille ton dossier Téléchargements, vérifie le fichier
-  dès qu'il est complet et en garde une copie privée.
+- **OptiFine en 1.8.9 et en 1.7.10, avec ta propre copie** : le launcher repère l'OptiFine que tu as téléchargé (ou celui que
+  tu choisis), le valide pour la version du profil (HD U M5 en 1.8.9, HD U E7 en 1.7.10), puis le copie dans le dossier `mods`
+  du profil. Il ne le télécharge jamais. Un **assistant** par profil (« Obtenir OptiFine ») ouvre optifine.net dans ton
+  navigateur, surveille ton dossier Téléchargements, vérifie le fichier dès qu'il est complet et en garde une copie privée ;
+  un OptiFine d'une autre version de Minecraft est signalé, jamais importé. En 1.7.10, OptiFine demande le mod ATTACK 1.7.10
+  1.1.0 ou plus : l'installation le met à jour.
 - **Connexion Microsoft par code d'appareil** (le launcher ne voit jamais ton mot de passe). Avec un compte connecté,
   **JOUER** lance directement le jeu, avec le Java officiel de Mojang adapté au profil (Java 8, 21 ou 25) ; sans compte, il
   ouvre le launcher Minecraft officiel sur le profil ATTACK choisi.
@@ -55,10 +57,10 @@ ta place :
 | **1.8.9** (profil « ATTACK Client », inchangé) | 1.8.9 | Forge 11.15.1.2318 | 8 | Phosphor Legacy, Client Side Sounds, et OptiFine (ta copie) | `%APPDATA%\.attack` |
 | **1.21.1** (profil « ATTACK 1.21.1 ») | 1.21.1 | Fabric Loader 0.19.5 | 21 | Fabric API, Sodium, Lithium… et les groupes réglables | `%APPDATA%\.attack\profiles\fabric-1.21.1` |
 | **26.3** (profil « ATTACK 26.3 ») | 26.3 | Fabric Loader 0.19.5 | 25 | Fabric API, Sodium, Lithium… et les groupes réglables | `%APPDATA%\.attack\profiles\fabric-26.3` |
-| **1.7.10** (profil « ATTACK 1.7.10 ») | 1.7.10 | Forge 10.13.4.1614 | 8 | aucun (le mod ATTACK 1.7.10 seul, sans OptiFine) | `%APPDATA%\.attack\profiles\forge-1.7.10` |
+| **1.7.10** (profil « ATTACK 1.7.10 ») | 1.7.10 | Forge 10.13.4.1614 | 8 | aucun (le mod ATTACK 1.7.10, et OptiFine : ta copie) | `%APPDATA%\.attack\profiles\forge-1.7.10` |
 
 Les profils sont indépendants : chacun a son dossier de jeu, son état d'installation et ses réglages (dossier de jeu,
-Java, arguments Java, groupes du pack, OptiFine en 1.8.9). Le profil 1.8.9 garde son identifiant officiel (« ATTACK
+Java, arguments Java, groupes du pack, OptiFine en 1.8.9 et 1.7.10). Le profil 1.8.9 garde son identifiant officiel (« ATTACK
 Client ») et son dossier de jeu : un joueur qui l'utilisait déjà ne perd rien.
 
 ## Captures
@@ -102,7 +104,7 @@ Les captures du launcher (0.7.0) montrent un compte factice (« Joueur ») avec 
 5. Pour régler le pack de mods, va dans **Réglages**, onglet **Ce profil** (ou clique sur **Régler** sur l'accueil) :
    active ou coupe **Mods PvP (latence)**, **Packs OptiFine**, **Replay Mod** et **Shaders (Iris)**. Un réglage du pack
    s'applique à la prochaine installation : un bandeau « À appliquer » propose **Installer maintenant**.
-6. En 1.8.9, si tu as déjà OptiFine, le launcher le trouve tout seul ; sinon, **Obtenir OptiFine** (l'assistant) ou
+6. En 1.8.9 et en 1.7.10, si tu as déjà OptiFine, le launcher le trouve tout seul ; sinon, **Obtenir OptiFine** (l'assistant) ou
    **Choisir le fichier…** dans la carte OptiFine, en Réglages ou sur la page Mods (voir la FAQ ci-dessous).
 
 ## Questions fréquentes
@@ -117,14 +119,21 @@ Get-FileHash .\ATTACK-Launcher-Setup-x.y.z.exe -Algorithm SHA256
 ```
 
 **OptiFine est-il inclus ?** Non : sa licence interdit de le redistribuer, donc le launcher **ne le télécharge jamais**. En
-1.8.9, il utilise **ta copie**, que tu récupères toi-même sur [optifine.net](https://optifine.net/downloads). Il la cherche dans
+1.8.9 et en 1.7.10, il utilise **ta copie** (OptiFine HD U M5 en 1.8.9, HD U E7 en 1.7.10), que tu récupères toi-même sur
+[optifine.net](https://optifine.net/downloads). Il la cherche dans
 `.minecraft\libraries\optifine` puis dans `.minecraft\mods`, ou tu choisis le fichier avec **Choisir le fichier…** ; il la
 valide, puis la copie dans le dossier `mods` du profil. Si le launcher n'en trouve aucune, le jeu marche sans OptiFine et
-**Obtenir OptiFine** lance l'assistant : il ouvre optifine.net dans ton navigateur (clique sur « (Mirror) », puis « Download »,
-puis « Conserver » si le navigateur le demande), repère le fichier dans Téléchargements, le vérifie et le range. Un fichier
-déjà présent est seulement proposé, jamais importé sans ton clic. Le lien « Pourquoi ? » explique en trois points pourquoi
-le launcher ne le télécharge pas lui-même. En 1.21.1 et 26.3, le groupe **Packs OptiFine** (Continuity, Entity Texture
-Features, Entity Model Features) lit les packs de ressources au format OptiFine sans OptiFine.
+**Obtenir OptiFine** lance l'assistant du profil : il ouvre optifine.net dans ton navigateur (clique sur « Show all versions »
+sous la liste des versions récentes, cherche la section « Minecraft 1.7.10 » ou « Minecraft 1.8.9 », clique sur « (Mirror) » à
+côté de la première ligne, puis sur « Download » et « Conserver » si le navigateur le demande), repère le fichier dans
+Téléchargements, le vérifie et le range. Un fichier déjà présent est seulement proposé, jamais importé sans ton clic. Un
+OptiFine d'une autre version de Minecraft est signalé, jamais importé. Une autre édition que celle testée avec ATTACK Client
+est acceptée, mais signalée « non testée ». En 1.7.10, OptiFine demande le mod ATTACK 1.7.10 1.1.0 ou plus : l'installation
+le met à jour. Avec HD U E7 (la seule édition 1.7.10 essayée en jeu), le mod met la touche de zoom d'OptiFine sur « Aucune » en
+jeu tant que son Zoom (touche C) est activé : `options.txt` garde ton choix, et aucun vrai clavier n'est simulé par les essais. Les
+limites mesurées sont dans le wiki [Installation et mises à jour](docs/wiki/Installation-et-mises-a-jour.md). Le lien « Pourquoi ? » explique en trois points pourquoi le launcher ne le télécharge pas lui-même. En 1.21.1
+et 26.3, le groupe **Packs OptiFine** (Continuity, Entity Texture Features, Entity Model Features) lit les packs de
+ressources au format OptiFine sans OptiFine.
 
 **Les mods PvP sont-ils autorisés sur mon serveur ?** Ça dépend du serveur : lis ses règles. Sur les profils Fabric, le
 groupe **Mods PvP (latence)** (Crystal Optimizer, Anchor Optimizer, WalksyLib, BetterHitReg, Complete Shield Fixes) est activé
@@ -151,7 +160,7 @@ flowchart LR
   L -->|"fichiers du jeu, Forge, Fabric"| D[("Mojang, Forge Maven,<br>Fabric meta et Maven")]
   L -->|"pack de mods figé"| O[("CDN de Modrinth")]
   L -->|"jar du mod, mises à jour"| R[("GitHub<br>releases du launcher")]
-  F["Ta copie d'OptiFine<br>sur ton PC (1.8.9)"] -->|"lue, validée,<br>copiée dans mods"| L
+  F["Ta copie d'OptiFine<br>sur ton PC (1.8.9, 1.7.10)"] -->|"lue, validée,<br>copiée dans mods"| L
   C -->|"capes, ailes"| A["API ATTACK<br>cosmétiques"]
   A -->|"vérifie le compte"| M
   C -->|"liste des droits"| G[("GitHub<br>cosmetics.json")]
@@ -165,16 +174,19 @@ flowchart LR
   Forge chez Maven Forge (1.8.9 et 1.7.10 ; l'installateur Forge est lu comme une archive, jamais exécuté) ou Fabric Loader 0.19.5
   (profil publié par `meta.fabricmc.net`, validé strictement, bibliothèques de `maven.fabricmc.net`). Il ajoute ensuite le
   **pack de mods figé** du profil, **pour les trois profils qui en ont un** (adresses `cdn.modrinth.com` écrites dans le dépôt,
-  vérifiées par SHA-512 : le launcher n'appelle jamais l'API Modrinth), puis, en 1.8.9, la copie d'OptiFine du joueur, et enfin
+  vérifiées par SHA-512 : le launcher n'appelle jamais l'API Modrinth), puis, en 1.8.9 et en 1.7.10, la copie d'OptiFine du joueur, et enfin
   le jar du mod dans la dernière release GitHub de ce dépôt (cherché **avant** le téléchargement de Minecraft : sans jar pour le
   profil, l'installation s'arrête tout de suite). Chaque fichier téléchargé est vérifié par son hash.
 - **Groupes du pack** : Mods PvP, Packs OptiFine, Replay Mod et Shaders (Iris) s'activent par profil. Un jar posé par le
   launcher qui sort du pack (groupe coupé, version changée) est retiré à l'installation suivante ; les jars que tu ajoutes
   toi-même dans `mods` ne sont jamais touchés.
-- **OptiFine (1.8.9)** : le launcher ne fait que **copier** ton OptiFine, après l'avoir validé (archive ZIP lisible,
-  manifeste d'OptiFine pour Forge, nom contenant 1.8.9). L'assistant (`src/main/optifine-watch.js`, sans accès réseau) sonde
-  ton dossier Téléchargements chaque seconde pendant 10 minutes au plus (noms `OptiFine_1.8.9_…jar` seulement, suffixe « (1) »
-  du navigateur toléré) et garde une copie privée du jar dans `%APPDATA%\ATTACK Launcher\optifine`. La copie est suivie dans l'état d'installation : quand tu coupes le
+- **OptiFine (1.8.9 et 1.7.10)** : le launcher ne fait que **copier** ton OptiFine, après l'avoir validé (archive ZIP lisible,
+  manifeste d'OptiFine pour Forge, nom contenant la version du profil). La table de specs d'`src/main/optifine.js` dit, par
+  version de Minecraft, l'édition testée (HD U M5, HD U E7) et, en 1.7.10, la version minimale du mod (1.1.0). Chaque profil a
+  son assistant (`src/main/optifine-watch.js` et `optifine-assist.js`, sans accès réseau) : il sonde ton dossier Téléchargements
+  chaque seconde pendant 10 minutes au plus (noms `OptiFine_<version>_…jar` de sa version seulement, suffixe « (1) »
+  du navigateur toléré ; celui d'une autre version est signalé, jamais importé) et garde une copie privée du jar dans
+  `%APPDATA%\ATTACK Launcher\optifine`. La copie est suivie dans l'état d'installation : quand tu coupes le
   réglage, seule la copie du launcher est retirée (jamais un OptiFine que tu as mis toi-même dans `mods`) ; si ta copie
   d'origine disparaît, le jar déjà copié reste dans `mods` et le profil reste prêt.
 - **Langue de départ** : la langue du launcher est écrite dans `options.txt` seulement quand le launcher crée ce fichier
@@ -204,7 +216,7 @@ vérifiée dans le code ; les références `fichier:ligne` sont dans
 | Jeton Minecraft | **Mémoire du launcher seulement**, jamais écrit sur disque ; envoyé aux services Minecraft (profil, skin) et passé au jeu au lancement ; masqué dans les journaux | Lancer le jeu, lire ou changer le skin | Le temps que le launcher tourne |
 | Pseudo, UUID, skin (image et modèle de bras) | Lus chez Mojang (`api.minecraftservices.com`, `textures.minecraft.net`) ; copie dans `accounts.json` (en clair, sans jeton) | Afficher ton compte et ton skin en 3D | Jusqu'à **Déconnecter** |
 | Skin PNG que tu choisis | Lu sur ton disque, gardé en mémoire ; envoyé à Mojang **seulement** si tu cliques « Appliquer ce skin » | Changer de skin | Jusqu'à l'envoi ou l'abandon |
-| Copie d'OptiFine 1.8.9 (le `.jar` que tu as récupéré) | Lue sur ton disque (`.minecraft\libraries\optifine`, `.minecraft\mods` ou le fichier que tu choisis), validée, puis copiée dans le dossier `mods` du profil 1.8.9 ; **jamais envoyée**. Le launcher ne fait aucune requête vers optifine.net : le site s'ouvre dans ton navigateur seulement si tu cliques. L'assistant ne lit que la liste des fichiers de ton dossier Téléchargements, pendant 10 minutes au plus, et ne retient que les jars nommés OptiFine 1.8.9 (copie privée dans `%APPDATA%\ATTACK Launcher\optifine`) | Que les packs de ressources retrouvent textures connectées, ciel et mobs | Tant que le réglage OptiFine est actif ; coupé, la copie du launcher est retirée à l'installation suivante |
+| Copie d'OptiFine 1.8.9 ou 1.7.10 (le `.jar` que tu as récupéré) | Lue sur ton disque (`.minecraft\libraries\optifine`, `.minecraft\mods` ou le fichier que tu choisis), validée pour la version du profil, puis copiée dans le dossier `mods` de ce profil ; **jamais envoyée**. Le launcher ne fait aucune requête vers optifine.net : le site s'ouvre dans ton navigateur seulement si tu cliques. L'assistant ne lit que la liste des fichiers de ton dossier Téléchargements, pendant 10 minutes au plus, et ne retient que les jars nommés OptiFine pour la version du profil (copie privée dans `%APPDATA%\ATTACK Launcher\optifine`) | Que les packs de ressources retrouvent textures connectées, ciel et mobs | Tant que le réglage OptiFine est actif ; coupé, la copie du launcher est retirée à l'installation suivante |
 | Requêtes de téléchargement (adresse IP, en-tête `User-Agent: ATTACK-Launcher (+URL du dépôt)`) | Mojang, Maven Forge, Fabric (`meta.fabricmc.net`, `maven.fabricmc.net`), CDN de Modrinth, GitHub, Microsoft : les serveurs qui reçoivent toute requête voient ton IP | Installer le jeu, se connecter, se mettre à jour | Selon ces services (non vérifié) |
 | Vérification des mises à jour | GitHub (releases de ce dépôt), au démarrage puis toutes les 6 h, sans jeton ni identifiant | Savoir si une version plus récente existe | Selon GitHub (non vérifié) |
 | Réglages (mémoire, profil choisi, langue, mode développeur, ID client Azure ; par profil : dossier de jeu, Java, arguments Java, dossier des jars de test, groupes du pack — Mods PvP, Packs OptiFine, Replay Mod, Shaders — et OptiFine avec le chemin du fichier choisi, `optifineJar`) | `settings.json` sur ton PC, jamais envoyés | Garder tes choix | Jusqu'à suppression du fichier |
@@ -219,7 +231,7 @@ CDN de Modrinth (fichiers figés) et de GitHub sont autorisées.
 **Dans le jeu, pas dans le launcher** : WalksyLib (mod PvP du pack Fabric) interroge `api.modrinth.com` au démarrage du jeu
 pour chercher des mises à jour. Le launcher écrit une fois sa configuration de départ pour couper cette vérification, seulement
 si ce fichier n'existe pas ; tu peux la rallumer dans les réglages de WalksyLib. Mod Menu et Crystal Optimizer ont chacun leur
-propre vérification de mises à jour, laissée telle quelle.
+propre vérification de mises à jour, laissée telle quelle. OptiFine, si tu l'utilises, vérifie lui-même sa version au démarrage du jeu (son journal affiche « Checking for new version » puis « Version found ») : c'est une connexion d'OptiFine, ni du launcher ni du mod ATTACK Client. Relevé avec OptiFine HD U E7 en 1.7.10 ; le serveur contacté n'a pas été relevé, et rien n'a été mesuré pour les autres éditions.
 
 **Refuser ou effacer** : n'ajoute aucun compte (JOUER passe alors par le launcher officiel) ; clique
 **Déconnecter** pour effacer un compte et son jeton chiffré ; désinstalle le launcher et supprime `%APPDATA%\ATTACK Launcher`,
@@ -271,7 +283,7 @@ Toutes les commandes, les scripts de test réels et la procédure de publication
 | [Sommaire](docs/wiki/Home.md) | Point d'entrée du wiki |
 | [Architecture](docs/wiki/Architecture.md) | Processus principal, page, IPC, schémas, organisation du code |
 | [Fonctionnalités](docs/wiki/Fonctionnalites.md) | Les quatre pages du launcher, profils, réglages, mode développeur, profil officiel |
-| [Installation et mises à jour](docs/wiki/Installation-et-mises-a-jour.md) | Ce qui est installé et où pour chaque profil, pack de mods et ses groupes, OptiFine en 1.8.9, vérification des hash, mises à jour automatiques |
+| [Installation et mises à jour](docs/wiki/Installation-et-mises-a-jour.md) | Ce qui est installé et où pour chaque profil, pack de mods et ses groupes, OptiFine en 1.8.9 et 1.7.10, vérification des hash, mises à jour automatiques |
 | [Comptes et skin](docs/wiki/Comptes-et-skin.md) | Connexion Microsoft, stockage des jetons, skin 3D |
 | [Vie privée et sécurité](docs/wiki/Vie-privee-et-securite.md) | Version détaillée, avec références dans le code |
 | [Développement](docs/wiki/Developpement.md) | Commandes npm, tests, captures d'écran, site web |

@@ -9,10 +9,14 @@
 //            développeur. C'est l'essai « jars exacts à publier » de la procédure (voir Publier-une-version). Sans --release.
 // --shaders  installe aussi Iris (réglage « Shaders » des profils Fabric)
 // --replay   installe aussi Replay Mod (réglage « Replay Mod », coupé par défaut)
-// --optifine profil 1.8.9 : copie ce jar OptiFine (le vôtre) dans <dossier>/.minecraft/libraries/optifine avant l'installation,
-//            comme le ferait l'installateur d'OptiFine : le launcher doit le trouver, le valider et le copier dans mods
+// --optifine profils 1.8.9 et 1.7.10 : copie ce jar OptiFine (le vôtre, celui de la version du profil) dans
+//            <dossier>/.minecraft/libraries/optifine avant l'installation, comme le ferait l'installateur d'OptiFine : le launcher doit le
+//            trouver, le valider (nom, TweakClass de la spec du profil) et le copier dans mods. Refusé : un profil sans OptiFine (Fabric),
+//            un dossier hors du dossier temporaire du système, un jar sous .lunarclient, un jar qui n'est pas celui de la version du profil.
 // --cycle    Fabric : après l'installation, coupe puis réactive les shaders et vérifie qu'Iris est retiré / remis,
-//            qu'un jar ajouté à la main n'est jamais touché
+//            qu'un jar ajouté à la main n'est jamais touché. Avec --optifine : coupe puis réactive OptiFine (copie retirée puis remise,
+//            identique à l'original), un OptiFine déposé par le joueur dans mods remplace la copie du launcher et reste intact, un
+//            OptiFine de l'autre version dans la même racine .minecraft n'est jamais copié, un jar du joueur n'est jamais touché
 // Sans --release ni --tag, le jar du mod vient du build local. Si le profil Fabric ou le profil 1.7.10 n'a pas encore de jar compilé,
 // un JAR FACTICE (mod « attack » vide, créé dans le dossier de test) permet d'essayer tout le reste de la chaîne : c'est dit clairement.
 // Le jar factice du profil 1.8.9 n'existe pas : son mod est compilé.
@@ -32,6 +36,7 @@ const { hashFile } = require('../src/main/http');
 const { GITHUB_REPO } = require('../src/main/constants');
 const { defaultDevJarDir } = require('../src/main/paths');
 const mod = require('../src/main/mod');
+const optifine = require('../src/main/optifine');
 const { findDevJar } = mod;
 const { KNOT_CLIENT } = require('../src/main/fabric');
 const { makeZip } = require('../test/helpers');
@@ -186,15 +191,43 @@ async function verifyForgeLibraries({ profile, minecraftDir, loaderJson, check, 
 }
 
 /**
+ * SHA-256 attendu d'un jar de release, d'après TOUTES les sources que la release publie : le digest GitHub (absent d'un brouillon), le
+ * fichier « <jar>.sha256 » joint (le launcher le lit quand GitHub ne donne pas de digest) et la ligne de SHA256SUMS. Plusieurs sources =
+ * elles doivent dire la même chose ; une source jointe mais illisible, ou une release sans aucune source, est refusée.
+ * `asset` : mod.parseRelease() ; `sidecars` : { "<jar>.sha256": texte } (readRelease). Renvoie { sha256, sources: [libellés] }.
+ */
+function expectedSha256({ release, asset, sumsText, sidecars }) {
+  const found = [];
+  if (asset.sha256) found.push(['digest GitHub', asset.sha256]);
+  const sidecar = `${asset.name}.sha256`;
+  if (release.assets.some((a) => a.name === sidecar)) {
+    const text = sidecars?.[sidecar];
+    if (text === undefined) throw new Error(`${sidecar} est joint à la release ${release.tag_name} mais n'a pas pu être lu : jar refusé`);
+    found.push([sidecar, mod.sha256For(text, asset.name)]);
+  }
+  if (sumsText !== undefined) {
+    try {
+      found.push([releaseCheck.SUMS_NAME, mod.sha256For(sumsText, asset.name)]);
+    } catch (error) {
+      if (found.length === 0) throw error; // aucune autre source : le jar n'a pas de somme
+    }
+  }
+  if (found.length === 0) throw new Error(`Aucun SHA-256 connu pour ${asset.name} dans la release ${release.tag_name} : jar refusé`);
+  if (new Set(found.map(([, hash]) => hash)).size > 1) {
+    throw new Error(`SHA-256 incohérents pour ${asset.name} dans la release ${release.tag_name} : ${found.map(([label, hash]) => `${label} ${hash.slice(0, 12)}…`).join(', ')} : jar refusé`);
+  }
+  return { sha256: found[0][1], sources: found.map(([label]) => label) };
+}
+
+/**
  * Jar ATTACK EXACT d'une release précise (brouillon compris), téléchargé avec `gh` dans `dir` et vérifié par son SHA-256 (digest GitHub,
- * sinon la ligne de SHA256SUMS). Le jar est celui que mod.parseRelease() désigne pour ce profil, comme le ferait le launcher.
- * `run` : exécuteur de gh (injectable pour les essais). Renvoie { file, name, sha256, tag, draft }.
+ * fichier <jar>.sha256 et ligne de SHA256SUMS : voir expectedSha256). Le jar est celui que mod.parseRelease() désigne pour ce profil,
+ * comme le ferait le launcher. `run` : exécuteur de gh (injectable pour les essais). Renvoie { file, name, sha256, sources, tag, draft }.
  */
 function fetchTagJar({ tag, profile, dir, repo = GITHUB_REPO, run = releaseCheck.runGh }) {
-  const { release, sumsText } = releaseCheck.readRelease({ tag, repo, run });
+  const { release, sumsText, sidecars } = releaseCheck.readRelease({ tag, repo, run });
   const asset = mod.parseRelease(release, profile);
-  const sha256 = asset.sha256 || (sumsText === undefined ? null : mod.sha256For(sumsText, asset.name));
-  if (!sha256) throw new Error(`Aucun SHA-256 connu pour ${asset.name} dans la release ${release.tag_name} : jar refusé`);
+  const { sha256, sources } = expectedSha256({ release, asset, sumsText, sidecars });
   fs.mkdirSync(dir, { recursive: true });
   run(['release', 'download', release.tag_name, '--repo', repo, '--pattern', asset.name, '--dir', dir, '--clobber']);
   const file = path.join(dir, asset.name);
@@ -204,7 +237,152 @@ function fetchTagJar({ tag, profile, dir, repo = GITHUB_REPO, run = releaseCheck
     fs.rmSync(file, { force: true });
     throw new Error(`SHA-256 incorrect pour ${asset.name} (reçu ${actual}, attendu ${sha256}) : jar supprimé`);
   }
-  return { file, name: asset.name, sha256, tag: release.tag_name, draft: release.draft };
+  return { file, name: asset.name, sha256, sources, tag: release.tag_name, draft: release.draft };
+}
+
+/** `child` est-il STRICTEMENT dans `parent` ? (chemins résolus, casse ignorée sous Windows) */
+function isInside(child, parent) {
+  const relative = path.relative(path.resolve(parent), path.resolve(child));
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+/** Chemin réel (liens et noms courts résolus) du plus proche ancêtre existant, suivi du reste : marche aussi pour un dossier à créer. */
+function realish(target) {
+  const resolved = path.resolve(target);
+  try {
+    return fs.realpathSync.native(resolved);
+  } catch {
+    const parent = path.dirname(resolved);
+    return parent === resolved ? resolved : path.join(realish(parent), path.basename(resolved));
+  }
+}
+
+/**
+ * Refus de `--optifine` (les mêmes règles que le selftest du mod ATTACK) avant d'écrire quoi que ce soit : le profil doit avoir OptiFine,
+ * la racine d'essai doit être sous le dossier temporaire du système, le jar ne doit pas venir du cache de Lunar (.lunarclient), et il doit
+ * être valide pour la version de Minecraft du profil (nom, archive, TweakClass de la spec). Renvoie le résultat de optifine.validate.
+ */
+async function checkOptifineArgs({ profile, root, source, tmp = os.tmpdir() }) {
+  if (!catalog.hasOptifine(profile)) {
+    const withOptifine = catalog.list().filter((p) => catalog.hasOptifine(p)).map((p) => p.id).join(', ');
+    throw new Error(`Refus : --optifine ne s'applique pas au profil ${profile.id}, qui n'a pas OptiFine (profils avec OptiFine : ${withOptifine})`);
+  }
+  if (!isInside(root, tmp) || !isInside(realish(root), realish(tmp))) {
+    throw new Error(`Refus : avec --optifine la racine d'essai doit être sous le dossier temporaire du système (${tmp}), pas ${root}`);
+  }
+  const lunar = /(^|[\\/])\.lunarclient([\\/]|$)/i;
+  if (lunar.test(path.resolve(source)) || lunar.test(realish(source))) {
+    throw new Error('Refus : le jar OptiFine ne doit pas venir du cache de Lunar Client (.lunarclient)');
+  }
+  const checked = await optifine.validate(path.resolve(source), profile.mc);
+  if (!checked.ok) throw new Error(`Refus : --optifine ${path.basename(source)} n'est pas un OptiFine ${profile.mc} valide (${checked.reason}) : ${checked.message}`);
+  return checked;
+}
+
+/**
+ * Cycle OptiFine (--cycle avec --optifine), sur une installation déjà faite :
+ *   1. OptiFine coupé  : la copie du launcher part de mods et de l'état, l'original (libraries) et un jar du joueur restent intacts ;
+ *   2. OptiFine remis  : la copie revient, identique à l'original, seul OptiFine de cette version dans mods (celui de l'autre version,
+ *      posé en décor dans la même racine .minecraft, n'est ni copié ni supprimé) ;
+ *   3. le joueur dépose SON OptiFine dans mods : la copie du launcher part, le sien reste octet pour octet ; retiré, la copie revient.
+ * `run(réglages)` rejoue l'installation (renvoie son résumé, avec `optifine.action`) ; `check` et `fail` signalent les écarts.
+ * Les fichiers de décor et le faux jar du joueur sont retirés à la fin. Renvoie le résumé à afficher.
+ */
+async function optifineCycle({ profile, gameDir, minecraftDir, source, run, settings, check, fail }) {
+  const mc = profile.mc;
+  const mods = path.join(gameDir, 'mods');
+  const sourceHash = await hashFile(source, 'sha256');
+  const optifineJars = () => fs.readdirSync(mods).filter((name) => /optifine/i.test(name));
+  const tracked = () => JSON.parse(fs.readFileSync(path.join(gameDir, 'attack-launcher.json'), 'utf8')).optifine;
+  const expectAction = (label, summary, wanted) => {
+    if (summary.optifine?.action !== wanted) fail(`cycle OptiFine (${label}) : action ${JSON.stringify(summary.optifine?.action)} au lieu de ${wanted}`);
+  };
+  const soleCopy = async (label) => {
+    const jars = optifineJars();
+    if (jars.length !== 1 || !optifine.nameMatches(jars[0], mc)) {
+      fail(`cycle OptiFine (${label}) : mods contient ${JSON.stringify(jars)} au lieu du seul OptiFine ${mc}`);
+      return null;
+    }
+    return jars[0];
+  };
+
+  const mine = path.join(mods, 'mon-mod-perso-of.jar'); // un jar du joueur : jamais touché
+  fs.writeFileSync(mine, 'jar du joueur');
+  // décor : l'OptiFine de l'autre version dans la même racine .minecraft (deux profils OptiFine, un seul .minecraft)
+  const decor = [];
+  for (const other of Object.values(optifine.SPECS).filter((spec) => spec.mc !== mc)) {
+    const dir = path.join(minecraftDir, 'libraries', 'optifine', 'OptiFine', `${other.mc}_${other.edition}`);
+    if (fs.existsSync(dir)) continue; // un vrai OptiFine de l'autre version : on n'y touche pas
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, `OptiFine-${other.mc}_${other.edition}.jar`), makeZip({
+      'META-INF/MANIFEST.MF': `Manifest-Version: 1.0\r\nTweakClass: ${other.tweak}\r\n\r\n`, 'optifine/OptiFineForgeTweaker.class': 'décor',
+    }));
+    decor.push(dir);
+  }
+  const intact = async (label) => {
+    if (!fs.existsSync(mine)) fail(`cycle OptiFine (${label}) : le jar du joueur a été supprimé`);
+    await check(source, 'sha256', sourceHash, `cycle OptiFine (${label}) : l'original d'OptiFine`);
+    for (const dir of decor) if (!fs.existsSync(dir)) fail(`cycle OptiFine (${label}) : le décor de l'autre version a été supprimé`);
+  };
+
+  try {
+    // 1. coupé
+    expectAction('coupé', await run({ ...settings, optifine: false }), 'removed');
+    if (optifineJars().length > 0) fail(`cycle OptiFine (coupé) : mods contient encore ${JSON.stringify(optifineJars())}`);
+    if (tracked() !== undefined) fail('cycle OptiFine (coupé) : la copie est encore suivie dans l\'état');
+    await intact('coupé');
+    // 2. remis
+    expectAction('réactivé', await run({ ...settings, optifine: true }), 'copied');
+    const copyName = await soleCopy('réactivé');
+    if (copyName) await check(path.join(mods, copyName), 'sha256', sourceHash, 'cycle OptiFine : la copie remise est identique à l\'original');
+    await intact('réactivé');
+    // 3. le joueur dépose le sien
+    const own = path.join(mods, `OptiFine_${mc}_HD_U_Z9.jar`);
+    fs.copyFileSync(source, own);
+    expectAction('jar du joueur', await run(settings), 'removed');
+    if (JSON.stringify(optifineJars()) !== JSON.stringify([path.basename(own)])) fail(`cycle OptiFine (jar du joueur) : mods contient ${JSON.stringify(optifineJars())}`);
+    await check(own, 'sha256', sourceHash, 'cycle OptiFine : le jar OptiFine du joueur est intact');
+    await intact('jar du joueur');
+    fs.rmSync(own, { force: true });
+    expectAction('jar du joueur retiré', await run(settings), 'copied');
+    await soleCopy('jar du joueur retiré');
+  } finally {
+    fs.rmSync(mine, { force: true }); // faux jar : retiré, sinon Forge refuserait de démarrer le dossier de test
+    for (const dir of decor) fs.rmSync(dir, { recursive: true, force: true });
+  }
+  return `cycle OptiFine ${mc} OK (copie retirée puis remise, jar OptiFine et mod du joueur intacts, OptiFine de l'autre version ignoré)`;
+}
+
+/**
+ * Verdict sur le status() final d'une installation de test : { note, failure } (au plus l'un des deux).
+ *   - installé : correct (un `modOutdated` encore vrai serait incohérent) ;
+ *   - pas installé alors que tout le reste est en place, parce qu'OptiFine est actif et que le mod ATTACK installé est plus ancien que
+ *     `minMod` de la spec : toléré UNIQUEMENT avec le jar factice (version 0.0.0, il n'aura jamais les adaptations pour OptiFine).
+ *     Avec le jar d'une release (--tag, --release) ou d'un vrai build, c'est un échec : un joueur qui a OptiFine ne pourrait pas jouer
+ *     (JOUER bloqué, INSTALLER sans fin), exactement ce que la preuve « OptiFine marche avec le mod publié » doit exclure ;
+ *   - toute autre raison de ne pas être installé : échec.
+ * `dummy` : le mod installé est le jar factice fabriqué par ce script.
+ */
+function judgeStatus({ status, dummy = false }) {
+  const outdated = Boolean(status.optifine?.modOutdated);
+  if (status.installed) return outdated ? { failure: 'status() : modOutdated alors que installed est vrai' } : {};
+  const restReady = status.minecraft && status.loader && status.pack !== false && status.mod && status.profile && !status.optifine?.pending;
+  if (outdated && restReady) {
+    const detail = `mod ${status.modVersion || '?'} plus ancien que ${status.optifine.minMod} avec OptiFine actif`;
+    return dummy
+      ? { note: `status : ${detail}, mise à jour du mod demandée (attendu avec le jar factice)` }
+      : { failure: `status() : ${detail} : le joueur qui a OptiFine ne pourrait pas jouer (INSTALLER sans fin). La release ou le build doit embarquer le mod ${status.optifine.minMod} au moins` };
+  }
+  return { failure: `status() incomplet : ${JSON.stringify(status)}` };
+}
+
+/** Texte affiché quand --cycle est demandé mais qu'aucun cycle ne s'applique à ce profil avec ces options. */
+function noCycleMessage(profile, optifineSource) {
+  const reasons = [];
+  if (!profile.pack || !modpack.loadPack(profile).mods.some((m) => m.optional)) reasons.push("ce profil n'a pas de mod optionnel de pack à couper (shaders)");
+  if (!catalog.hasOptifine(profile)) reasons.push("ce profil n'a pas OptiFine");
+  else if (!optifineSource) reasons.push('pas de --optifine <jar> : aucun cycle OptiFine sans jar à copier');
+  return `--cycle : rien à cycler pour le profil ${profile.id} (${reasons.join(' ; ')})`;
 }
 
 /** Options de la ligne de commande : { profile, useRelease, tag, shaders, replay, cycle, optifine, positional }. */
@@ -242,6 +420,7 @@ async function main() {
   const root = path.resolve(positional[0] || path.join(os.tmpdir(), `attack-install-test-${Date.now()}`));
   const real = path.resolve(process.env.APPDATA || '', '.minecraft');
   if (root.toLowerCase().startsWith(real.toLowerCase())) throw new Error('Refus : ce test ne doit pas toucher au vrai .minecraft');
+  if (optifineSource) await checkOptifineArgs({ profile, root, source: optifineSource });
   const minecraftDir = path.join(root, '.minecraft');
   const gameDir = gameDirFor(root, profile);
   fs.mkdirSync(minecraftDir, { recursive: true });
@@ -273,13 +452,15 @@ async function main() {
   }
   const settings = { ramMb: 3072, gameDir, javaPath: '', lang: 'fr', devMode: !useRelease, devJarDir, shaders, replayMod: replay };
   const cycle = parsed.cycle;
+  let optifineCopy = null; // le jar déposé là où l'installateur d'OptiFine le laisse, original de la contre-vérification
   if (optifineSource) {
-    // copie du joueur déposée là où l'installateur d'OptiFine la laisse (libraries/optifine/OptiFine/1.8.9_<variante>/)
-    const variant = /1\.8\.9_([\w.+-]+?)\.jar$/i.exec(path.basename(optifineSource))?.[1] || 'HD_U_M5';
-    const libDir = path.join(minecraftDir, 'libraries', 'optifine', 'OptiFine', `1.8.9_${variant}`);
+    // copie du joueur déposée là où l'installateur d'OptiFine la laisse (libraries/optifine/OptiFine/<mc>_<variante>/)
+    const variant = optifine.versionOf(path.basename(optifineSource), profile.mc) || optifine.forVersion(profile.mc).edition;
+    const libDir = path.join(minecraftDir, 'libraries', 'optifine', 'OptiFine', `${profile.mc}_${variant}`);
     fs.mkdirSync(libDir, { recursive: true });
-    fs.copyFileSync(optifineSource, path.join(libDir, `OptiFine-1.8.9_${variant}.jar`));
-    console.log(`OptiFine du joueur (test) : ${path.join(libDir, `OptiFine-1.8.9_${variant}.jar`)}`);
+    optifineCopy = path.join(libDir, `OptiFine-${profile.mc}_${variant}.jar`);
+    fs.copyFileSync(optifineSource, optifineCopy);
+    console.log(`OptiFine ${profile.mc} du joueur (test) : ${optifineCopy}`);
   }
   const icon = `data:image/png;base64,${fs.readFileSync(path.join(__dirname, '..', 'assets', 'profile-icon.png')).toString('base64')}`;
   console.log(`Profil : ${profile.id} (Minecraft ${profile.mc}, ${profile.loader.type} ${profile.loader.version})`);
@@ -325,6 +506,7 @@ async function main() {
     await check(path.join(minecraftDir, 'libraries', artifact.path), 'sha1', artifact.sha1, artifact.path);
   }
   const extra = [];
+  let cycled = false; // un cycle (shaders ou OptiFine) a-t-il tourné ? sinon --cycle ne fait rien et il faut le dire
   if (profile.loader.type === 'forge') {
     if (loaderJson.inheritsFrom !== mc || loaderJson.mainClass !== 'net.minecraft.launchwrapper.Launch') failures.push('JSON Forge inattendu');
     extra.push(await verifyForgeLibraries({ profile, minecraftDir, loaderJson, check, fail: (message) => failures.push(message) }));
@@ -362,8 +544,9 @@ async function main() {
     if (iris && fs.existsSync(path.join(gameDir, 'mods', iris.filename)) !== shaders) failures.push(`Iris ${shaders ? 'absent' : 'présent'} alors que les shaders sont ${shaders ? 'activés' : 'coupés'}`);
     extra.push(`pack de ${wanted.length} mods (${wanted.map((m) => `${m.slug} ${m.version}`).join(', ')})`);
 
-    if (cycle) {
-      // shaders coupés puis réactivés ; un jar du joueur ne doit jamais être touché
+    if (cycle && iris) {
+      cycled = true;
+      // shaders coupés puis réactivés ; un jar du joueur ne doit jamais être touché (profils Fabric : le pack Forge 1.8.9 n'a pas de mod optionnel)
       const own = path.join(gameDir, 'mods', 'mon-mod-perso.jar');
       fs.writeFileSync(own, 'jar du joueur');
       const irisFile = path.join(gameDir, 'mods', iris.filename);
@@ -378,7 +561,7 @@ async function main() {
     }
   }
 
-  // OptiFine du joueur (1.8.9) : copié dans mods, identique à l'original, suivi dans l'état ; sans copie fournie : rien n'est copié
+  // OptiFine du joueur (1.8.9 et 1.7.10) : copié dans mods, identique à l'original, suivi dans l'état ; sans copie fournie : rien n'est copié
   if (catalog.hasOptifine(profile)) {
     const state = JSON.parse(fs.readFileSync(path.join(gameDir, 'attack-launcher.json'), 'utf8'));
     if (optifineSource) {
@@ -386,14 +569,24 @@ async function main() {
       if (!copy || !fs.existsSync(copy)) failures.push('OptiFine : copie absente de mods');
       else {
         await check(copy, 'sha256', await hashFile(optifineSource, 'sha256'), 'OptiFine copié dans mods (identique à l’original)');
-        extra.push(`OptiFine du joueur copié (${state.optifine.file}, source ${state.optifine.source})`);
+        extra.push(`OptiFine ${profile.mc} du joueur copié (${state.optifine.file}, source ${state.optifine.source})`);
       }
-      if (summary.optifine?.action !== 'copied') failures.push(`OptiFine : action inattendue (${JSON.stringify(summary.optifine)})`);
+      if (!['copied', 'kept'].includes(summary.optifine?.action)) failures.push(`OptiFine : action inattendue (${JSON.stringify(summary.optifine)})`);
+      // un seul OptiFine dans mods, celui de cette version (la racine .minecraft peut aussi porter celui de l'autre profil)
+      const jars = fs.readdirSync(path.join(gameDir, 'mods')).filter((name) => /optifine/i.test(name));
+      if (jars.length !== 1 || !optifine.nameMatches(jars[0], profile.mc)) failures.push(`OptiFine : mods contient ${JSON.stringify(jars)} au lieu du seul OptiFine ${profile.mc}`);
+      if (cycle) cycled = true;
+      if (cycle) extra.push(await optifineCycle({ profile, gameDir, minecraftDir, source: optifineCopy, run, settings, check, fail: (message) => failures.push(message) }));
     } else if (state.optifine || fs.readdirSync(path.join(gameDir, 'mods')).some((f) => /optifine/i.test(f))) {
       failures.push('OptiFine : un jar a été copié alors que le joueur n’en a pas fourni');
     } else {
       extra.push('aucun OptiFine fourni : rien copié, rien téléchargé');
     }
+  }
+  if (cycle && !cycled) {
+    const notice = noCycleMessage(profile, optifineSource);
+    console.log(notice);
+    extra.push(notice);
   }
   // options.txt : langue du launcher écrite (fr_FR en 1.8.9, fr_fr en Fabric)
   const optionsText = fs.existsSync(path.join(gameDir, 'options.txt')) ? fs.readFileSync(path.join(gameDir, 'options.txt'), 'latin1') : '';
@@ -432,7 +625,9 @@ async function main() {
   if (!fs.existsSync(`${profilesFile}.bak`)) failures.push('sauvegarde .bak absente');
 
   const status = await installer.status({ minecraftDir, gameDir, profile, shaders: cycle ? true : shaders, replayMod: replay });
-  if (!status.installed) failures.push(`status() incomplet : ${JSON.stringify(status)}`);
+  const verdict = judgeStatus({ status, dummy });
+  if (verdict.note) extra.push(verdict.note);
+  if (verdict.failure) failures.push(verdict.failure);
 
   console.log(`Vérifié : client.jar, ${vanillaLibs.length} fichiers de bibliothèques Mojang, ${objects.length} assets, ` +
     `${extra.join(', ')}, mod ${profile.modFile} (${summary.mod.source} ${summary.mod.version}${dummy ? ', JAR FACTICE' : ''}, ` +
@@ -452,5 +647,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  gameDirFor, makeDummyFabricJar, makeDummyForgeJar, makeDummyJar, allowsDummyJar, dummyModClass, forgeLibraryExpectations, verifyForgeLibraries, fetchTagJar, parseArgs,
+  gameDirFor, makeDummyFabricJar, makeDummyForgeJar, makeDummyJar, allowsDummyJar, dummyModClass, forgeLibraryExpectations, verifyForgeLibraries, expectedSha256, fetchTagJar,
+  parseArgs, isInside, checkOptifineArgs, optifineCycle, judgeStatus, noCycleMessage,
 };

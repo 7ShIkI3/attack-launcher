@@ -8,7 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const catalog = require('./catalog');
 const { GITHUB_LATEST_RELEASE, GITHUB_RELEASES } = require('./constants');
-const { parseVersion } = require('./updates');
+const { parseVersion, isNewer } = require('./updates');
 
 const EXCLUDED = /-(sources|javadoc|dev|deobf)\.jar$/i;
 const SHA256 = /\b([0-9a-f]{64})\b/i;
@@ -143,6 +143,14 @@ function versionFromJarName(name, profileOrId) {
   return catalog.jarRule(resolveProfile(profileOrId)).version(name) || 'dev';
 }
 
+/**
+ * `version` est-elle strictement plus ancienne que `min` ? Faux quand l'une des deux est illisible (« dev », absente) : une version
+ * inconnue n'est pas déclarée trop ancienne. Sert à la version minimale du mod ATTACK compatible avec OptiFine (spec d'optifine.js).
+ */
+function olderThan(version, min) {
+  return isNewer(min, version);
+}
+
 /** Dernier segment d'un chemin ou d'une URL, décodé : GitHub écrit le « + » du nom d'un jar Fabric en %2B. */
 function lastSegment(file) {
   const segment = String(file || '').split(/[\\/]/).pop();
@@ -170,5 +178,5 @@ function installedVersion(info) {
 }
 
 module.exports = {
-  EXCLUDED, parseSha256File, isPrereleaseVersion, fetchRelease, parseRelease, sha256For, auditJarNames, findDevJar, versionFromJarName, installedVersion,
+  EXCLUDED, parseSha256File, isPrereleaseVersion, fetchRelease, parseRelease, sha256For, auditJarNames, findDevJar, versionFromJarName, installedVersion, olderThan,
 };

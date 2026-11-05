@@ -12,7 +12,7 @@ flowchart TD
   B --> C["npm run dist"]
   C --> D["dist : Setup.exe, .blockmap,<br>latest.yml, Portable.exe"]
   D --> E["Créer le BROUILLON de la release au tag vX.Y.Z<br>avec tous les fichiers joints :<br>Setup, blockmap, latest.yml, Portable,<br>les 4 jars du mod, SHA256SUMS"]
-  E --> K["npm run check-release -- vX.Y.Z<br>(chaque profil trouve son jar,<br>SHA256SUMS a une ligne par jar)"]
+  E --> K["npm run check-release -- vX.Y.Z<br>(chaque profil trouve son jar,<br>jar 1.7.10 au moins à la version minimale,<br>SHA256SUMS a une ligne par jar)"]
   K --> J["install-test --tag vX.Y.Z<br>sur chaque profil : jars exacts,<br>mode développeur"]
   J --> F["Publier la release<br>(ni brouillon, ni préversion)"]
   F --> S["Le workflow Pages relit la release<br>et redéploie le site"]
@@ -44,6 +44,13 @@ flowchart TD
    lit la dernière release publiée). Le script applique à chaque profil du catalogue la même fonction que le launcher
    (`mod.parseRelease`) et vérifie que :
    - chaque profil trouve **son** jar, avec un SHA-256 (champ `digest` de GitHub, ou ligne de `SHA256SUMS`) ;
+   - **point bloquant** : le jar d'un profil avec OptiFine n'est pas plus ancien que la version minimale (`minMod`) de sa spec dans
+     `src/main/optifine.js` (1.1.0 pour la 1.7.10). Une release qui garde le mod 1.0.0 enfermerait dans la boucle INSTALLER tous les
+     joueurs qui ont OptiFine 1.7.10 : le launcher bloque JOUER tant que le mod installé est plus ancien. Le jar 1.7.10 de la release
+     doit donc être le mod publié et vérifié avec OptiFine, jamais un jar resté en 1.0.0 ;
+   - **point bloquant** : pour ce même jar, `--measured forge-1.7.10=<SHA-256>` (le « Jar testé » de `docs/COMPAT.md` du mod) : le jar de la
+     release doit avoir **exactement** ce hash. Un jar reconstruit après les essais a un autre SHA-256 (autre horodatage, autre commit) :
+     « mesuré / 213 OK / 0 pixel » porterait sur un autre binaire. Sans `--measured`, le script avertit sans refuser ;
    - aucun jar n'est reconnu par deux profils, et aucun profil n'en reconnaît deux. Un jar mal nommé est signalé comme
      dangereux : `attack-client-1710-1.0.0.jar` (le nom que Gradle donne par défaut au mod 1.7.10) est reconnu par la règle large du
      profil 1.8.9 (`attack-client*.jar`) et serait installé à sa place ;
@@ -58,6 +65,11 @@ flowchart TD
    chacun des 4 profils (`forge-1.8.9`, `forge-1.7.10`, `fabric-1.21.1`, `fabric-26.3`). `gh` lit la release (brouillon compris :
    l'API publique ne le montre pas), télécharge le jar du profil, vérifie son SHA-256 puis l'installe en **mode développeur** ; tous
    les hash sont ensuite recontrôlés. Ce sont les octets que les joueurs recevront, essayés avant que la release soit publique.
+   Pour la 1.7.10, ajoute la **variante OptiFine** : `npm run install-test -- "$env:TEMP\of17" --profile forge-1.7.10 --tag v<version> --optifine <OptiFine_1.7.10_HD_U_E7.jar>`
+   (votre copie d'OptiFine, copiée sous le dossier temporaire ; jamais téléchargée par le launcher ; avec `--optifine`, le dossier d'essai doit être sous `%TEMP%`, le script refuse tout autre emplacement),
+   avec `--cycle` pour le cycle OptiFine. Le script **échoue** si le jar de la release est plus ancien que `minMod` (le contrôle final voit alors `installé = faux`) :
+   seul le jar factice, version 0.0.0, y est toléré. Puis
+   `npm run launch-test -- <dossier> --profile forge-1.7.10` : le critère « Loading tweaker optifine.OptiFineForgeTweaker » doit être vu.
    Puis **publie** le brouillon (ni brouillon, ni préversion).
 4. **Chaque** release doit contenir `latest.yml` et le `Setup.exe` qu'il désigne (avec son `.blockmap`), **même une release
    qui ne change que le mod** (joins alors à nouveau ceux de la version actuelle du launcher) : les launchers lisent la
@@ -87,7 +99,7 @@ flowchart TD
 - `npm run update-test -- <dossier>` valide la chaîne de mise à jour sur une version de test (sans GitHub) ;
 - `npm run install-test -- <dossier> --release` installe avec le vrai jar de la dernière release et recontrôle tous les hash.
   Fais-le sur les **4 profils** : sans option pour la 1.8.9, puis `--profile forge-1.7.10`, `--profile fabric-1.21.1` et
-  `--profile fabric-26.3` ([Développement](Developpement.md)). Chaque profil prend son jar : c'est la preuve que le contrôle
+  `--profile fabric-26.3` ([Développement](Developpement.md)), plus la variante `--profile forge-1.7.10 --optifine <jar>` (OptiFine 1.7.10 avec le mod publié ; `<dossier>` sous `%TEMP%`, comme pour `--tag`). Chaque profil prend son jar : c'est la preuve que le contrôle
   du brouillon (étape 3 bis) disait vrai ;
 - `npm run check-release` (sans tag) relit la release publiée : la même sortie « OK » qu'avant la publication ;
 - `node scripts/resolve-pack.js --check` compare les packs figés avec ce que Modrinth publie aujourd'hui.
@@ -129,6 +141,38 @@ Le mod Forge 1.8.9 est construit dans le dépôt `attack-client`, le mod Fabric 
 de Minecraft, `versions/<mc>/build/libs`), le mod 1.7.10 dans `attack-forge-1710` (`build/libs`). Comme le launcher réinstalle le mod à chaque installation ou réparation, un
 joueur reçoit une nouvelle version du mod en cliquant sur « Vérifier / réparer l'installation ». Tant qu'aucune release du
 mod n'existe, le mode développeur permet de copier un jar local ([Fonctionnalités](Fonctionnalites.md#mode-développeur)).
+
+### OptiFine 1.7.10 : le mod d'abord, des points bloquants
+
+Le profil 1.7.10 demande, avec OptiFine, une version minimale du mod ATTACK (`minMod`, **1.1.0**, table `SPECS` de
+`src/main/optifine.js`) : tant que le mod installé est plus ancien, `status()` renvoie `installed = faux` et JOUER reste bloqué
+sur INSTALLER. Le mod passe donc **avant** le launcher, dans cet ordre :
+
+1. le mod 1.1.0 est publié et **vérifié en jeu avec OptiFine HD U E7** (neutralisation du zoom, module Animations, passes Fast Render et shaders ; le mod les a mesurées sur le jar E7 de Raphaël, voir « Mesures » dans `docs/COMPAT.md` du mod : `selftest` 47 OK dans 4 modes, `modtest` 196 OK en référence et 213 OK avec E7, `screentest` 148 OK en référence et 149 OK avec E7). **Ces chiffres valent pour un jar précis** : son SHA-256 doit être écrit dans `docs/COMPAT.md` du mod (« Jar testé ») et être celui du jar mis dans la release ;
+2. le jar `attack-forge-1.1.0+mc1.7.10.jar` entre dans la release du launcher (jamais un jar resté en 1.0.0) ;
+3. les notes de version sont relues, puis la branche du launcher est fusionnée et la release publiée.
+
+Points **bloquants** avant de fusionner ou de publier un launcher qui porte cette spec :
+
+- **Le jar 1.7.10 de la release est au moins en `minMod`.** `npm run check-release` refuse la release sinon (erreur par profil), et
+  `install-test --profile forge-1.7.10 --tag v<version> --optifine <jar>` (ou `--release`) échoue au contrôle final. Seul le jar
+  factice, version 0.0.0, est toléré par ce dernier.
+- **Chaque affirmation des notes est relue contre ce qui a été mesuré** : entrées « Launcher 0.8.2 » et « ATTACK Client 1.7.10 1.1.0 »
+  de `src/renderer/data.js`, « Éditions testées avec ATTACK Client » dans `site/i18n.js`, README et wiki
+  [Installation et mises à jour](Installation-et-mises-a-jour.md). En particulier : la touche de zoom d'OptiFine (Ctrl gauche par défaut, jamais C) sur « Aucune » tant
+  que le Zoom ATTACK (touche C) est actif, « pour éviter un double zoom » (le but, jamais un résultat : que cela coupe le zoom d'OptiFine n'est **pas** mesuré) ; Animations « mêmes poses avec et sans OptiFine » (écart 0, mesuré) ; « édition testée HD U E7 » ; une autre édition n'a ni le garde de zoom ni le correctif des shaders (la carte « non testée » du launcher le dit aussi). Ce qui n'a
+  pas été vu en jeu avec E7 est retiré ou reformulé en limite connue avant la fusion.
+- **Essai de zoom à la main (30 secondes, clavier réel, E7)** : fenêtre du jeu active, module Zoom d'ATTACK allumé, maintenir **C** (le champ
+  de vision doit être ÷ 4, pas ÷ 16), puis relâcher et maintenir **Ctrl gauche** (OptiFine ne doit pas zoomer). Écris le résultat dans
+  `docs/COMPAT.md` du mod, avec le SHA-256 du jar essayé. Tant que cet essai n'est pas consigné, les textes gardent « n'est pas mesuré »
+  (ils le disent aujourd'hui) ; s'il montre que Ctrl zoome encore, la neutralisation ne sert à rien en 1.7.10 : corriger le mod et les textes
+  avant de publier.
+- **Dates des notes** : les entrées « Launcher 0.8.2 » et « ATTACK Client 1.7.10 1.1.0 » de `src/renderer/data.js` portent la date des
+  mesures, pas celle de la publication. Au moment de publier, mets-y le jour de la publication (`date`), puis les deux assertions qui la
+  figent : `test/renderer.test.js` (liste des six premières entrées) et `test/site.test.js` (actualités : `5 novembre 2026`, `November 5, 2026`,
+  `datetime="2026-11-05"`). Chaque entrée est affichée telle quelle dans les actualités du site : au plus 1 100 caractères (un test le garde),
+  le détail va dans le wiki.
+
 
 ## Mettre à jour un pack de mods
 

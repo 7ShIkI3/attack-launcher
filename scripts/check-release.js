@@ -1,20 +1,29 @@
 'use strict';
 // Contrôle d'une release GitHub AVANT de la publier (ou après) : chaque profil du catalogue y trouve-t-il SON jar ?
-//   node scripts/check-release.js [<tag>] [--repo <proprio/dépôt>] [--file <release.json>] [--sums <SHA256SUMS>]
+//   node scripts/check-release.js [<tag>] [--repo <proprio/dépôt>] [--file <release.json>] [--sums <SHA256SUMS>] [--measured <profil>=<sha256>]
 //   npm run check-release -- v0.8.0
 // <tag>     release à contrôler, brouillon compris : lue avec `gh release view <tag> --json tagName,isDraft,isPrerelease,assets`
 //           (gh doit être connecté à GitHub). Sans tag : la dernière release publiée.
 // --repo    dépôt de la release (7ShIkI3/attack-launcher par défaut).
 // --file    au lieu de gh : un fichier JSON, sortie de `gh release view --json …` ou réponse de l'API GitHub (essais, hors ligne). Un champ
-//           « sha256sums » (texte) peut y tenir lieu de SHA256SUMS.
+//           « sha256sums » (texte) peut y tenir lieu de SHA256SUMS, un champ « sha256files » ({ "<jar>.sha256": texte }) de ses fichiers <jar>.sha256.
 // --sums    fichier SHA256SUMS déjà téléchargé ; sans lui, SHA256SUMS est lu dans la release (`gh release download --output -`).
+// --measured  (répétable) le SHA-256 du jar d'un profil tel qu'il a été ESSAYÉ en jeu, recopié de « Jar testé » dans docs/COMPAT.md du mod :
+//           le jar de la release doit avoir exactement ce hash (voir le contrôle 5).
 // Contrôles (la moindre erreur = code de sortie 1) :
 //   1. mod.parseRelease() trouve un jar pour CHAQUE profil du catalogue, avec un SHA-256 (digest GitHub ou fichier de sommes) ;
+//   1b. pour un profil avec OptiFine, la version de son jar n'est pas plus ancienne que `minMod` de sa spec (src/main/optifine.js) :
+//      le launcher de CET arbre bloque la partie tant que le mod installé est plus ancien (une release plus ancienne, en 1.0.0, échoue donc) ;
 //   2. aucun jar n'est reconnu par deux profils, aucun profil n'en reconnaît deux, aucun nom n'a une « version » douteuse
 //      (attack-client-1710-1.0.0.jar serait pris pour le mod 1.8.9 par la règle large attack-client*.jar), aucun jar attack* n'est orphelin ;
-//   3. SHA256SUMS existe et a UNE ligne par jar de profil (« <sha256>  <nom exact> »), cohérente avec le digest GitHub.
+//   3. SHA256SUMS existe et a UNE ligne par jar de profil (« <sha256>  <nom exact> »), cohérente avec le digest GitHub ;
+//   4. quand une release joint un fichier « <jar>.sha256 » (le launcher le lit à la place du digest GitHub, absent d'un brouillon), il
+//      doit donner le même SHA-256 que SHA256SUMS (et que le digest s'il y en a un) : un seul hash pour un jar, quelle que soit la source.
+//   5. pour un profil dont la spec OptiFine a un `minMod` (la 1.7.10), le jar de la release a le SHA-256 donné par `--measured` : c'est le
+//      jar mesuré avec OptiFine, pas un jar reconstruit après coup (sans `--measured`, un avertissement le rappelle).
 // Les fichiers du launcher (Setup, blockmap, latest.yml, Portable) manquants sont signalés en avertissement.
-// Ce script ne publie ni ne modifie rien ; il ne télécharge que SHA256SUMS (quelques centaines d'octets), et seulement avec `gh`.
+// Ce script ne publie ni ne modifie rien ; il ne télécharge que SHA256SUMS et les fichiers <jar>.sha256 (quelques centaines d'octets), et
+// seulement avec `gh`.
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
 const catalog = require('../src/main/catalog');
@@ -38,6 +47,7 @@ function normalizeRelease(raw) {
     draft: Boolean(raw.draft ?? raw.isDraft),
     prerelease: Boolean(raw.prerelease ?? raw.isPrerelease),
     sha256sums: typeof raw.sha256sums === 'string' ? raw.sha256sums : undefined,
+    sha256files: raw.sha256files && typeof raw.sha256files === 'object' ? raw.sha256files : undefined,
     assets: raw.assets.filter((a) => a && typeof a.name === 'string').map((a) => ({
       name: a.name,
       size: a.size,
@@ -67,11 +77,17 @@ function parseSums(text) {
   return { byName, bad };
 }
 
+/** Nom du fichier de somme d'un jar de release. */
+const sidecarName = (jarName) => `${jarName}.sha256`;
+
 /**
- * Applique tous les contrôles. `release` : sortie de normalizeRelease ; `sumsText` : contenu de SHA256SUMS (undefined = absent ou illisible).
+ * Applique tous les contrôles. `release` : sortie de normalizeRelease ; `sumsText` : contenu de SHA256SUMS (undefined = absent ou illisible) ;
+ * `sidecars` : contenu des fichiers « <jar>.sha256 » joints à la release, { nom du fichier : texte } (une entrée absente ou undefined =
+ * fichier joint mais illisible) ; sans cet argument (undefined), ces fichiers ne sont pas contrôlés (release lue dans un fichier JSON).
+ * `measured` : { id de profil : SHA-256 du jar essayé en jeu } (contrôle 5).
  * Renvoie { tag, draft, prerelease, files, profiles: [{ id, jar, version, size, sha256 }], errors, warnings }.
  */
-function checkRelease(release, sumsText) {
+function checkRelease(release, sumsText, sidecars = release.sha256files, { measured = {} } = {}) {
   const errors = [];
   const warnings = [];
   const names = release.assets.map((a) => a.name);
@@ -104,8 +120,17 @@ function checkRelease(release, sumsText) {
       continue;
     }
     jarNames.add(asset.name);
-    result.profiles.push({ id: profile.id, jar: asset.name, version: catalog.jarRule(profile).version(asset.name), size: asset.size, sha256: asset.sha256 });
+    const version = catalog.jarRule(profile).version(asset.name);
+    result.profiles.push({ id: profile.id, jar: asset.name, version, size: asset.size, sha256: asset.sha256 });
+    // OptiFine : le launcher bloque JOUER (installed = faux, bouton INSTALLER sans fin) tant que le mod installé est plus ancien que la
+    // version minimale de la spec du profil. Une release dont le jar est trop ancien enfermerait donc tous les joueurs qui ont OptiFine.
+    const minMod = profile.optifine?.minMod;
+    if (minMod && mod.olderThan(version, minMod)) {
+      errors.push(`Profil ${profile.id} : « ${asset.name} » est en version ${version}, plus ancienne que ${minMod}, la version minimale du mod avec OptiFine ${profile.mc} : `
+        + `tout joueur qui a OptiFine resterait bloqué sur INSTALLER. Publie le mod ${minMod} (ou plus) dans cette release.`);
+    }
   }
+  const digests = new Map(result.profiles.map((entry) => [entry.jar, entry.sha256])); // hash annoncé par GitHub, avant que SHA256SUMS ne complète
 
   // 3. SHA256SUMS : une ligne par jar de profil, cohérente avec le digest GitHub
   if (!release.assets.some((a) => a.name === SUMS_NAME)) {
@@ -126,6 +151,53 @@ function checkRelease(release, sumsText) {
     }
     for (const name of sums.byName.keys()) {
       if (/\.jar$/i.test(name) && !jarNames.has(name)) warnings.push(`${SUMS_NAME} a une ligne pour « ${name} », qui n'est le jar d'aucun profil de cette release.`);
+    }
+  }
+
+  // 4. <jar>.sha256 : quand la release en joint un, c'est celui que le launcher lit sans digest GitHub (un brouillon n'en a pas) ; il doit
+  // dire la même chose que SHA256SUMS (et que le digest s'il existe), sinon le launcher et ce contrôle n'ont pas le même hash
+  for (const entry of sidecars === undefined ? [] : result.profiles) {
+    const name = sidecarName(entry.jar);
+    if (!release.assets.some((a) => a.name === name)) continue;
+    const text = sidecars[name];
+    if (text === undefined) {
+      errors.push(`${name} est joint à la release mais son contenu n'a pas pu être lu : sa cohérence avec ${SUMS_NAME} n'est pas vérifiée.`);
+      continue;
+    }
+    let hash;
+    try {
+      hash = mod.sha256For(text, entry.jar);
+    } catch {
+      errors.push(`${name} n'a pas de SHA-256 lisible pour « ${entry.jar} ».`);
+      continue;
+    }
+    const digest = digests.get(entry.jar);
+    if (digest && digest !== hash) errors.push(`${name} et le digest GitHub de « ${entry.jar} » ne sont pas le même SHA-256 (${hash.slice(0, 12)}… contre ${digest.slice(0, 12)}…).`);
+    const listed = sumsText === undefined ? [] : parseSums(sumsText).byName.get(entry.jar) || [];
+    if (listed.length === 1 && listed[0] !== hash) {
+      errors.push(`${name} et ${SUMS_NAME} ne sont pas le même SHA-256 pour « ${entry.jar} » (${hash.slice(0, 12)}… contre ${listed[0].slice(0, 12)}…).`);
+    }
+    if (!entry.sha256) entry.sha256 = hash;
+  }
+
+  // 5. le jar publié est celui qui a été mesuré : la phrase « vérifié en jeu avec OptiFine » des notes porte sur CE binaire. Un jar reconstruit
+  // après les essais (même source, autre horodatage ou autre commit) a un autre SHA-256 : les passes sont à rejouer avant de publier.
+  const known = new Set(catalog.list().map((p) => p.id));
+  for (const id of Object.keys(measured)) {
+    if (!known.has(id)) errors.push(`--measured : « ${id} » n'est pas un profil du catalogue (${[...known].join(', ')}).`);
+  }
+  for (const entry of result.profiles) {
+    const wanted = measured[entry.id] === undefined ? undefined : String(measured[entry.id]).toLowerCase();
+    if (wanted === undefined) {
+      if (catalog.get(entry.id).optifine?.minMod) {
+        warnings.push(`Profil ${entry.id} : aucun SHA-256 mesuré fourni (--measured ${entry.id}=<sha256>) : rien ne prouve que « ${entry.jar} » est le jar essayé avec OptiFine. `
+          + 'Recopie « Jar testé » de docs/COMPAT.md du mod.');
+      }
+    } else if (!entry.sha256) {
+      errors.push(`Profil ${entry.id} : le SHA-256 de « ${entry.jar} » est inconnu, il ne peut pas être comparé au jar mesuré.`);
+    } else if (entry.sha256 !== wanted) {
+      errors.push(`Profil ${entry.id} : « ${entry.jar} » (SHA-256 ${entry.sha256.slice(0, 12)}…) n'est pas le jar mesuré en jeu (${wanted.slice(0, 12)}…) : `
+        + 'les passes OptiFine portent sur un autre binaire. Rejoue-les sur ce jar et consigne son SHA-256 dans docs/COMPAT.md du mod, ou publie le jar mesuré.');
     }
   }
 
@@ -156,15 +228,18 @@ function runGh(args) {
 }
 
 /**
- * Release et SHA256SUMS : depuis un fichier JSON (`file`), sinon avec gh (`tag`, ou la dernière release publiée).
- * Renvoie { release, sumsText } ; sumsText est undefined si SHA256SUMS est absent ou illisible.
+ * Release, SHA256SUMS et fichiers « <jar>.sha256 » : depuis un fichier JSON (`file`), sinon avec gh (`tag`, ou la dernière release publiée).
+ * Renvoie { release, sumsText, sidecars } ; sumsText est undefined si SHA256SUMS est absent ou illisible ; sidecars = { nom du fichier :
+ * texte } avec undefined pour un fichier joint mais illisible.
  */
 function readRelease({ tag, repo = GITHUB_REPO, file, sumsFile, run = runGh } = {}) {
   let release;
   let sumsText;
+  let sidecars; // undefined : release lue dans un fichier JSON sans le texte de ses fichiers <jar>.sha256 (non contrôlés)
   if (file) {
     release = normalizeRelease(JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, '')));
     sumsText = release.sha256sums;
+    sidecars = release.sha256files;
   } else {
     const view = ['release', 'view', ...(tag ? [tag] : []), '--repo', repo, '--json', 'tagName,isDraft,isPrerelease,assets'];
     release = normalizeRelease(JSON.parse(run(view)));
@@ -175,17 +250,32 @@ function readRelease({ tag, repo = GITHUB_REPO, file, sumsFile, run = runGh } = 
         sumsText = undefined; // checkRelease le signale : SHA256SUMS est joint mais illisible
       }
     }
+    // les « <jar>.sha256 » : de quelques dizaines d'octets, lus un par un (le launcher en lit un quand GitHub ne donne pas de digest)
+    sidecars = {};
+    for (const asset of release.assets.filter((a) => /\.jar\.sha256$/i.test(a.name))) {
+      try {
+        sidecars[asset.name] = run(['release', 'download', release.tag_name, '--repo', repo, '--pattern', asset.name, '--output', '-']);
+      } catch {
+        sidecars[asset.name] = undefined; // checkRelease le signale : fichier joint mais illisible
+      }
+    }
   }
   if (sumsFile) sumsText = fs.readFileSync(sumsFile, 'utf8');
-  return { release, sumsText };
+  return { release, sumsText, sidecars };
 }
 
-/** Options de la ligne de commande : { tag, repo, file, sums }. */
+/** Options de la ligne de commande : { tag, repo, file, sums, measured: { profil : sha256 } }. */
 function parseArgs(argv) {
-  const options = { tag: null, repo: GITHUB_REPO, file: null, sums: null };
+  const options = { tag: null, repo: GITHUB_REPO, file: null, sums: null, measured: {} };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--repo' || arg === '--file' || arg === '--sums') {
+    if (arg === '--measured') {
+      const value = argv[++i];
+      const match = /^([a-z0-9][a-z0-9._-]*)=([0-9a-f]{64})$/i.exec(value || '');
+      if (!match) throw new Error('--measured attend <profil>=<sha256 en 64 caractères hexadécimaux>');
+      if (options.measured[match[1]] && options.measured[match[1]] !== match[2].toLowerCase()) throw new Error(`--measured : deux SHA-256 différents pour ${match[1]}`);
+      options.measured[match[1]] = match[2].toLowerCase();
+    } else if (arg === '--repo' || arg === '--file' || arg === '--sums') {
       const value = argv[++i];
       if (!value || value.startsWith('--')) throw new Error(`${arg} attend une valeur`);
       options[arg.slice(2)] = value;
@@ -204,8 +294,8 @@ function parseArgs(argv) {
 /** Programme : renvoie le code de sortie (0 = release correcte). `out` et `run` sont injectables pour les essais. */
 function main(argv, { out = console.log, run = runGh } = {}) {
   const options = parseArgs(argv);
-  const { release, sumsText } = readRelease({ tag: options.tag, repo: options.repo, file: options.file, sumsFile: options.sums, run });
-  const result = checkRelease(release, sumsText);
+  const { release, sumsText, sidecars } = readRelease({ tag: options.tag, repo: options.repo, file: options.file, sumsFile: options.sums, run });
+  const result = checkRelease(release, sumsText, sidecars, { measured: options.measured });
   out(format(result));
   return result.errors.length === 0 ? 0 : 1;
 }

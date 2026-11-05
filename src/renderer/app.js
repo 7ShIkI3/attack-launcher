@@ -319,7 +319,7 @@
   /** Mods du pack qui seront installés avec les réglages actuels. */
   const selectedPack = (profile) => profile.pack.filter(modSelected);
 
-  /** OptiFine du joueur (profil 1.8.9) : la copie sera-t-elle dans le jeu ? (copiée par le launcher, déjà mise là par le joueur, ou gardée dans mods alors que son origine a disparu) */
+  /** OptiFine du joueur (profils 1.8.9 et 1.7.10) : la copie sera-t-elle dans le jeu ? (copiée par le launcher, déjà mise là par le joueur, ou gardée dans mods alors que son origine a disparu) */
   function optifineInGame() {
     const of = status && status.optifine;
     return Boolean(of && ((of.enabled && of.found) || of.own || of.kept));
@@ -334,6 +334,15 @@
 
   /** Variante d'OptiFine lisible : « OptiFine HD U M5 ». */
   const optifineLabel = (of) => `OptiFine${of && of.version ? ` ${of.version.replace(/_/g, ' ')}` : ''}`;
+
+  /**
+   * Variables des textes d'OptiFine pour un profil : {mc} (version de Minecraft attendue) et {edition} (« HD U E7 », l'édition vérifiée
+   * avec le mod), lues dans la spec du catalogue (profile.optifine). Aucune version n'est écrite en dur dans les textes.
+   */
+  function optifineVars(profile) {
+    const spec = (profile && profile.optifine) || {};
+    return { mc: spec.mc || (profile && profile.mc) || '', edition: String(spec.edition || '').replace(/_/g, ' ') };
+  }
 
   // --- accueil : état, JOUER, ligne « prêt » ---
   const launchAccount = () => {
@@ -367,10 +376,16 @@
       else if (!of.found) { state = 'info'; detail = t('optifine.stateMissing'); }
       else if (of.pending) { state = 'bad'; detail = t('optifine.stateToCopy'); }
       else detail = optifineLabel(of);
+      // édition qui n'est pas celle vérifiée avec le mod : acceptée, signalée sans bloquer (information, pas travail à faire)
+      if (of.untested && !remove && state === 'ok') { state = 'info'; detail = `${detail} · ${t('optifine.untestedShort')}`; }
       rows.push({ label: 'OptiFine', state, detail, remove });
+      // OptiFine d'une autre version de Minecraft dans mods : signalé (information), le launcher n'y touche jamais
+      if (of.foreign && of.foreign.length > 0) rows.push({ label: t('optifine.foreignLabel'), state: 'info', detail: of.foreign.join(', '), remove: false });
     }
     const modDetail = status && status.modVersion ? `v${status.modVersion}${status.modSource === 'dev' ? ` · ${t('status.dev')}` : ''}` : null;
-    ok(t('status.mod'), status && status.mod, modDetail);
+    // OptiFine actif avec un mod ATTACK plus ancien que la version minimale de la spec : l'installation (qui reprend le mod) est à refaire
+    const modOutdated = Boolean(status && status.mod && status.optifine && status.optifine.modOutdated);
+    ok(t('status.mod'), status && status.mod && !modOutdated, modDetail, modOutdated ? [modDetail, t('optifine.modOutdatedShort')].filter(Boolean).join(' · ') : undefined);
     ok(t('status.profile'), status && status.profile);
     return rows;
   }
@@ -412,7 +427,7 @@
     $('ready-main').textContent = busy ? t('home.installingNow') : checking ? t('home.checking') : needs ? needsText : t('home.ready');
     let summary = '';
     if (busy || playing) summary = progressSummary(profile);
-    else if (!checking && !needs) summary = [profile.hasPack || profile.hasOptifine ? modsText(modCount(profile)) : null, status.modVersion ? t('home.clientVersion', { version: status.modVersion }) : 'ATTACK Client'].filter(Boolean).join(' · ');
+    else if (!checking && !needs) summary = [profile.hasPack || (profile.hasOptifine && modCount(profile) > 0) ? modsText(modCount(profile)) : null, status.modVersion ? t('home.clientVersion', { version: status.modVersion }) : 'ATTACK Client'].filter(Boolean).join(' · ');
     $('ready-sum').textContent = summary;
     $('ready-pop').replaceChildren(...rows.map((r) => el('div', { class: `pop-row${r.state === 'bad' ? ' bad' : r.state === 'info' ? ' info' : ''}` }, [
       el('span', { class: 'r-ico' }, [icon(r.state === 'ok' ? 'check' : 'info')]),
@@ -462,8 +477,9 @@
       [t('pc.pack'), el('dd', { text: !profile.hasPack ? t('pc.none') : status || !profile.hasOptifine ? modsText(modCount(profile)) : '…' })],
     ];
     if (isFabric(profile)) cells.push([t('pc.pvp'), el('dd', { text: settings.pvpMods !== false ? t('pc.on') : t('pc.off') })]);
-    else if (!profile.hasOptifine) cells.push([t('pc.attack'), el('dd', { text: !status ? '…' : status.modVersion ? `v${status.modVersion}` : t('pc.none') })]);
-    else cells.push(['OptiFine', el('dd', { text: !status || !status.optifine ? '…' : optifineInGame() ? (status.optifine.version ? status.optifine.version.replace(/_/g, ' ') : t('pc.onOne')) : status.optifine.enabled ? t('optifine.stateMissing') : t('pc.offOne') })]);
+    // la version du mod ATTACK reste dans le rail des profils sans pack (1.7.10), OptiFine s'y ajoute ; en 1.8.9 le rail garde sa forme
+    if (!isFabric(profile) && (!profile.hasOptifine || !profile.hasPack)) cells.push([t('pc.attack'), el('dd', { text: !status ? '…' : status.modVersion ? `v${status.modVersion}` : t('pc.none') })]);
+    if (profile.hasOptifine) cells.push(['OptiFine', el('dd', { text: !status || !status.optifine ? '…' : optifineInGame() ? (status.optifine.version ? status.optifine.version.replace(/_/g, ' ') : t('pc.onOne')) : status.optifine.enabled ? t('optifine.stateMissing') : t('pc.offOne') })]);
     $('pc-grid').replaceChildren(...cells.map(([label, value]) => el('div', {}, [el('dt', { text: label }), value])));
   }
 
@@ -492,7 +508,7 @@
 
   function errorText(result) {
     const key = `error.${result.code}`;
-    const text = t(key, { message: result.message || '' });
+    const text = t(key, { message: result.message || '', mc: result.mc || optifineVars(currentProfile()).mc });
     if (text !== key) return text;
     // messages d'erreur du processus principal : déjà rédigés en français
     return window.I18n.lang === 'fr' && result.message ? result.message : t('error.generic', { message: result.message });
@@ -686,7 +702,7 @@
   }
 
   /**
-   * Cartes de la page Mods : le mod ATTACK (avec sa version installée), l'OptiFine du joueur en 1.8.9, les mods du pack figé avec leur
+   * Cartes de la page Mods : le mod ATTACK (avec sa version installée), l'OptiFine du joueur (1.8.9 et 1.7.10), les mods du pack figé avec leur
    * version et, pour chaque mod d'un groupe réglable, son interrupteur ; en 1.8.9, les modules d'ATTACK Client (réglés en jeu).
    * `on` : true (actif), false (coupé ou absent), null (le launcher ne le sait pas : un module se règle en jeu).
    */
@@ -717,7 +733,7 @@
         wide: Boolean(of && !usable), // sans copie : la carte porte l'action (assistant) et prend deux colonnes
         stateText: of && !optifineInGame() ? (usable ? t('state.disabled') : t('optifine.badgeMissing')) : '',
         // pas d'interrupteur tant qu'aucune copie n'est utilisable : le bouton de l'assistant prend sa place
-        option: usable ? { label: t('mods.optifineOption'), checked: of.enabled, change: (value) => save({ optifine: value }), hint: t('mods.optifineHint') } : null,
+        option: usable ? { label: t('mods.optifineOption'), checked: of.enabled, change: (value) => save({ optifine: value }), hint: t('mods.optifineHint', optifineVars(profile)) } : null,
       });
     }
     for (const mod of profile.pack) {
@@ -740,13 +756,16 @@
     return items;
   }
 
-  /** Bandeau « le pack a changé » : le pack ou OptiFine attend une installation alors que le reste est en place. */
+  /** Bandeau « le pack a changé » : le pack, OptiFine ou le mod (trop ancien pour OptiFine) attend une installation alors que le reste est en place. */
   function pendingApply() {
-    return Boolean(status && status.minecraft && status.loader && status.mod && status.profile && !busy && (status.pack === false || (status.optifine && status.optifine.pending)));
+    return Boolean(status && status.minecraft && status.loader && status.mod && status.profile && !busy
+      && (status.pack === false || (status.optifine && (status.optifine.pending || status.optifine.modOutdated))));
   }
   function renderPending() {
     const on = pendingApply();
-    for (const [id, key] of [['mods-pending', 'pending.mods'], ['pack-pending', 'pending.pack']]) {
+    // seul le mod trop ancien est à mettre à jour (ni le pack ni la copie d'OptiFine ne changent) : le bandeau le dit
+    const modOnly = Boolean(status && status.pack !== false && status.optifine && status.optifine.modOutdated && !status.optifine.pending);
+    for (const [id, key] of [['mods-pending', modOnly ? 'pending.modOutdated' : 'pending.mods'], ['pack-pending', modOnly ? 'pending.modOutdated' : 'pending.pack']]) {
       const node = $(id);
       node.classList.toggle('hidden', !on);
       if (!on) continue;
@@ -767,7 +786,7 @@
     const profile = currentProfile();
     if (!profile || !settings) return;
     const fabricMode = isFabric(profile);
-    // 1.8.9 : « Mods inclus » ; Fabric et 1.7.10 : « Mods du profil <version> » (la 1.7.10 n'a ni pack ni OptiFine)
+    // 1.8.9 : « Mods inclus » ; Fabric et 1.7.10 : « Mods du profil <version> » (la 1.7.10 n'a pas de pack : seulement ATTACK Client et l'OptiFine du joueur)
     $('mods-title').textContent = fabricMode || !profile.hasPack ? t('mods.titleFabric', { label: profile.label }) : t('mods.title');
     const installed = modCount(profile);
     const off = profile.pack.length - selectedPack(profile).length;
@@ -1003,7 +1022,10 @@
 
   // --- assistant OptiFine : le joueur télécharge lui-même, le launcher repère le fichier, le vérifie et le range ---
   // (la licence d'OptiFine interdit au launcher de le récupérer à la place du joueur : il ouvre seulement optifine.net)
-  let assist = { state: 'idle', downloadsDir: '' };
+  // un état par profil (profileId -> dernier état reçu) : chaque profil a son guetteur côté processus principal (1.8.9, 1.7.10)
+  const IDLE_ASSIST = { state: 'idle', downloadsDir: '' };
+  const assists = {};
+  const currentAssist = () => assists[settings && settings.profileId] || IDLE_ASSIST;
   const ASSIST_ACTIVE = ['waiting', 'seen', 'checking'];
 
   let whyOpen = false; // « Pourquoi ? » reste ouvert quand la carte est refaite (retour sur la fenêtre, interrupteur…)
@@ -1012,7 +1034,7 @@
   function whyNode() {
     const node = el('details', { class: 'why' }, [
       el('summary', { text: t('optifine.why'), 'data-focus-key': 'assist:mods:why' }), // garde le focus quand la carte est refaite
-      el('ul', {}, [el('li', { text: t('optifine.why1') }), el('li', { text: t('optifine.why2') }), el('li', { text: t('optifine.why3') })]),
+      el('ul', {}, [el('li', { text: t('optifine.why1') }), el('li', { text: t('optifine.why2', optifineVars(currentProfile())) }), el('li', { text: t('optifine.why3') })]),
     ]);
     node.open = whyOpen;
     node.addEventListener('toggle', () => { whyOpen = node.open; });
@@ -1020,21 +1042,24 @@
   }
 
   async function assistStart(openBrowser = true) {
-    const result = await call(() => api.optifineAssist.start({ browser: openBrowser }));
+    const profileId = settings.profileId; // le profil demandé est celui d'AUJOURD'HUI, même si le joueur en change pendant l'attente
+    const result = await call(() => api.optifineAssist.start(profileId, { browser: openBrowser }));
     if (result.ok === false) {
       flashSaved(errorText(result));
       return;
     }
-    assist = result;
+    assists[profileId] = result;
     renderAssists();
     announceAssist();
   }
   async function assistUse() {
-    const result = await call(() => api.optifineAssist.use());
+    const profileId = settings.profileId;
+    const result = await call(() => api.optifineAssist.use(profileId));
     if (result.ok === false && result.code && result.code !== 'NO_FILE') flashSaved(errorText(result));
   }
   async function assistCancel() {
-    await call(() => api.optifineAssist.cancel());
+    const profileId = settings.profileId;
+    await call(() => api.optifineAssist.cancel(profileId));
   }
 
   /**
@@ -1042,7 +1067,16 @@
    * rôle (start, cancel, use, install, pick) : sa clé de focus ne dépend ni du libellé ni de la langue.
    */
   function assistModel() {
-    const a = assist;
+    const model = assistStateModel();
+    if (!model) return null;
+    // OptiFine d'une autre version arrivé dans Téléchargements pendant l'attente : jamais importé, signalé sous le texte de l'état
+    const foreign = Array.isArray(currentAssist().foreign) ? currentAssist().foreign : [];
+    if (foreign.length > 0) model.note = t('optifine.assist.foreign', { ...optifineVars(currentProfile()), n: foreign.length, names: foreign.join(', ') });
+    return model;
+  }
+  function assistStateModel() {
+    const a = currentAssist();
+    const vars = optifineVars(currentProfile()); // {mc} et {edition} du profil affiché : la version n'est jamais écrite en dur
     const dir = a.downloadsDir || '';
     const file = a.file || '';
     const button = (role, label, run, kind = '') => ({ role, label, run, kind });
@@ -1051,7 +1085,7 @@
       case 'waiting':
         return {
           title: t('optifine.assist.waitingTitle'), busy: true,
-          steps: [t('optifine.assist.step1'), t('optifine.assist.step2'), t('optifine.assist.step3', { dir })],
+          steps: [t('optifine.assist.step1', vars), t('optifine.assist.step2'), t('optifine.assist.step3', { dir })],
           actions: [button('cancel', t('optifine.assist.cancel'), assistCancel, 'ghost')],
         };
       case 'seen':
@@ -1070,12 +1104,12 @@
       case 'refused':
         return {
           title: t('optifine.assist.refusedTitle'), warn: true,
-          text: t('optifine.assist.refusedText', { file, reason: t(`error.OPTIFINE_${a.reason}`) }),
+          text: t('optifine.assist.refusedText', { file, reason: t(`error.OPTIFINE_${a.reason}`, vars) }),
           actions: [button('start', t('optifine.assist.retry'), () => assistStart(true), 'accent'), pick],
         };
       case 'timeout':
         return {
-          title: t('optifine.assist.timeoutTitle'), text: t('optifine.assist.timeoutText', { dir }),
+          title: t('optifine.assist.timeoutTitle'), text: t('optifine.assist.timeoutText', { dir, ...vars }),
           actions: [button('start', t('optifine.assist.waitMore'), () => assistStart(false), 'accent'), pick],
         };
       case 'cancelled':
@@ -1110,6 +1144,7 @@
       children.push(el('div', { class: 'assist-head' }, [el('span', { class: 'assist-dot', 'aria-hidden': 'true' }), title]));
       if (model.steps) children.push(el('ol', { class: 'assist-steps' }, model.steps.map((step) => el('li', { text: step }))));
       if (model.text) children.push(el('p', { class: 'assist-text', text: model.text }));
+      if (model.note) children.push(el('p', { class: 'assist-text assist-note', text: model.note }));
     } else {
       children.push(el('p', { class: 'assist-text', text: t('optifine.assist.idle') }));
     }
@@ -1129,7 +1164,7 @@
   /** Annonce le nouvel état aux lecteurs d'écran (une seule zone aria-live, hors de tout rendu). */
   function announceAssist() {
     const model = assistModel();
-    $('optifine-live').textContent = model ? [model.title.replace(/[….]+$/, ''), model.text || (model.steps || []).join(' ')].filter(Boolean).join('. ') : '';
+    $('optifine-live').textContent = model ? [model.title.replace(/[….]+$/, ''), model.text || (model.steps || []).join(' '), model.note].filter(Boolean).join('. ') : '';
   }
   function renderAssists() {
     const profile = currentProfile();
@@ -1138,9 +1173,10 @@
   }
 
   api.onOptifineAssist(async (state) => {
-    assist = state;
+    const owner = state.profileId || (settings && settings.profileId);
+    assists[owner] = state; // l'état est rangé sous le profil qui l'a émis
     renderAssists();
-    announceAssist();
+    if (!settings || owner === settings.profileId) announceAssist(); // l'état d'un autre profil n'est pas annoncé : il n'est pas affiché
     if (state.state === 'imported') {
       // le processus principal a rangé la copie et réglé le fichier choisi : la page relit les réglages et l'état
       settings = await api.getSettings();
@@ -1149,11 +1185,13 @@
   });
 
   const OPTIFINE_REASONS = ['NOT_JAR', 'WRONG_NAME', 'BAD_ZIP', 'NO_TWEAK', 'TOO_BIG', 'UNREADABLE'];
-  /** Carte OptiFine du profil 1.8.9 : copie trouvée ou non, interrupteur, choix du fichier, lien officiel. */
+  /** Carte OptiFine des profils qui en ont (1.8.9, 1.7.10) : copie trouvée ou non, interrupteur, choix du fichier, lien officiel. */
   function renderOptifine(profile) {
     const card = $('optifine-card');
     card.classList.toggle('hidden', !profile.hasOptifine);
     if (!profile.hasOptifine) return;
+    const vars = optifineVars(profile);
+    $('optifine-why2').textContent = t('optifine.why2', vars);
     const of = status && status.optifine;
     const badge = $('optifine-badge');
     let text;
@@ -1176,18 +1214,26 @@
     } else {
       badge.className = 'badge warn';
       badge.textContent = t('optifine.badgeMissing');
-      text = t('optifine.textMissing');
+      text = t('optifine.textMissing', vars);
     }
+    // édition non vérifiée : acceptée, signalée. Un profil à version minimale du mod (minMod : la 1.7.10) a des adaptations du mod propres à
+    // l'édition testée (zoom, shaders) : le joueur d'une autre édition doit savoir qu'il ne les a pas
+    if (of && of.untested && (of.found || of.own || of.kept)) text = `${text} ${t(of.minMod ? 'optifine.untestedNoAdapt' : 'optifine.untested', vars)}`;
     $('optifine-text').textContent = text;
     const refused = of && of.chosenError && OPTIFINE_REASONS.includes(of.chosenError);
-    $('optifine-warn').textContent = refused ? t('optifine.chosenRefused', { reason: t(`error.OPTIFINE_${of.chosenError}`) }) : '';
-    $('optifine-warn').classList.toggle('hidden', !refused);
+    const warnings = [
+      refused ? t('optifine.chosenRefused', { reason: t(`error.OPTIFINE_${of.chosenError}`, vars) }) : '',
+      of && of.modOutdated ? t('optifine.modOutdated', { ...vars, min: of.minMod }) : '',
+      of && of.foreign && of.foreign.length > 0 ? t('optifine.foreign', { n: of.foreign.length, names: of.foreign.join(', ') }) : '',
+    ].filter(Boolean);
+    $('optifine-warn').textContent = warnings.join(' ');
+    $('optifine-warn').classList.toggle('hidden', warnings.length === 0);
     $('optifine-enabled').checked = settings.optifine !== false;
     $('optifine-use-help').textContent = t('optifine.useHelp');
     $('optifine-clear').classList.toggle('hidden', !settings.optifineJar);
     // assistant : son bloc (états), et le bouton qui le lance (en rouge quand rien n'est trouvé, grisé pendant qu'il surveille)
     replaceKeepingFocus($('optifine-assist'), [assistNode('settings')].filter(Boolean));
-    const running = ASSIST_ACTIVE.includes(assist.state);
+    const running = ASSIST_ACTIVE.includes(currentAssist().state);
     if (running && document.activeElement === $('optifine-download')) {
       // le bouton qui a lancé l'assistant va être grisé : le focus passe au titre de l'assistant plutôt que de retomber sur <body>
       const head = $('optifine-assist').querySelector('[data-focus-key="assist:settings:title"]');
@@ -1279,9 +1325,10 @@
   });
   $('dev-mode').addEventListener('change', (event) => save({ devMode: event.target.checked }));
   $('optifine-enabled').addEventListener('change', (event) => save({ optifine: event.target.checked }));
-  /** « Choisir le fichier… » : le joueur désigne lui-même son OptiFine 1.8.9 (validé par le processus principal). */
+  /** « Choisir le fichier… » : le joueur désigne lui-même son OptiFine (validé par le processus principal pour la version du profil). */
   async function pickOptifine() {
-    const result = await call(() => api.pickOptifine());
+    const profileId = settings.profileId; // capturé avant la boîte de dialogue
+    const result = await call(() => api.pickOptifine(profileId));
     if (result.ok) {
       settings = await api.getSettings();
       flashSaved(null);
@@ -1306,7 +1353,7 @@
     if (!profile) return;
     $('credits-dialog-title').textContent = `${t('credits.title')} · ${profile.label}`;
     // profil sans pack (1.7.10) : pas de tableau vide, une phrase qui dit pourquoi
-    $('credits-credit').textContent = t(profile.hasPack ? 'credits.credit' : 'credits.noPack', { label: profile.label });
+    $('credits-credit').textContent = t(profile.hasPack ? 'credits.credit' : profile.hasOptifine ? 'credits.noPackOptifine' : 'credits.noPack', { label: profile.label });
     const list = $('credits-list');
     list.replaceChildren(
       ...(profile.hasPack ? [

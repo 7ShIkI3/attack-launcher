@@ -22,6 +22,11 @@ contextBridge.exposeInMainWorld('attack', {
   pickJava: invoke('dialog:pickJava'),
   openGameDir: invoke('shell:openGameDir'),
   openRepo: invoke('shell:openRepo'),
+  // OptiFine : chaque appel nomme son profil (profileId, un profil du catalogue qui a OptiFine : forge-1.8.9, forge-1.7.10), jamais
+  // « le profil affiché » ; le processus principal refuse un autre identifiant (NO_OPTIFINE).
+  //   pickOptifine(profileId)                 -> { ok, name, profileId, mc } | { ok: false, code, message?, profileId?, mc? }
+  //   optifineAssist.start(profileId, { browser }) / use(profileId) / cancel(profileId) -> { ok, profileId, mc, state, ... }
+  //   onOptifineAssist(callback)              : callback({ profileId, mc, state, downloadsDir, file?, version?, reason?, message?, foreign? })
   pickOptifine: invoke('optifine:pick'),
   openOptifine: invoke('shell:openOptifine'),
   optifineAssist: {

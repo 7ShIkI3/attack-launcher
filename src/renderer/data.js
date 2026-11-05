@@ -83,7 +83,7 @@
    * les modules de MODS que ce profil n'a pas (tous les autres sont présentés, dans l'ordre de MODS) ; `overrides` : texte propre
    * à ce profil quand celui de MODS (écrit pour la 1.8.9) y serait faux. Pas de liste « à garder » : un nouveau module de MODS
    * arrive tout seul dans ce profil, il suffit de l'exclure ici s'il n'existe pas là-bas.
-   * Le mod ATTACK 1.7.10 reprend tout le contenu du mod 1.8.9 sauf OptiFine (qui n'est pas un module de MODS). Deux modules de MODS
+   * Le mod ATTACK 1.7.10 reprend tout le contenu du mod 1.8.9 (OptiFine est le jar du joueur, pas un module de MODS). Deux modules de MODS
    * n'y existent pas : Mouse Delay Fix (sans objet, le jeu 1.7.10 vise déjà là où l'on regarde) et Titles (les titres sont une
    * fonction du 1.8, impossibles en 1.7.10). Animations : la 1.7.10 règle la position, le style et la vitesse du coup, et propose
    * plusieurs styles de blocage ; la pose 1.7 d'origine est celle du jeu. Le reste (22 polices, 37 capes, 9 ailes, 6 auréoles, 6 effets) est identique.
@@ -101,6 +101,18 @@
   };
 
   const CHANGELOG = [
+    {
+      version: 'Launcher 0.8.2', date: '2026-11-05',
+      title_fr: 'OptiFine en 1.7.10', title_en: 'OptiFine on 1.7.10', tag: 'new',
+      fr: 'Le profil 1.7.10 peut maintenant utiliser OptiFine, comme la 1.8.9, avec ta propre copie : le launcher ne la télécharge toujours pas, sa licence l’interdit. L’assistant « Obtenir OptiFine » ouvre optifine.net, repère OptiFine HD U E7 dans ton dossier Téléchargements, le vérifie et en garde une copie privée. Chaque profil a son assistant et ses réglages : un OptiFine 1.8.9 déposé pour la 1.7.10 n’est jamais pris, il est signalé. Le réglage « Utiliser OptiFine » est activé par défaut en 1.7.10, comme en 1.8.9, et ne fait rien tant que tu n’as pas de copie. Si tu as déjà un OptiFine 1.7.10 dans ton dossier .minecraft, le launcher affichera « À installer » une fois pour l’ajouter au jeu. Avec OptiFine, il faut le mod ATTACK Client 1.7.10 1.1.0 ou plus récent : l’installation le met à jour. Les textes, les crédits et les contrôles d’OptiFine suivent la version du profil.',
+      en: 'The 1.7.10 profile can now use OptiFine, like 1.8.9, with your own copy: the launcher still does not download it, its license forbids it. The “Get OptiFine” assistant opens optifine.net, spots OptiFine HD U E7 in your Downloads folder, checks it and keeps a private copy. Each profile has its own assistant and settings: an OptiFine 1.8.9 dropped for 1.7.10 is never taken, it is flagged. The “Use OptiFine” setting is on by default on 1.7.10, as on 1.8.9, and does nothing until you have a copy. If you already have an OptiFine 1.7.10 in your .minecraft folder, the launcher will show “To install” once to add it to the game. With OptiFine, ATTACK Client 1.7.10 1.1.0 or newer is needed: the installation updates it. OptiFine texts, credits and checks follow the profile’s version.',
+    },
+    {
+      version: 'ATTACK Client 1.7.10 1.1.0', date: '2026-11-05',
+      title_fr: 'Le mod 1.7.10 essayé avec OptiFine', title_en: 'The 1.7.10 mod tried with OptiFine', tag: 'new',
+      fr: 'En 1.7.10, le mod ATTACK Client a été essayé en jeu avec OptiFine HD U E7 : réglages par défaut, Fast Render et shaders internes ; OptiFine est chargé avant le mod, sans erreur du mod. Zoom : celui d’ATTACK garde la touche C ; celle d’OptiFine (Ctrl gauche par défaut) est mise sur « Aucune » en jeu tant que le module est activé, pour éviter un double zoom (options.txt garde ton choix) ; que cela coupe bien le zoom d’OptiFine n’est pas mesuré. Animations : mêmes poses avec et sans OptiFine. Fast Render : Motion Blur, Color Saturation et Container Blur sont coupés au lieu d’un écran noir. Clear Glass rend aussi le verre connecté. Limites : capes ATTACK et « Show Capes », Environment Changer, FPS Boost et options vidéo d’OptiFine se recouvrent ; une autre édition est reconnue mais pas testée, sans adaptation du zoom ni des shaders. Sans OptiFine, le mod reste celui de la 1.0.0, sauf une carte quand un pack de ressources demande OptiFine et Animations, qui présente la main aux mods d’objets personnalisés.',
+      en: 'On 1.7.10, the ATTACK Client mod was tried in game with OptiFine HD U E7: default settings, Fast Render and built-in shaders; OptiFine loads before the mod, with no mod error. Zoom: ATTACK’s zoom keeps the C key; OptiFine’s (left Ctrl by default) is set to “None” in game while the module is on, to avoid a double zoom (options.txt keeps your choice); that this really turns OptiFine’s zoom off is not measured. Animations: same poses with and without OptiFine. Fast Render: Motion Blur, Color Saturation and Container Blur are turned off instead of a black screen. Clear Glass also clears connected glass. Limits: ATTACK capes and OptiFine’s “Show Capes”, Environment Changer, FPS Boost and OptiFine’s video options overlap; another edition is recognized but not tested, with no zoom or shader adaptation. Without OptiFine the mod stays as in 1.0.0, except for a card when a resource pack asks for OptiFine and Animations, which hands first-person rendering to custom-item mods.',
+    },
     {
       version: 'Launcher 0.8.1', date: '2026-11-01',
       title_fr: 'Le design ATTACK', title_en: 'The ATTACK design', tag: 'new',
