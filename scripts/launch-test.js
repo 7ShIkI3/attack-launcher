@@ -1,20 +1,25 @@
 'use strict';
 // Test réel du lancement direct, avec un compte HORS LIGNE factice (mode développeur : pseudo seul, jeton « 0 »).
-//   node scripts/launch-test.js <dossier d'une installation de test> [--profile <id>] [--keep]
+//   node scripts/launch-test.js <dossier d'une installation de test> [--profile <id>] [--keep] [--ram <Mo>] [--java <chemin javaw>]
 // Le dossier doit contenir .minecraft et le dossier de jeu du profil (voir scripts/install-test.js). Installe le
 // runtime Java officiel du profil (Java 8, 21 ou 25) dans <dossier>/runtime, lance le jeu et attend l'écran titre dans
 // le journal. Sans --keep, le jeu est fermé ensuite.
+// --ram   mémoire du jeu en Mo (2048 par défaut)
+// --java  utilise ce javaw (ou java) au lieu d'installer le runtime officiel : rien n'est téléchargé, la version de Java est journalisée
 // Quand un OptiFine de la version du profil est dans mods (profils Forge 1.8.9 et 1.7.10), le journal doit aussi montrer que Forge a
 // chargé son tweaker : « Loading tweaker <TweakClass de la spec> » (TweakClass lu dans la spec d'optifine.js, optifine.OptiFineForgeTweaker
 // en 1.8.9 comme en 1.7.10). Sans cette ligne, OptiFine est dans mods mais n'est pas chargé : échec.
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const { installRuntime } = require('../src/main/runtime');
 const { launchGame, javaComponent } = require('../src/main/game');
 const { offlineUuid } = require('../src/main/accounts');
 const catalog = require('../src/main/catalog');
 const optifine = require('../src/main/optifine');
 const { gameDirFor } = require('./install-test');
+
+const DEFAULT_RAM_MB = 2048;
 
 // Forge : fin du chargement de Forge (le 1er « Sound engine started » arrive avant l'écran titre).
 const FORGE_TITLE = /Forge Mod Loader has successfully loaded (\d+) mods/;
@@ -71,15 +76,61 @@ function readLog(log, profile, options = {}) {
   };
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-  const option = (name) => {
-    const i = args.indexOf(name);
-    return i === -1 ? null : args[i + 1];
+/**
+ * Options de la ligne de commande : { root, profileId, keep, ramMb, java }. `ramMb` vaut 2048 sans --ram ; `java` (chemin absolu) est null sans
+ * --java. Une valeur manquante ou invalide (--ram 0, --ram abc, --java sans chemin) est une erreur, jamais une valeur par défaut silencieuse.
+ */
+function parseOptions(args) {
+  const withValue = new Set(['--profile', '--ram', '--java']);
+  const flags = new Set(['--keep']);
+  const values = {};
+  const positional = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (withValue.has(arg)) {
+      const value = args[i + 1];
+      if (value === undefined || value.startsWith('--')) throw new Error(`${arg} demande une valeur`);
+      values[arg] = value;
+      i++;
+    } else if (flags.has(arg)) {
+      values[arg] = true;
+    } else if (arg.startsWith('--')) {
+      throw new Error(`Option inconnue : ${arg}`);
+    } else {
+      positional.push(arg);
+    }
+  }
+  let ramMb = DEFAULT_RAM_MB;
+  if (values['--ram'] !== undefined) {
+    if (!/^[1-9]\d*$/.test(values['--ram'])) throw new Error(`--ram attend un nombre entier de Mo (reçu « ${values['--ram']} »)`);
+    ramMb = Number(values['--ram']);
+  }
+  return {
+    root: path.resolve(positional[0] || ''),
+    profileId: values['--profile'] || null,
+    keep: values['--keep'] === true,
+    ramMb,
+    java: values['--java'] ? path.resolve(values['--java']) : null,
   };
-  const profile = catalog.get(option('--profile') || catalog.DEFAULT_PROFILE_ID);
-  const root = path.resolve(args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--profile') || '');
-  const keep = args.includes('--keep');
+}
+
+/** Version de Java d'après la sortie de `java -version` (« openjdk version "1.8.0_402" », « java version "21.0.2" »), ou null. */
+function parseJavaVersion(output) {
+  const match = /version "([^"]+)"/.exec(String(output));
+  return match ? match[1] : null;
+}
+
+/** Version de Java du binaire donné. javaw n'écrit rien dans une console : son java.exe voisin est interrogé à sa place s'il existe. */
+function javaVersion(javaPath, run = spawnSync) {
+  const sibling = path.join(path.dirname(javaPath), 'java.exe');
+  const probe = /javaw(\.exe)?$/i.test(javaPath) && fs.existsSync(sibling) ? sibling : javaPath;
+  const result = run(probe, ['-version'], { encoding: 'utf8', windowsHide: true, timeout: 20000 });
+  return parseJavaVersion(`${result.stderr || ''}\n${result.stdout || ''}`);
+}
+
+async function main() {
+  const { root, profileId, keep, ramMb, java } = parseOptions(process.argv.slice(2));
+  const profile = catalog.get(profileId || catalog.DEFAULT_PROFILE_ID);
   const minecraftDir = path.join(root, '.minecraft');
   const gameDir = gameDirFor(root, profile);
   const versionId = profile.loader.versionId;
@@ -87,15 +138,25 @@ async function main() {
   const withOptifine = optifineInMods(gameDir, profile);
   if (withOptifine) console.log(`OptiFine dans mods (${withOptifine.name}) : le journal doit montrer « Loading tweaker ${withOptifine.tweak} »`);
 
-  const component = await javaComponent(minecraftDir, versionId);
-  console.log(`Profil ${profile.id} : runtime Java ${component} officiel…`);
-  const runtime = await installRuntime({ runtimeDir: path.join(root, 'runtime'), component });
-  console.log(`  ${runtime.version} ${runtime.cached ? '(déjà présent)' : '(téléchargé, SHA-1 vérifiés)'} : ${runtime.java}`);
+  let runtime;
+  if (java) {
+    if (!fs.existsSync(java)) throw new Error(`--java : fichier introuvable (${java})`);
+    const version = javaVersion(java);
+    console.log(`Profil ${profile.id} : Java imposé par --java, installation du runtime ignorée : ${java}`);
+    console.log(`  version de Java : ${version || 'illisible'} ; mémoire du jeu : ${ramMb} Mo`);
+    runtime = { java };
+  } else {
+    const component = await javaComponent(minecraftDir, versionId);
+    console.log(`Profil ${profile.id} : runtime Java ${component} officiel…`);
+    runtime = await installRuntime({ runtimeDir: path.join(root, 'runtime'), component });
+    console.log(`  ${runtime.version} ${runtime.cached ? '(déjà présent)' : '(téléchargé, SHA-1 vérifiés)'} : ${runtime.java}`);
+    console.log(`  mémoire du jeu : ${ramMb} Mo`);
+  }
 
   const identity = { name: 'AttackDev', uuid: offlineUuid('AttackDev'), accessToken: '0', userType: 'legacy' };
   const started = Date.now();
   const { pid, logFile, child } = await launchGame({
-    java: runtime.java, minecraftDir, gameDir, versionId, identity, ramMb: 2048, launcherVersion: 'test',
+    java: runtime.java, minecraftDir, gameDir, versionId, identity, ramMb, launcherVersion: 'test',
   });
   console.log(`Jeu lancé (pid ${pid}), journal : ${logFile}`);
   let exited = null;
@@ -152,4 +213,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { readLog, tweakerLine, optifineInMods };
+module.exports = { readLog, tweakerLine, optifineInMods, parseOptions, parseJavaVersion, javaVersion, DEFAULT_RAM_MB };
