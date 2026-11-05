@@ -1,10 +1,12 @@
 'use strict';
 // Réglages de départ dans l'options.txt de Minecraft (lignes « clé:valeur »), appliqués par ÉTAPES et une seule fois par dossier
 // de jeu : le drapeau `gameOptions` du fichier d'état (tenu par installer.js) garde le numéro de la dernière étape faite.
-//  - étape 1 (profils Fabric seulement) : réglages vidéo pour le PvP. Dossier neuf (pas d'options.txt) : on écrit les réglages de
-//    départ, Minecraft complète le reste avec ses valeurs par défaut ; dossier existant : seules les deux valeurs par défaut de
-//    Minecraft qui brident les FPS sont remplacées (VSync activée, limite à 120 FPS) ;
-//  - étape 2 (tous les profils, 1.8.9 compris) : langue du launcher, écrite SEULEMENT quand le launcher crée options.txt. Un fichier
+//  - étape vidéo, dont le numéro dépend du profil (`videoStep` du catalogue) : étape 1 pour les profils Fabric, étape 3 pour le profil
+//    1.7.10, aucune pour la 1.8.9. Réglages vidéo pour le PvP. Dossier neuf (pas d'options.txt) : on écrit les réglages de départ du
+//    profil (`videoStart`), Minecraft complète le reste avec ses valeurs par défaut ; dossier existant : seules les deux valeurs par
+//    défaut de Minecraft qui brident les FPS sont remplacées (VSync activée, limite à 120 FPS). Le profil 1.7.10 n'a l'étape vidéo qu'à
+//    l'étape 3 : ses dossiers déjà à l'étape 2 (langue faite, VSync encore à la valeur de Minecraft) la reçoivent une fois ;
+//  - étape 2 (tous les profils, 1.8.9 et 1.7.10 compris) : langue du launcher, écrite SEULEMENT quand le launcher crée options.txt. Un fichier
 //    existant n'est jamais touché pour la langue : « en_us » peut être le choix d'un joueur qui joue en anglais exprès, et rien ne le
 //    distingue de la valeur par défaut de Minecraft ; l'étape est alors faite sans rien écrire.
 // Tout autre choix du joueur, les autres lignes, leur ordre et leurs fins de ligne restent tels quels. Le fichier est lu et
@@ -12,12 +14,16 @@
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { writeFileAtomic } = require('./http');
+const catalog = require('./catalog');
 
 const FILE = 'options.txt';
 /** Numéro de la dernière étape : valeur du drapeau `gameOptions` de l'état une fois tout appliqué. */
-const VERSION = 2;
-/** maxFps:260 = « illimité » dans Minecraft. */
-const START_OPTIONS = { enableVsync: 'false', maxFps: '260', entityShadows: 'false', renderDistance: '10' };
+const VERSION = 3;
+/**
+ * Réglages de départ des profils Fabric (étape vidéo 1) ; ceux de chaque profil (et le numéro de son étape) sont dans le catalogue
+ * (`videoStart`, `videoStep`). maxFps:260 = « illimité » dans Minecraft.
+ */
+const START_OPTIONS = catalog.VIDEO_START.fabric;
 /** Valeurs par défaut de Minecraft remplacées dans un options.txt existant : clé -> [valeur d'origine, valeur de départ]. */
 const REPLACED = { enableVsync: ['true', START_OPTIONS.enableVsync], maxFps: ['120', START_OPTIONS.maxFps] };
 
@@ -33,10 +39,11 @@ function langValue(lang, legacy = false) {
 
 /**
  * Contenu d'un options.txt neuf (pas de clé `version` : Minecraft complète le reste).
- * options : { video (réglages de départ, vrai par défaut), lang ('fr' | 'en'), legacy (écriture 1.8.9) }.
+ * options : { video (réglages de départ, vrai par défaut), start (réglages vidéo du profil, ceux de Fabric par défaut), lang ('fr' | 'en'),
+ * legacy (écriture 1.8.9 et 1.7.10) }.
  */
-function startText({ video = true, lang = null, legacy = false } = {}) {
-  const lines = video ? Object.entries(START_OPTIONS).map(([key, value]) => `${key}:${value}`) : [];
+function startText({ video = true, start = START_OPTIONS, lang = null, legacy = false } = {}) {
+  const lines = video ? Object.entries(start).map(([key, value]) => `${key}:${value}`) : [];
   const value = langValue(lang, legacy);
   if (value) lines.push(`lang:${value}`);
   return lines.length > 0 ? `${lines.join('\n')}\n` : '';
@@ -63,16 +70,19 @@ function migrate(text) {
 
 /**
  * Applique les étapes manquantes au dossier de jeu. options :
- *   from    dernière étape déjà appliquée (drapeau `gameOptions` de l'état, 0 par défaut) : une étape faite n'est jamais refaite
- *   video   étape 1 permise (profils Fabric ; vrai par défaut)
- *   lang    langue du launcher ('fr' | 'en') pour l'étape 2, écrite à la création du fichier seulement ; absente : l'étape 2 ne fait rien
- *   legacy  options.txt de la 1.8.9 (fr_FR au lieu de fr_fr)
+ *   from       dernière étape déjà appliquée (drapeau `gameOptions` de l'état, 0 par défaut) : une étape faite n'est jamais refaite
+ *   videoStep  numéro de l'étape vidéo du profil (1 Fabric, 3 Forge 1.7.10, 0 = aucune, comme la 1.8.9) : elle est faite si from < videoStep
+ *   start      réglages vidéo écrits dans un options.txt neuf (ceux de Fabric par défaut)
+ *   video      ancien paramètre, gardé pour les appelants qui ne donnent pas `videoStep` : vrai = étape vidéo 1, faux = aucune (vrai par défaut)
+ *   lang       langue du launcher ('fr' | 'en') pour l'étape 2, écrite à la création du fichier seulement ; absente : l'étape 2 ne fait rien
+ *   legacy     options.txt de la 1.8.9 ou de la 1.7.10 (fr_FR au lieu de fr_fr)
  * Ne lève jamais d'erreur (fichier illisible, verrouillé, disque plein) :
  * renvoie { action: 'created' | 'updated' | 'unchanged' | 'error', changed: [clés], error? } et l'appelant décide quoi en faire.
  */
-async function apply(gameDir, { from = 0, video = true, lang = null, legacy = false } = {}) {
+async function apply(gameDir, { from = 0, videoStep, start = START_OPTIONS, video = true, lang = null, legacy = false } = {}) {
   const file = path.join(gameDir, FILE);
-  const doVideo = video && from < 1;
+  const step = videoStep === undefined ? (video ? 1 : 0) : Number(videoStep) || 0;
+  const doVideo = step > 0 && from < step;
   const doLang = from < 2 && Boolean(langValue(lang));
   try {
     let current = null;
@@ -82,10 +92,10 @@ async function apply(gameDir, { from = 0, video = true, lang = null, legacy = fa
       if (error.code !== 'ENOENT') throw error;
     }
     if (current === null) {
-      const text = startText({ video: doVideo, lang: doLang ? lang : null, legacy });
+      const text = startText({ video: doVideo, start, lang: doLang ? lang : null, legacy });
       if (text === '') return { action: 'unchanged', changed: [] };
       await writeFileAtomic(file, Buffer.from(text, 'latin1'));
-      return { action: 'created', changed: [...(doVideo ? Object.keys(START_OPTIONS) : []), ...(doLang ? ['lang'] : [])] };
+      return { action: 'created', changed: [...(doVideo ? Object.keys(start) : []), ...(doLang ? ['lang'] : [])] };
     }
     // fichier existant : seule l'étape vidéo le modifie ; la langue du joueur n'est jamais réécrite (étape 2 faite sans rien écrire)
     let text = current;

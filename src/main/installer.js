@@ -298,11 +298,12 @@ async function journal(gameDir, message) {
 }
 
 /**
- * Réglages de départ d'options.txt (voir gameoptions.js), par étapes : 1 = vidéo (profils Fabric), 2 = langue du launcher (tous
- * les profils). Chaque étape est appliquée une seule fois par dossier de jeu : le drapeau `gameOptions` du fichier d'état garde la
- * dernière faite (un dossier déjà à 1 ne refait pas l'étape 1). Un échec (fichier illisible ou verrouillé) est journalisé sans faire
- * échouer l'installation ; le drapeau n'est alors pas posé et la prochaine installation réessaie.
- * `profile` : entrée du catalogue (Fabric = étape vidéo ; Forge 1.8.9 = langue en écriture « fr_FR »), Fabric par défaut ;
+ * Réglages de départ d'options.txt (voir gameoptions.js), par étapes : la langue du launcher (étape 2, tous les profils) et l'étape vidéo,
+ * dont le numéro est celui du profil dans le catalogue (`videoStep` : 1 Fabric, 3 Forge 1.7.10, 0 Forge 1.8.9 = jamais). Chaque étape est
+ * appliquée une seule fois par dossier de jeu : le drapeau `gameOptions` du fichier d'état garde la dernière faite (un dossier déjà à 1 ne
+ * refait pas l'étape 1, un dossier 1.7.10 à 2 reçoit l'étape 3). Un échec (fichier illisible ou verrouillé) est journalisé sans faire échouer
+ * l'installation ; le drapeau n'est alors pas posé et la prochaine installation réessaie.
+ * `profile` : entrée du catalogue (Fabric par défaut ; Forge 1.8.9 et 1.7.10 = langue en écriture « fr_FR »),
  * `lang` : langue du launcher ('fr' | 'en'), écrite seulement quand options.txt est créé (jamais dans un fichier existant).
  * Renvoie { action: 'created' | 'updated' | 'unchanged' | 'skipped' | 'error', changed, error? }.
  */
@@ -311,7 +312,8 @@ async function installGameOptions(gameDir, profile = null, lang = null) {
     const state = await readState(gameDir);
     if (state?.gameOptions >= gameoptions.VERSION) return { action: 'skipped', changed: [] };
     const fabric = !profile || catalog.isFabric(profile);
-    const result = await gameoptions.apply(gameDir, { from: Number(state?.gameOptions) || 0, video: fabric, lang, legacy: !fabric });
+    const video = profile ? { videoStep: profile.videoStep || 0, start: profile.videoStart || undefined } : {};
+    const result = await gameoptions.apply(gameDir, { from: Number(state?.gameOptions) || 0, ...video, lang, legacy: !fabric });
     if (result.action === 'error') {
       await journal(gameDir, `options.txt : réglages de départ non appliqués (${result.error})`);
       return result;

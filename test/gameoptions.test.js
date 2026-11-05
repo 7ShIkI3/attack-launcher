@@ -1,6 +1,7 @@
 'use strict';
 // Réglages de départ d'options.txt (Minecraft), par étapes : 1 = vidéo (Fabric), 2 = langue du launcher (tous les profils), écrite
-// seulement à la création du fichier : un options.txt existant garde la langue du joueur.
+// seulement à la création du fichier : un options.txt existant garde la langue du joueur ; 3 = vidéo du profil 1.7.10 (VSync coupée une
+// fois dans un dossier existant, FPS débridés), le 1.8.9 n'ayant jamais d'étape vidéo.
 // Dossier neuf, valeurs par défaut de Minecraft remplacées une seule fois, choix du joueur et mise en forme du fichier intacts,
 // erreurs sans conséquence pour l'installation.
 const test = require('node:test');
@@ -172,7 +173,7 @@ test('langue : fr_fr / en_us depuis la 1.11, fr_FR / en_US en 1.8.9, rien pour u
   assert.equal(gameoptions.langValue('en', true), 'en_US');
   assert.equal(gameoptions.langValue('de'), null);
   assert.equal(gameoptions.langValue(undefined), null);
-  assert.equal(gameoptions.VERSION, 2, 'deux étapes : vidéo (1) puis langue (2)');
+  assert.equal(gameoptions.VERSION, 3, 'trois étapes : vidéo Fabric (1), langue (2), vidéo du 1.7.10 (3)');
 });
 
 test('texte de départ avec la langue : ajoutée à la fin, seule pour la 1.8.9 (pas de réglage vidéo)', () => {
@@ -242,7 +243,7 @@ test('installation Fabric : un dossier déjà à gameOptions=1 ne refait pas l�
   const result = await installer.installGameOptions(dir, FABRIC, 'fr');
   assert.deepEqual(result, { action: 'unchanged', changed: [] });
   assert.equal(fs.readFileSync(optionsFile(dir), 'utf8'), body, 'VSync, 120 FPS et langue laissés');
-  assert.equal(readState(dir).gameOptions, 2);
+  assert.equal(readState(dir).gameOptions, gameoptions.VERSION);
   assert.equal(readState(dir).mod.version, '1');
   assert.equal((await installer.installGameOptions(dir, FABRIC, 'fr')).action, 'skipped');
   fs.rmSync(dir, { recursive: true, force: true });
@@ -258,11 +259,181 @@ test('installation Fabric : dossier neuf = réglages vidéo + langue ; launcher 
   const existing = tempDir();
   fs.writeFileSync(optionsFile(existing), 'lang:en_us\n');
   assert.equal((await installer.installGameOptions(existing, FABRIC, 'en')).action, 'unchanged');
-  assert.equal(readState(existing).gameOptions, 2);
+  assert.equal(readState(existing).gameOptions, gameoptions.VERSION);
   // launcher en français, options.txt existant en en_us : la langue du joueur n'est pas écrasée (il peut jouer en anglais exprès)
   const kept = tempDir();
   fs.writeFileSync(optionsFile(kept), 'lang:en_us\nenableVsync:false\nmaxFps:90\n');
   assert.equal((await installer.installGameOptions(kept, FABRIC, 'fr')).action, 'unchanged');
   assert.equal(fs.readFileSync(optionsFile(kept), 'utf8'), 'lang:en_us\nenableVsync:false\nmaxFps:90\n');
   for (const dir of [fresh, english, existing, kept]) fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// ---------- étape vidéo du profil 1.7.10 (étape 3) : la VSync d'un dossier existant est coupée une fois ----------
+
+const FORGE_1710 = catalog.get('forge-1.7.10');
+const FABRIC_1211 = catalog.get('fabric-1.21.1');
+const flagOf = (dir) => readState(dir).gameOptions;
+const installLog = (dir) => fs.readFileSync(path.join(dir, 'logs', 'launcher', 'install.log'), 'utf8');
+
+test('catalogue : étape vidéo 1 pour Fabric (réglages de départ actuels), 3 pour la 1.7.10 (VSync et FPS seulement), aucune pour la 1.8.9', () => {
+  assert.equal(FORGE.videoStep, 0);
+  assert.equal(FORGE.videoStart, null);
+  for (const p of [FABRIC, FABRIC_1211]) {
+    assert.equal(p.videoStep, 1, p.id);
+    assert.deepEqual(p.videoStart, gameoptions.START_OPTIONS, p.id);
+  }
+  assert.equal(FORGE_1710.videoStep, 3);
+  assert.deepEqual({ ...FORGE_1710.videoStart }, { enableVsync: 'false', maxFps: '260' });
+  assert.ok(!('entityShadows' in FORGE_1710.videoStart), 'entityShadows n’existe pas en 1.7.10');
+  assert.ok(!('renderDistance' in FORGE_1710.videoStart));
+  assert.ok(Object.isFrozen(FORGE_1710.videoStart) && Object.isFrozen(FABRIC.videoStart), 'réglages non modifiables');
+  assert.equal(gameoptions.VERSION, 3, 'la dernière étape est l’étape vidéo du 1.7.10');
+  assert.ok(catalog.list().every((p) => p.videoStep <= gameoptions.VERSION));
+});
+
+test('1.7.10 : dossier au drapeau 2 avec la VSync activée = remplacée une seule fois, drapeau 3, ligne au journal ; la seconde installation ne fait rien', async () => {
+  const dir = tempDir();
+  fs.writeFileSync(stateFile(dir), JSON.stringify({ gameOptions: 2, mod: { version: '1.1.0' } }));
+  fs.writeFileSync(optionsFile(dir), 'fov:0.5\nenableVsync:true\nmaxFps:120\nlang:fr_FR\n');
+  const first = await installer.installGameOptions(dir, FORGE_1710, 'fr');
+  assert.deepEqual(first, { action: 'updated', changed: ['enableVsync', 'maxFps'] });
+  assert.equal(fs.readFileSync(optionsFile(dir), 'utf8'), 'fov:0.5\nenableVsync:false\nmaxFps:260\nlang:fr_FR\n');
+  assert.equal(flagOf(dir), 3);
+  assert.equal(readState(dir).mod.version, '1.1.0', 'le reste de l’état est conservé');
+  assert.match(installLog(dir), /options\.txt : réglages de départ appliqués \(updated : enableVsync, maxFps\)/);
+  // le joueur remet la VSync : plus jamais retouchée
+  fs.writeFileSync(optionsFile(dir), 'enableVsync:true\nmaxFps:120\n');
+  assert.equal((await installer.installGameOptions(dir, FORGE_1710, 'fr')).action, 'skipped');
+  assert.equal(fs.readFileSync(optionsFile(dir), 'utf8'), 'enableVsync:true\nmaxFps:120\n');
+  assert.equal(installLog(dir).match(/réglages de départ appliqués/g).length, 1, 'une seule ligne au journal');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('1.7.10, cas de Raphaël (enableVsync:true, maxFps:260) : seule la VSync change, les octets des autres lignes et les CRLF sont identiques', async () => {
+  const dir = tempDir();
+  fs.writeFileSync(stateFile(dir), JSON.stringify({ gameOptions: 2 }));
+  const before = Buffer.concat([
+    Buffer.from('invertYMouse:false\r\nfov:0.0\r\nenableVsync:true\r\nlastServer:caf'),
+    Buffer.from([0xe9]), // « é » en latin1, pas de l'UTF-8 valide
+    Buffer.from('.example.net\r\nmaxFps:260\r\nlang:en_US\r\nrenderDistance:16\r\n'),
+  ]);
+  fs.writeFileSync(optionsFile(dir), before);
+  const result = await installer.installGameOptions(dir, FORGE_1710, 'fr');
+  assert.deepEqual(result, { action: 'updated', changed: ['enableVsync'] });
+  const expected = Buffer.from(before.toString('latin1').replace('enableVsync:true', 'enableVsync:false'), 'latin1');
+  assert.ok(fs.readFileSync(optionsFile(dir)).equals(expected));
+  assert.equal(expected.length, before.length + 1, 'une seule valeur change : « true » devient « false »');
+  assert.equal(flagOf(dir), 3);
+  assert.deepEqual(fs.readdirSync(dir).sort(), ['attack-launcher.json', 'logs', 'options.txt']);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('1.7.10 : le choix du joueur est respecté (VSync déjà coupée, limite de FPS à lui) ; le drapeau est posé sans réécrire le fichier', async () => {
+  const dir = tempDir();
+  fs.writeFileSync(stateFile(dir), JSON.stringify({ gameOptions: 2 }));
+  fs.writeFileSync(optionsFile(dir), 'enableVsync:false\r\nmaxFps:144\r\n');
+  const mtime = fs.statSync(optionsFile(dir)).mtimeMs;
+  assert.deepEqual(await installer.installGameOptions(dir, FORGE_1710, 'fr'), { action: 'unchanged', changed: [] });
+  assert.equal(fs.readFileSync(optionsFile(dir), 'utf8'), 'enableVsync:false\r\nmaxFps:144\r\n');
+  assert.equal(fs.statSync(optionsFile(dir)).mtimeMs, mtime, 'fichier non réécrit');
+  assert.equal(flagOf(dir), 3);
+  assert.ok(!fs.existsSync(path.join(dir, 'logs')), 'rien appliqué : rien au journal');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('1.8.9 et Fabric au drapeau 2 : VSync, FPS et langue intacts, drapeau 3 posé ; l’étape 1 de Fabric n’est pas refaite', async () => {
+  const body = 'version:3955\nenableVsync:true\nmaxFps:120\nlang:en_us\n';
+  for (const profile of [FORGE, FABRIC, FABRIC_1211]) {
+    const dir = tempDir();
+    fs.writeFileSync(stateFile(dir), JSON.stringify({ gameOptions: 2, mod: { version: '1' } }));
+    fs.writeFileSync(optionsFile(dir), body);
+    const mtime = fs.statSync(optionsFile(dir)).mtimeMs;
+    assert.deepEqual(await installer.installGameOptions(dir, profile, 'fr'), { action: 'unchanged', changed: [] }, profile.id);
+    assert.equal(fs.readFileSync(optionsFile(dir), 'utf8'), body, profile.id);
+    assert.equal(fs.statSync(optionsFile(dir)).mtimeMs, mtime, `${profile.id} : fichier non réécrit`);
+    assert.equal(flagOf(dir), 3, profile.id);
+    assert.equal(readState(dir).mod.version, '1');
+    assert.equal((await installer.installGameOptions(dir, profile, 'fr')).action, 'skipped', profile.id);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  // 1.8.9 : même un dossier sans drapeau n'a jamais de réglage vidéo, VSync activée d'un fichier existant comprise
+  const old = tempDir();
+  fs.writeFileSync(optionsFile(old), body);
+  assert.deepEqual(await installer.installGameOptions(old, FORGE, 'fr'), { action: 'unchanged', changed: [] });
+  assert.equal(fs.readFileSync(optionsFile(old), 'utf8'), body);
+  fs.rmSync(old, { recursive: true, force: true });
+});
+
+test('1.7.10 : dossier neuf = VSync coupée, FPS débridés et langue en fr_FR, sans entityShadows ni renderDistance ; avec le launcher en anglais, en_US', async () => {
+  const fr = tempDir();
+  assert.deepEqual(await installer.installGameOptions(fr, FORGE_1710, 'fr'), { action: 'created', changed: ['enableVsync', 'maxFps', 'lang'] });
+  assert.equal(fs.readFileSync(optionsFile(fr), 'utf8'), 'enableVsync:false\nmaxFps:260\nlang:fr_FR\n');
+  assert.equal(flagOf(fr), 3);
+  const en = tempDir();
+  await installer.installGameOptions(en, FORGE_1710, 'en');
+  assert.equal(fs.readFileSync(optionsFile(en), 'utf8'), 'enableVsync:false\nmaxFps:260\nlang:en_US\n');
+  // drapeau 2 sans options.txt (le fichier a été supprimé) : seule l'étape vidéo s'applique, la langue est faite
+  const lost = tempDir();
+  fs.writeFileSync(stateFile(lost), JSON.stringify({ gameOptions: 2 }));
+  assert.deepEqual(await installer.installGameOptions(lost, FORGE_1710, 'fr'), { action: 'created', changed: ['enableVsync', 'maxFps'] });
+  assert.equal(fs.readFileSync(optionsFile(lost), 'utf8'), 'enableVsync:false\nmaxFps:260\n');
+  for (const d of [fr, en, lost]) fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('1.7.10 : drapeau absent, 0 ou 1 avec un options.txt existant = VSync remplacée ; drapeau 3 = rien', async () => {
+  for (const flag of [undefined, 0, 1]) {
+    const dir = tempDir();
+    if (flag !== undefined) fs.writeFileSync(stateFile(dir), JSON.stringify({ gameOptions: flag }));
+    fs.writeFileSync(optionsFile(dir), 'enableVsync:true\nlang:en_US\n');
+    assert.equal((await installer.installGameOptions(dir, FORGE_1710, 'fr')).action, 'updated', String(flag));
+    assert.equal(fs.readFileSync(optionsFile(dir), 'utf8'), 'enableVsync:false\nlang:en_US\n');
+    assert.equal(flagOf(dir), 3);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  const done = tempDir();
+  fs.writeFileSync(stateFile(done), JSON.stringify({ gameOptions: 3 }));
+  fs.writeFileSync(optionsFile(done), 'enableVsync:true\n');
+  assert.equal((await installer.installGameOptions(done, FORGE_1710, 'fr')).action, 'skipped');
+  assert.equal(fs.readFileSync(optionsFile(done), 'utf8'), 'enableVsync:true\n');
+  fs.rmSync(done, { recursive: true, force: true });
+});
+
+test('Fabric, drapeau absent (0) : comme avant, réglages de départ en dossier neuf et valeurs de Minecraft remplacées en dossier existant, drapeau 3', async () => {
+  const fresh = tempDir();
+  assert.deepEqual(await installer.installGameOptions(fresh, FABRIC_1211, 'fr'),
+    { action: 'created', changed: ['enableVsync', 'maxFps', 'entityShadows', 'renderDistance', 'lang'] });
+  assert.equal(fs.readFileSync(optionsFile(fresh), 'utf8'), 'enableVsync:false\nmaxFps:260\nentityShadows:false\nrenderDistance:10\nlang:fr_fr\n');
+  assert.equal(flagOf(fresh), 3);
+  const existing = tempDir();
+  fs.writeFileSync(optionsFile(existing), 'enableVsync:true\nmaxFps:120\nrenderDistance:16\n');
+  assert.deepEqual(await installer.installGameOptions(existing, FABRIC_1211, 'fr'), { action: 'updated', changed: ['enableVsync', 'maxFps'] });
+  assert.equal(fs.readFileSync(optionsFile(existing), 'utf8'), 'enableVsync:false\nmaxFps:260\nrenderDistance:16\n');
+  assert.equal(flagOf(existing), 3);
+  for (const d of [fresh, existing]) fs.rmSync(d, { recursive: true, force: true });
+});
+
+test('apply : l’ancien paramètre video est gardé (vrai = étape 1, faux = aucune) et videoStep le remplace quand il est donné', async () => {
+  const body = 'enableVsync:true\nmaxFps:120\n';
+  const migrated = 'enableVsync:false\nmaxFps:260\n';
+  const run = async (options, from = 0) => {
+    const dir = tempDir();
+    fs.writeFileSync(optionsFile(dir), body);
+    const result = await gameoptions.apply(dir, { from, ...options });
+    const text = fs.readFileSync(optionsFile(dir), 'utf8');
+    fs.rmSync(dir, { recursive: true, force: true });
+    return { action: result.action, text };
+  };
+  assert.deepEqual(await run({}), { action: 'updated', text: migrated });
+  assert.deepEqual(await run({ video: true }), { action: 'updated', text: migrated });
+  assert.deepEqual(await run({ video: false }), { action: 'unchanged', text: body });
+  assert.deepEqual(await run({ video: true }, 1), { action: 'unchanged', text: body }, 'étape 1 déjà faite');
+  assert.deepEqual(await run({ videoStep: 0 }), { action: 'unchanged', text: body });
+  assert.deepEqual(await run({ videoStep: 3 }, 2), { action: 'updated', text: migrated });
+  assert.deepEqual(await run({ videoStep: 3 }, 3), { action: 'unchanged', text: body });
+  assert.deepEqual(await run({ videoStep: 1, video: false }), { action: 'updated', text: migrated }, 'videoStep prime sur video');
+  // réglages de départ donnés : écrits tels quels dans un fichier neuf
+  const fresh = tempDir();
+  assert.deepEqual(await gameoptions.apply(fresh, { videoStep: 3, start: { enableVsync: 'false', maxFps: '260' } }), { action: 'created', changed: ['enableVsync', 'maxFps'] });
+  assert.equal(fs.readFileSync(optionsFile(fresh), 'utf8'), 'enableVsync:false\nmaxFps:260\n');
+  fs.rmSync(fresh, { recursive: true, force: true });
 });

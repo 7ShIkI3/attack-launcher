@@ -1,7 +1,7 @@
 'use strict';
 // Catalogue des profils du launcher : une version de Minecraft, son chargeur de mods (Forge ou Fabric), son dossier
-// de jeu, la règle qui désigne le jar ATTACK dans une release GitHub et le pack de mods figé (src/main/packs/), s'il en a un
-// (le profil 1.7.10 n'en a pas).
+// de jeu, la règle qui désigne le jar ATTACK dans une release GitHub, le pack de mods figé (src/main/packs/), s'il en a un
+// (le profil 1.7.10 n'en a pas), et l'étape vidéo d'options.txt (`videoStep`, `videoStart`).
 // Module pur : aucune lecture de fichier ni réseau, pour rester facile à tester. Il ne lit que la table de specs d'OptiFine (optifine.js),
 // qui ne fait rien au chargement : les profils avec OptiFine y trouvent leur spec { mc, edition, tweak, minMod }.
 const optifine = require('./optifine');
@@ -17,6 +17,15 @@ const FABRIC_LOADER_SHA1 = 'ff9e65cffca4a67f31523e1807fe0855940fcbfa';
 const FABRIC_INTERMEDIARY_SHA1 = { '1.21.1': '4b96f58657aa282efa6bb8ae9369c2d42cf96e8c' };
 
 const DEFAULT_PROFILE_ID = 'forge-1.8.9';
+
+/**
+ * Réglages vidéo de départ d'options.txt (voir gameoptions.js), maxFps:260 = « illimité » dans Minecraft. Fabric : dossier neuf avec en plus
+ * ombres des entités coupées et distance 10. Forge 1.7.10 : seulement la VSync et la limite de FPS (entityShadows n'existe pas en 1.7.10).
+ */
+const VIDEO_START = Object.freeze({
+  fabric: Object.freeze({ enableVsync: 'false', maxFps: '260', entityShadows: 'false', renderDistance: '10' }),
+  forge1710: Object.freeze({ enableVsync: 'false', maxFps: '260' }),
+});
 
 function escapeRegex(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -49,6 +58,9 @@ const FORGE_1_8_9 = {
     devDir: ['Documents', 'pvp-essentials', 'build', 'libs'],
   },
   pack: 'forge-1.8.9',
+  // options.txt : pas d'étape vidéo en 1.8.9 (sa VSync n'est jamais touchée), seulement la langue (étape 2)
+  videoStep: 0,
+  videoStart: null,
   // OptiFine : jamais téléchargé (sa licence l'interdit), seulement la copie que le joueur possède déjà (src/main/optifine.js).
   // La spec { mc, edition, tweak, minMod } est celle de la table SPECS d'optifine.js : une seule source.
   optifine: optifine.forVersion('1.8.9'),
@@ -85,6 +97,9 @@ const FORGE_1_7_10 = {
     devDir: ['Documents', 'attack-forge-1710', 'build', 'libs'],
   },
   pack: null,
+  // options.txt : étape vidéo n° 3 (VSync coupée une fois dans un dossier existant, FPS débridés), ajoutée après la langue (étape 2)
+  videoStep: 3,
+  videoStart: VIDEO_START.forge1710,
   optifine: optifine.forVersion('1.7.10'),
 };
 
@@ -118,6 +133,9 @@ function fabricProfile(mc, javaMajor) {
       devDir: ['Documents', 'attack-client-fabric', 'versions', mc, 'build', 'libs'],
     },
     pack: `fabric-${mc}`,
+    // options.txt : étape vidéo n° 1
+    videoStep: 1,
+    videoStart: VIDEO_START.fabric,
   };
 }
 
@@ -222,6 +240,7 @@ function view(profile) {
 module.exports = {
   FABRIC_LOADER_VERSION,
   DEFAULT_PROFILE_ID,
+  VIDEO_START,
   escapeRegex,
   list,
   find,
