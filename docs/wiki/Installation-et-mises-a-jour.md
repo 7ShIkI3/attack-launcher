@@ -231,7 +231,9 @@ ressources au format OptiFine (textures connectées, mobs, ciel) **sans OptiFine
     fichier neuf.
   Le drapeau passe à `gameOptions=3` dans tous les cas (une étape faite n'est pas refaite, un dossier Fabric déjà à
   `gameOptions=1` ou `2` ne refait pas l'étape 1). Chaque remplacement est consigné dans `logs/launcher/install.log`
-  (« options.txt : réglages de départ appliqués »). Un choix du joueur n'est jamais modifié.
+  (« options.txt : réglages de départ appliqués »). Une valeur différente de celle de Minecraft n'est jamais modifiée ; en
+  revanche, un joueur qui avait choisi lui-même `enableVsync:true` ou `maxFps:120` (les valeurs de Minecraft) ne peut pas en
+  être distingué : la valeur est remplacée une fois, il peut la remettre ensuite.
 - **Iris et Sodium vont ensemble** : en 1.21.1, Sodium 0.8.13 (dernière release, nouveau moteur de rendu) demande
   Iris 1.8.14-beta.1, seule version d'Iris pour Sodium 0.8 en 1.21.1 (publiée en juin 2026, pas de release stable
   depuis) ; Iris 1.8.8 (stable) ne marche qu'avec Sodium 0.6.x. En 26.3, Iris 1.11.7 déclare `sodium 0.9.x`
