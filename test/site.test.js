@@ -530,16 +530,16 @@ test('actualités : les 3 entrées les plus récentes du CHANGELOG, dans la lang
   assert.equal(fr.match(/<article class="news-item">/g).length, 3);
   assert.equal(en.match(/<article class="news-item">/g).length, 3);
   // les trois plus récentes : le launcher 0.8.3 (VSync coupée en 1.7.10), la 0.8.2 (OptiFine en 1.7.10) puis le mod 1.7.10 1.1.0 qu'elle exige avec OptiFine
-  assert.ok(fr.includes('Launcher 0.8.3') && fr.includes('VSync coupée en 1.7.10') && fr.includes('5 novembre 2026'));
+  assert.ok(fr.includes('Launcher 0.8.3') && fr.includes('VSync coupée en 1.7.10') && fr.includes('7 novembre 2026') && fr.includes('5 novembre 2026'));
   assert.ok(fr.includes('Launcher 0.8.2') && fr.includes('OptiFine en 1.7.10'), 'puis la 0.8.2');
   assert.ok(fr.includes('ATTACK Client 1.7.10 1.1.0') && fr.includes('Le mod 1.7.10 essayé avec OptiFine'), 'le mod 1.7.10 1.1.0 est la deuxième entrée');
   assert.ok(!fr.includes('Launcher 0.8.1') && !fr.includes('Le design ATTACK'), 'la refonte du design (0.8.1) sort des 3 plus récentes');
   assert.ok(!fr.includes('ATTACK Client 3.7.0') && !fr.includes('ATTACK Client 2.8.0'), 'les mods livrés avec la 0.8.1 sortent des 3 plus récentes');
   assert.ok(!fr.includes('Launcher 0.8.0') && !fr.includes('ATTACK Client 1.7.10 1.0.0'), 'les entrées du launcher précédent sortent des 3 plus récentes');
-  assert.ok(en.includes('VSync off on 1.7.10') && en.includes('OptiFine on 1.7.10') && en.includes('November 5, 2026') && en.includes('The 1.7.10 mod tried with OptiFine'));
+  assert.ok(en.includes('VSync off on 1.7.10') && en.includes('OptiFine on 1.7.10') && en.includes('November 7, 2026') && en.includes('November 5, 2026') && en.includes('The 1.7.10 mod tried with OptiFine'));
   assert.ok(!en.includes('The ATTACK design'));
   assert.ok(!/\blite\b/i.test(fr) && !/\blite\b/i.test(en), 'plus de version « lite »');
-  assert.ok(fr.includes('datetime="2026-11-05"') && fr.includes('class="news-tag news-tag-new"') && fr.includes('class="news-tag news-tag-perf"'), '0.8.3, 0.8.2 et le mod le 5');
+  assert.ok(fr.includes('datetime="2026-11-07"') && fr.includes('datetime="2026-11-05"') && fr.includes('class="news-tag news-tag-new"') && fr.includes('class="news-tag news-tag-perf"'), '0.8.3 le 7, la 0.8.2 et le mod 1.1.0 le 5');
   assert.ok(!fr.includes('datetime="2026-11-01"'), 'rien du 1er novembre');
   // les actualités affichent le paragraphe entier de chaque entrée : pas de rapport de mesures de plus de 1 100 caractères
   for (const article of fr.split('<article').slice(1)) assert.ok(article.match(/<p class="news-text">([^<]*)<\/p>/)[1].length <= 1300, 'actualité trop longue (le HTML échappe les guillemets)');
