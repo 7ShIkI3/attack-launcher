@@ -529,14 +529,15 @@ test('actualités : les 3 entrées les plus récentes du CHANGELOG, dans la lang
   const en = await miniPage('{{html.news}}', {}, 'en/index.html');
   assert.equal(fr.match(/<article class="news-item">/g).length, 3);
   assert.equal(en.match(/<article class="news-item">/g).length, 3);
-  // les trois plus récentes : le launcher 0.8.4 puis les deux mods qu'il livre, le 1.7.10 1.2.0 et le 1.8.9 2.8.1 (même jour)
-  assert.ok(fr.includes('Launcher 0.8.4') && fr.includes('Mods 1.7.10 et 1.8.9, nouvelle adresse du serveur') && fr.includes('7 novembre 2026'));
+  // les trois plus récentes : le correctif 0.8.5 (connexions lentes), le launcher 0.8.4 puis le mod 1.7.10 1.2.0 qu'il livre (même jour)
+  assert.ok(fr.includes('Launcher 0.8.5') && fr.includes('Connexions lentes') && fr.includes('7 novembre 2026'));
+  assert.ok(fr.includes('Launcher 0.8.4') && fr.includes('Mods 1.7.10 et 1.8.9, nouvelle adresse du serveur'), 'puis la 0.8.4');
   assert.ok(fr.includes('ATTACK Client 1.7.10 1.2.0') && fr.includes('TCP NoDelay et correctifs en 1.7.10'), 'puis le mod 1.7.10 1.2.0');
-  assert.ok(fr.includes('ATTACK Client 2.8.1') && fr.includes('Flou et viseur corrigés en 1.8.9'), 'puis le mod 1.8.9 2.8.1');
+  assert.ok(!fr.includes('ATTACK Client 2.8.1'), 'le mod 2.8.1 sort des 3 plus récentes');
   assert.ok(!fr.includes('Launcher 0.8.3') && !fr.includes('VSync coupée en 1.7.10'), 'la 0.8.3 sort des 3 plus récentes');
   assert.ok(!fr.includes('Launcher 0.8.2') && !fr.includes('ATTACK Client 1.7.10 1.1.0'), 'la 0.8.2 et le mod 1.1.0 sortent des 3 plus récentes');
   assert.ok(!fr.includes('Launcher 0.8.1') && !fr.includes('Le design ATTACK'), 'la refonte du design (0.8.1) sort des 3 plus récentes');
-  assert.ok(en.includes('1.7.10 and 1.8.9 mods, new server address') && en.includes('TCP NoDelay and fixes on 1.7.10') && en.includes('Blur and crosshair fixes on 1.8.9') && en.includes('November 7, 2026'));
+  assert.ok(en.includes('Slow connections') && en.includes('1.7.10 and 1.8.9 mods, new server address') && en.includes('TCP NoDelay and fixes on 1.7.10') && en.includes('November 7, 2026'));
   assert.ok(!en.includes('VSync off on 1.7.10') && !en.includes('The ATTACK design'));
   assert.ok(!/\blite\b/i.test(fr) && !/\blite\b/i.test(en), 'plus de version « lite »');
   assert.ok(fr.includes('datetime="2026-11-07"') && fr.includes('class="news-tag news-tag-new"') && fr.includes('class="news-tag news-tag-fix"'), 'les trois le 7, étiquettes correctif et nouveau');

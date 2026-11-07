@@ -7,8 +7,18 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
+const net = require('node:net');
 const { ALLOWED_HOSTS } = require('./constants');
 const { renameRetry } = require('./fsretry'); // réexporté plus bas : installer.js l'appelle via http
+
+// Connexions lentes. Node 20+ essaie chaque adresse (IPv6 puis IPv4, « Happy Eyeballs ») avec 250 ms par tentative, puis abandonne
+// en ETIMEDOUT. Mesuré le 07/11/2026 sur un PC où ouvrir une connexion vers Mojang prenait 150 à 800 ms, avec l'IPv6 en panne :
+// 5 requêtes sur 12 échouaient, et le joueur voyait « Impossible de joindre le serveur ». Avec 2,5 s par tentative : 12 sur 12.
+// Réglage global du processus, posé une fois au chargement de ce module (main.js le charge au démarrage, les scripts aussi).
+const CONNECT_ATTEMPT_MS = 2500;
+if (typeof net.setDefaultAutoSelectFamilyAttemptTimeout === 'function' && net.getDefaultAutoSelectFamilyAttemptTimeout() < CONNECT_ATTEMPT_MS) {
+  net.setDefaultAutoSelectFamilyAttemptTimeout(CONNECT_ATTEMPT_MS);
+}
 
 const USER_AGENT = 'ATTACK-Launcher (+https://github.com/7ShIkI3/attack-launcher)';
 
@@ -206,6 +216,7 @@ async function pool(items, limit, fn) {
 }
 
 module.exports = {
+  CONNECT_ATTEMPT_MS,
   HttpError,
   assertAllowed,
   fetchChecked,

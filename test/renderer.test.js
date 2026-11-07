@@ -103,12 +103,14 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     assert.ok(entry.date === '' || /^\d{4}-\d{2}-\d{2}$/.test(entry.date), `${entry.version} : date`);
   }
   assert.equal(new Set(data.CHANGELOG.map((e) => e.version)).size, data.CHANGELOG.length, 'versions uniques');
+  // 0.8.5 : correctif des connexions lentes (même jour que la 0.8.4).
   // 0.8.4 : les mods 1.7.10 1.2.0 et 1.8.9 2.8.1 qu'elle livre suivent son entrée (même date, le jour de la publication, 07/11).
   // Puis 0.8.3 : la VSync du profil 1.7.10 (datée du jour de sa publication, 07/11).
   // Puis 0.8.2 : OptiFine en 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.1.0 qu'elle exige avec OptiFine (même date : le jour des
   // mesures, 05/11 ; à remettre au jour de la publication, voir « Publier une version »).
   // Puis 0.8.1 : la refonte du design, suivie des deux versions d'ATTACK Client qu'elle livre (même date) : Fabric (3.7.0) d'abord, puis la 1.8.9 (2.8.0).
-  assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 10), (e) => [e.version, e.date, e.tag]), [
+  assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 11), (e) => [e.version, e.date, e.tag]), [
+    ['Launcher 0.8.5', '2026-11-07', 'fix'],
     ['Launcher 0.8.4', '2026-11-07', 'fix'],
     ['ATTACK Client 1.7.10 1.2.0', '2026-11-07', 'new'],
     ['ATTACK Client 2.8.1', '2026-11-07', 'fix'],
@@ -129,8 +131,13 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     for (const lang of ['fr', 'en']) assert.ok(entry[lang].length <= 1100, `${entry.version} (${lang}) : ${entry[lang].length} caractères, 1 100 au plus`);
   }
   const byVersion = (v) => data.CHANGELOG.find((e) => e.version === v);
-  const [launcher084, mod120, mod281] = data.CHANGELOG;
+  const [launcher085, launcher084, mod120, mod281] = ['Launcher 0.8.5', 'Launcher 0.8.4', 'ATTACK Client 1.7.10 1.2.0', 'ATTACK Client 2.8.1'].map(byVersion);
   for (const lang of ['fr', 'en']) {
+    // 0.8.5 : connexions lentes (2,5 s par tentative au lieu de 250 ms), les deux messages que voyait le joueur, mods inchangés
+    assert.match(launcher085[lang], lang === 'fr' ? /Vérifie ta connexion Internet/ : /Cannot reach the server: check your Internet connection/, `0.8.5 (${lang}) : le message vu`);
+    assert.match(launcher085[lang], /fetch failed/, `0.8.5 (${lang}) : le message de l'installation`);
+    assert.match(launcher085[lang], /2[,.]5/, `0.8.5 (${lang}) : le nouveau délai`);
+    assert.match(launcher085[lang], lang === 'fr' ? /Les mods ne changent pas/ : /The mods do not change/, `0.8.5 (${lang}) : mods inchangés`);
     // 0.8.4 : livre les mods 1.7.10 1.2.0 et 1.8.9 2.8.1, dit comment les recevoir (bouton de réparation), Fabric inchangé
     for (const needle of ['1.7.10 1.2.0', '2.8.1', '1.21.1', '26.3']) assert.ok(launcher084[lang].includes(needle), `0.8.4 (${lang}) : ${needle}`);
     assert.match(launcher084[lang], lang === 'fr' ? /« Vérifier \/ réparer l’installation »/ : /“Verify \/ repair installation”/, `0.8.4 (${lang}) : le bouton qui installe le nouveau mod`);

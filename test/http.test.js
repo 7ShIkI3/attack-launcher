@@ -160,3 +160,10 @@ test('écriture atomique : contenu remplacé, aucun fichier temporaire laissé',
   assert.deepEqual(fs.readdirSync(dir), ['v.json']);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('connexions lentes : 2,5 s par tentative d’adresse (IPv6 puis IPv4) au lieu des 250 ms de Node', () => {
+  // mesuré le 07/11/2026 : avec 250 ms, 5 requêtes sur 12 vers Mojang échouaient en ETIMEDOUT sur une connexion lente ; 12 sur 12 avec 2,5 s
+  const nodeNet = require('node:net');
+  assert.equal(net.CONNECT_ATTEMPT_MS, 2500);
+  assert.ok(nodeNet.getDefaultAutoSelectFamilyAttemptTimeout() >= 2500, `délai par tentative : ${nodeNet.getDefaultAutoSelectFamilyAttemptTimeout()} ms`);
+});
