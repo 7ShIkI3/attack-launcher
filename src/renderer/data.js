@@ -102,7 +102,7 @@
 
   const CHANGELOG = [
     {
-      version: 'Launcher 0.8.3', date: '2026-11-05',
+      version: 'Launcher 0.8.3', date: '2026-11-07',
       title_fr: 'VSync coupée en 1.7.10', title_en: 'VSync off on 1.7.10', tag: 'perf',
       fr: 'En 1.7.10, la VSync est coupée une seule fois si elle est encore à la valeur de Minecraft, et la limite de FPS est débridée, comme pour Fabric. Un réglage différent de celui de Minecraft n’est jamais modifié ; si tu avais toi-même mis la VSync ou 120 FPS, c’est la même valeur que celle de Minecraft : elle est remplacée une fois, tu peux la remettre. Un nouveau dossier de jeu démarre déjà sans VSync. Le profil 1.8.9 n’est pas touché.',
       en: 'On 1.7.10, VSync is turned off once if it is still at Minecraft’s value, and the FPS limit is lifted, as on Fabric. A setting that differs from Minecraft’s default is never changed; if you had turned VSync on or picked 120 FPS yourself, that is the same value as Minecraft’s, so it is replaced once and you can set it back. A new game folder already starts without VSync. The 1.8.9 profile is left alone.',

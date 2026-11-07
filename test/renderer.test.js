@@ -103,12 +103,12 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     assert.ok(entry.date === '' || /^\d{4}-\d{2}-\d{2}$/.test(entry.date), `${entry.version} : date`);
   }
   assert.equal(new Set(data.CHANGELOG.map((e) => e.version)).size, data.CHANGELOG.length, 'versions uniques');
-  // 0.8.3 : la VSync du profil 1.7.10 (même jour que la 0.8.2 : le jour des mesures, à remettre au jour de la publication).
+  // 0.8.3 : la VSync du profil 1.7.10 (datée du jour de sa publication, 07/11).
   // Puis 0.8.2 : OptiFine en 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.1.0 qu'elle exige avec OptiFine (même date : le jour des
   // mesures, 05/11 ; à remettre au jour de la publication, voir « Publier une version »).
   // Puis 0.8.1 : la refonte du design, suivie des deux versions d'ATTACK Client qu'elle livre (même date) : Fabric (3.7.0) d'abord, puis la 1.8.9 (2.8.0).
   assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 7), (e) => [e.version, e.date, e.tag]), [
-    ['Launcher 0.8.3', '2026-11-05', 'perf'],
+    ['Launcher 0.8.3', '2026-11-07', 'perf'],
     ['Launcher 0.8.2', '2026-11-05', 'new'],
     ['ATTACK Client 1.7.10 1.1.0', '2026-11-05', 'new'],
     ['Launcher 0.8.1', '2026-11-01', 'new'],
