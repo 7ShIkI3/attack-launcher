@@ -40,7 +40,7 @@ sa page Mods montre donc les modules de la vitrine moins ces deux-là, et la car
 | Mod ATTACK | `<dossier de jeu>\mods\attack-client.jar` (1.8.9), `attack-forge.jar` (1.7.10) ou `attack-fabric.jar` (Fabric) |
 | Pack de mods | `<dossier de jeu>\mods\` : un jar par mod du pack |
 | OptiFine du joueur (1.8.9 et 1.7.10) | `<dossier de jeu>\mods\OptiFine-1.8.9_*.jar` ou `OptiFine-1.7.10_*.jar` : copie de la sienne, suivie dans l'état |
-| `options.txt` de départ (langue, et vidéo en Fabric) | `<dossier de jeu>\options.txt`, une fois par étape |
+| `options.txt` de départ (langue ; vidéo en Fabric et en 1.7.10) | `<dossier de jeu>\options.txt`, une fois par étape |
 | État de l'installation (profil, versions, source du mod, SHA-256, pack et jars gérés, date) | `<dossier de jeu>\attack-launcher.json` |
 | Profil du launcher officiel | fusionné dans `%APPDATA%\.minecraft\launcher_profiles.json` (copie `.bak` avant chaque écriture) |
 | Java officiel de Mojang (lancement direct) | `%LOCALAPPDATA%\ATTACK Launcher\runtime\<composant>` : `jre-legacy`, `java-runtime-delta` ou `java-runtime-epsilon` |
@@ -210,17 +210,30 @@ ressources au format OptiFine (textures connectées, mobs, ciel) **sans OptiFine
 - **Pas de Dynamic FPS** : par défaut il descend à 1 FPS dès que la fenêtre perd le focus (60 FPS au survol), gênant
   avec un second écran, et il ne fait gagner aucun FPS en jeu.
 - **Réglages de départ d'`options.txt`** (`src/main/gameoptions.js`), par **étapes** suivies par le drapeau `gameOptions`
-  de `attack-launcher.json` (une étape faite n'est jamais refaite) :
-  - étape 1, **profils Fabric seulement** : un dossier neuf reçoit un `options.txt` sans VSync, sans limite de FPS
-    (`maxFps:260`), sans ombres d'entités, distance 10 ; dans un dossier existant, seules les valeurs par défaut de
+  de `attack-launcher.json` (une étape faite n'est jamais refaite ; dernière étape : `gameOptions=3`). L'**étape vidéo** a un
+  numéro **par profil** et des réglages de départ **par profil**, tous deux dans le catalogue (`videoStep`, `videoStart`
+  de `src/main/catalog.js`) ; l'étape 2 (langue) est commune :
+  - étape vidéo n° 1, **profils Fabric** (`videoStep` 1) : un dossier neuf reçoit un `options.txt` sans VSync, sans limite de
+    FPS (`maxFps:260`), sans ombres d'entités, distance 10 ; dans un dossier existant, seules les valeurs par défaut de
     Minecraft `enableVsync:true` et `maxFps:120` sont remplacées ;
-  - étape 2, **tous les profils, 1.8.9 comprise** : la **langue du launcher** (`lang:fr_fr` / `en_us` en Fabric,
-    `lang:fr_FR` / `en_US` en 1.8.9) est écrite **seulement quand le launcher crée** `options.txt` (dossier de jeu neuf).
-    Un `options.txt` existant garde sa langue : `en_us` peut être le choix d'un joueur qui joue en anglais exprès, rien ne
-    le distingue de la valeur par défaut de Minecraft. Le menu ATTACK d'un dossier neuf sort ainsi en français ; le drapeau
-    `gameOptions=2` est posé dans tous les cas (l'étape n'est pas refaite). Un dossier déjà à `gameOptions=1` ne refait pas
-    l'étape 1.
-  Un choix du joueur n'est jamais modifié.
+  - étape 2, **tous les profils, 1.8.9 et 1.7.10 comprises** : la **langue du launcher** (`lang:fr_fr` / `en_us` en Fabric,
+    `lang:fr_FR` / `en_US` en 1.8.9 et 1.7.10) est écrite **seulement quand le launcher crée** `options.txt` (dossier de jeu
+    neuf). Un `options.txt` existant garde sa langue : `en_us` peut être le choix d'un joueur qui joue en anglais exprès, rien
+    ne le distingue de la valeur par défaut de Minecraft. Le menu ATTACK d'un dossier neuf sort ainsi en français ;
+  - étape vidéo n° 3, **profil 1.7.10 seulement** (`videoStep` 3, ajoutée en launcher 0.8.3) : même règle de remplacement
+    que Fabric (`enableVsync:true` devient `false`, `maxFps:120` devient `260`, rien d'autre), appliquée **une seule fois**
+    aux dossiers 1.7.10 qui n'ont pas encore l'étape 3, y compris ceux déjà à `gameOptions=2` : un profil 1.7.10 resté en
+    VSync plafonnait les FPS à la fréquence de l'écran (144 sur un écran 144 Hz). Un dossier neuf reçoit seulement
+    `enableVsync:false` et `maxFps:260` (`entityShadows` n'existe pas en 1.7.10 ; la distance d'affichage reste celle de
+    Minecraft) avant la ligne de langue. Un `options.txt` où le joueur a déjà coupé la VSync ou choisi sa limite n'est pas
+    réécrit ;
+  - **1.8.9 : jamais d'étape vidéo** (`videoStep` 0), ni VSync ni limite de FPS ne sont touchées, seulement la langue d'un
+    fichier neuf.
+  Le drapeau passe à `gameOptions=3` dans tous les cas (une étape faite n'est pas refaite, un dossier Fabric déjà à
+  `gameOptions=1` ou `2` ne refait pas l'étape 1). Chaque remplacement est consigné dans `logs/launcher/install.log`
+  (« options.txt : réglages de départ appliqués »). Une valeur différente de celle de Minecraft n'est jamais modifiée ; en
+  revanche, un joueur qui avait choisi lui-même `enableVsync:true` ou `maxFps:120` (les valeurs de Minecraft) ne peut pas en
+  être distingué : la valeur est remplacée une fois, il peut la remettre ensuite.
 - **Iris et Sodium vont ensemble** : en 1.21.1, Sodium 0.8.13 (dernière release, nouveau moteur de rendu) demande
   Iris 1.8.14-beta.1, seule version d'Iris pour Sodium 0.8 en 1.21.1 (publiée en juin 2026, pas de release stable
   depuis) ; Iris 1.8.8 (stable) ne marche qu'avec Sodium 0.6.x. En 26.3, Iris 1.11.7 déclare `sodium 0.9.x`

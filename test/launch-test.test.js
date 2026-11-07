@@ -81,3 +81,55 @@ test('lancement réel d’OptiFine 1.7.10 HD U E7 (journal relevé le 05/11 par 
   const real = event('FML', 'Loading tweaker optifine.OptiFineForgeTweaker from OptiFine-1.7.10_HD_U_E7.jar');
   assert.equal(launch.readLog(neighbours + real + ready, profile, options).tweaker, true);
 });
+
+test('options de la ligne de commande : mémoire de 2048 Mo et runtime officiel par défaut, --ram et --java en plus, les valeurs ne sont pas prises pour le dossier', () => {
+  const root = path.resolve('essai');
+  assert.deepEqual(launch.parseOptions(['essai']), { root, profileId: null, keep: false, ramMb: 2048, java: null });
+  assert.equal(launch.DEFAULT_RAM_MB, 2048);
+  const java = path.join(path.resolve('jdk'), 'bin', 'javaw.exe');
+  assert.deepEqual(launch.parseOptions(['--ram', '4096', '--java', java, 'essai', '--profile', 'forge-1.7.10', '--keep']),
+    { root, profileId: 'forge-1.7.10', keep: true, ramMb: 4096, java });
+  // le dossier peut aussi venir après les options, et --java relatif est résolu
+  assert.equal(launch.parseOptions(['--java', 'bin/javaw.exe', 'essai']).java, path.resolve('bin/javaw.exe'));
+  assert.equal(launch.parseOptions(['--ram', '1024', 'essai']).root, root);
+});
+
+test('options de la ligne de commande : --ram invalide, valeur manquante ou option inconnue = erreur claire, jamais une valeur par défaut silencieuse', () => {
+  for (const bad of ['0', '-5', 'abc', '2048.5', '', '1e3']) assert.throws(() => launch.parseOptions(['essai', '--ram', bad]), /--ram attend un nombre entier/, bad);
+  assert.throws(() => launch.parseOptions(['essai', '--ram']), /--ram demande une valeur/);
+  assert.throws(() => launch.parseOptions(['essai', '--java']), /--java demande une valeur/);
+  assert.throws(() => launch.parseOptions(['essai', '--java', '--keep']), /--java demande une valeur/);
+  assert.throws(() => launch.parseOptions(['essai', '--ramm', '1']), /Option inconnue/);
+});
+
+test('version de Java : lue dans la sortie de « java -version » (Java 8 et Java moderne) ; javaw est interrogé par son java.exe voisin quand il existe', () => {
+  assert.equal(launch.parseJavaVersion('openjdk version "1.8.0_402"\nOpenJDK Runtime Environment'), '1.8.0_402');
+  assert.equal(launch.parseJavaVersion('java version "21.0.2" 2024-01-16 LTS'), '21.0.2');
+  assert.equal(launch.parseJavaVersion('rien d’utile'), null);
+  assert.equal(launch.parseJavaVersion(undefined), null);
+
+  const dir = tempDir('atk-launch-');
+  const calls = [];
+  const run = (file, args) => {
+    calls.push([file, args]);
+    return { stderr: 'openjdk version "1.8.0_402"\n' };
+  };
+  const javaw = path.join(dir, 'javaw.exe');
+  fs.writeFileSync(javaw, 'x');
+  assert.equal(launch.javaVersion(javaw, run), '1.8.0_402');
+  assert.equal(calls[0][0], javaw, 'pas de java.exe voisin : javaw lui-même');
+  fs.writeFileSync(path.join(dir, 'java.exe'), 'x');
+  launch.javaVersion(javaw, run);
+  assert.equal(calls[1][0], path.join(dir, 'java.exe'));
+  assert.deepEqual(calls[1][1], ['-version']);
+  assert.equal(launch.javaVersion(path.join(dir, 'java.exe'), () => ({ error: new Error('x') })), null, 'lancement impossible : null, pas d’exception');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('launch-test.js : la mémoire du jeu vient de --ram (plus de 2048 en dur dans le lancement) et --java contourne installRuntime', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'launch-test.js'), 'utf8');
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.equal(/ramMb:\s*2048/.test(code), false);
+  assert.match(code, /launchGame\(\{[^}]*\bramMb\b/);
+  assert.match(code, /if \(java\) \{[\s\S]*?\} else \{[\s\S]*?installRuntime/);
+});

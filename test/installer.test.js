@@ -527,7 +527,9 @@ test('installation factice Forge 1.7.10 : vrai install_profile.json, bibliothèq
   assert.equal(result.walksylib, undefined);
   assert.equal(installer.gameDirConflict(state, catalog.get('forge-1.7.10')), false);
   assert.equal(installer.gameDirConflict(state, catalog.get('forge-1.8.9')), true, 'le dossier de la 1.7.10 n’est pas utilisable par la 1.8.9');
-  assert.match(fs.readFileSync(path.join(gameDir, 'options.txt'), 'latin1'), /^lang:fr_FR$/m);
+  // dossier neuf : réglages de départ du profil 1.7.10 (VSync coupée, FPS débridés, pas d'entityShadows) puis la langue en écriture 1.7.10
+  assert.equal(fs.readFileSync(path.join(gameDir, 'options.txt'), 'latin1'), 'enableVsync:false\nmaxFps:260\nlang:fr_FR\n');
+  assert.equal(state.gameOptions, 3);
 
   // profil du launcher officiel
   const launcherProfile = JSON.parse(fs.readFileSync(path.join(minecraftDir, 'launcher_profiles.json'), 'utf8')).profiles['attack-forge-1.7.10'];
@@ -601,6 +603,31 @@ test('installation factice Forge 1.7.10 avec l’OptiFine du joueur : copié dan
   assert.deepEqual([done.modVersion, done.optifine.modOutdated, done.installed], ['1.1.0', false, true]);
   assert.equal(fs.readFileSync(path.join(gameDir, 'mods', 'OptiFine_1.8.9_HD_U_M5.jar'), 'utf8'), 'jar 1.8.9 du joueur', 'jamais supprimé');
   assert.ok(world.jar.length > 0);
+  fs.rmSync(minecraftDir, { recursive: true, force: true });
+  fs.rmSync(path.dirname(gameDir), { recursive: true, force: true });
+});
+
+test('installation Forge 1.7.10 : la VSync d’un dossier existant (drapeau 2) est coupée une seule fois, les autres lignes et les CRLF restent identiques, jamais refaite ensuite', async () => {
+  forge1710World();
+  const minecraftDir = tempDir();
+  const gameDir = path.join(tempDir(), 'jeu');
+  fs.mkdirSync(gameDir, { recursive: true });
+  // dossier de Raphaël : drapeau 2 posé par une version précédente du launcher, VSync à la valeur de Minecraft, FPS déjà à 260
+  fs.writeFileSync(path.join(gameDir, 'attack-launcher.json'), JSON.stringify({ gameOptions: 2 }));
+  const before = 'fov:0.5\r\nenableVsync:true\r\nmaxFps:260\r\nlang:en_US\r\nrenderDistance:16\r\n';
+  fs.writeFileSync(path.join(gameDir, 'options.txt'), before);
+
+  const first = await install1710({ gameDir, devMode: false }, { minecraftDir });
+  assert.deepEqual([first.gameOptions.action, first.gameOptions.changed], ['updated', ['enableVsync']]);
+  assert.equal(fs.readFileSync(path.join(gameDir, 'options.txt'), 'latin1'), before.replace('enableVsync:true', 'enableVsync:false'));
+  assert.equal(JSON.parse(fs.readFileSync(path.join(gameDir, 'attack-launcher.json'), 'utf8')).gameOptions, 3);
+  assert.match(fs.readFileSync(path.join(gameDir, 'logs', 'launcher', 'install.log'), 'utf8'), /options\.txt : réglages de départ appliqués \(updated : enableVsync\)/);
+
+  // le joueur remet la VSync : la seconde installation n'y touche plus
+  fs.writeFileSync(path.join(gameDir, 'options.txt'), before);
+  const second = await install1710({ gameDir, devMode: false }, { minecraftDir });
+  assert.equal(second.gameOptions.action, 'skipped');
+  assert.equal(fs.readFileSync(path.join(gameDir, 'options.txt'), 'latin1'), before);
   fs.rmSync(minecraftDir, { recursive: true, force: true });
   fs.rmSync(path.dirname(gameDir), { recursive: true, force: true });
 });
