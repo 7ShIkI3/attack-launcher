@@ -103,11 +103,15 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     assert.ok(entry.date === '' || /^\d{4}-\d{2}-\d{2}$/.test(entry.date), `${entry.version} : date`);
   }
   assert.equal(new Set(data.CHANGELOG.map((e) => e.version)).size, data.CHANGELOG.length, 'versions uniques');
-  // 0.8.3 : la VSync du profil 1.7.10 (datée du jour de sa publication, 07/11).
+  // 0.8.4 : les mods 1.7.10 1.2.0 et 1.8.9 2.8.1 qu'elle livre suivent son entrée (même date, le jour de la publication, 07/11).
+  // Puis 0.8.3 : la VSync du profil 1.7.10 (datée du jour de sa publication, 07/11).
   // Puis 0.8.2 : OptiFine en 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.1.0 qu'elle exige avec OptiFine (même date : le jour des
   // mesures, 05/11 ; à remettre au jour de la publication, voir « Publier une version »).
   // Puis 0.8.1 : la refonte du design, suivie des deux versions d'ATTACK Client qu'elle livre (même date) : Fabric (3.7.0) d'abord, puis la 1.8.9 (2.8.0).
-  assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 7), (e) => [e.version, e.date, e.tag]), [
+  assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 10), (e) => [e.version, e.date, e.tag]), [
+    ['Launcher 0.8.4', '2026-11-07', 'fix'],
+    ['ATTACK Client 1.7.10 1.2.0', '2026-11-07', 'new'],
+    ['ATTACK Client 2.8.1', '2026-11-07', 'fix'],
     ['Launcher 0.8.3', '2026-11-07', 'perf'],
     ['Launcher 0.8.2', '2026-11-05', 'new'],
     ['ATTACK Client 1.7.10 1.1.0', '2026-11-05', 'new'],
@@ -124,7 +128,27 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
   for (const entry of data.CHANGELOG) {
     for (const lang of ['fr', 'en']) assert.ok(entry[lang].length <= 1100, `${entry.version} (${lang}) : ${entry[lang].length} caractères, 1 100 au plus`);
   }
-  const [launcher083, launcher082, mod110] = data.CHANGELOG;
+  const byVersion = (v) => data.CHANGELOG.find((e) => e.version === v);
+  const [launcher084, mod120, mod281] = data.CHANGELOG;
+  for (const lang of ['fr', 'en']) {
+    // 0.8.4 : livre les mods 1.7.10 1.2.0 et 1.8.9 2.8.1, dit comment les recevoir (bouton de réparation), Fabric inchangé
+    for (const needle of ['1.7.10 1.2.0', '2.8.1', '1.21.1', '26.3']) assert.ok(launcher084[lang].includes(needle), `0.8.4 (${lang}) : ${needle}`);
+    assert.match(launcher084[lang], lang === 'fr' ? /« Vérifier \/ réparer l’installation »/ : /“Verify \/ repair installation”/, `0.8.4 (${lang}) : le bouton qui installe le nouveau mod`);
+    // l'API ATTACK passe du port 443 au port 10000 : le launcher donne l'adresse au jeu (-Dattack.api), pour toutes les versions du mod
+    assert.match(launcher084[lang], lang === 'fr' ? /change d’adresse : le launcher la donne maintenant au jeu, pour toutes les versions du mod/ : /moves to a new address: the launcher now passes it to the game, for every version of the mod/, `0.8.4 (${lang}) : nouvelle adresse du serveur`);
+    assert.match(launcher084[lang], lang === 'fr' ? /Redémarre le launcher/ : /Restart the launcher/, `0.8.4 (${lang}) : mettre le launcher à jour`);
+    // mod 1.7.10 1.2.0 : TCP NoDelay (seulement ce que le joueur envoie), flou après un pack, viseur carré, réglages natifs cachés ; aucun gain de FPS promis
+    // (non démontré, docs/COMPAT.md du mod) ; le viseur vanilla sur fond gris n'est pas déclaré corrigé
+    assert.match(mod120[lang], /TCP NoDelay/, `mod 1.7.10 1.2.0 (${lang}) : TCP NoDelay`);
+    assert.match(mod120[lang], lang === 'fr' ? /rien ne change pour les coups que tu reçois/ : /nothing changes for the hits you take/, `mod 1.7.10 1.2.0 (${lang}) : seulement ce que le joueur envoie`);
+    for (const needle of ['Mouse Delay Fix', 'Animations', 'F3+T', 'Crosshair']) assert.ok(mod120[lang].includes(needle), `mod 1.7.10 1.2.0 (${lang}) : ${needle}`);
+    assert.doesNotMatch(mod120[lang], /FPS|\d+ ?%/, `mod 1.7.10 1.2.0 (${lang}) : aucun gain de FPS promis`);
+    assert.match(mod120[lang], lang === 'fr' ? /reste peu visible/ : /stays hard to see/, `mod 1.7.10 1.2.0 (${lang}) : viseur vanilla non corrigé`);
+    // mod 1.8.9 2.8.1 : packs FPS, F4, F5, et la même limite du viseur vanilla
+    for (const needle of ['1.8.9', 'F4', 'F5', 'Crosshair']) assert.ok(mod281[lang].includes(needle), `mod 2.8.1 (${lang}) : ${needle}`);
+    assert.match(mod281[lang], lang === 'fr' ? /reste peu visible/ : /stays hard to see/, `mod 2.8.1 (${lang}) : viseur vanilla non corrigé`);
+  }
+  const [launcher083, launcher082, mod110] = ['Launcher 0.8.3', 'Launcher 0.8.2', 'ATTACK Client 1.7.10 1.1.0'].map(byVersion);
   for (const lang of ['fr', 'en']) {
     // 0.8.3 : VSync coupée une fois en 1.7.10 (si elle est encore à la valeur de Minecraft), limite de FPS levée, choix du joueur et 1.8.9 intacts
     const text = launcher083[lang];
@@ -157,10 +181,10 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     assert.doesNotMatch(mod, lang === 'fr' ? /démarre, mais/ : /starts, but/, `mod 1.7.10 1.1.0 (${lang}) : rien d'affirmé sur une autre édition`);
     assert.match(mod, /Show Capes/, `mod 1.7.10 1.1.0 (${lang}) : limite des capes`);
     assert.match(mod, lang === 'fr' ? /pack de ressources demande OptiFine/ : /resource pack asks for OptiFine/, `mod 1.7.10 1.1.0 (${lang}) : changements sans OptiFine`);
-    assert.match(data.CHANGELOG[4][lang], /1\.21\.1 (et|and) 26\.3/, `3.7.0 (${lang}) : les deux versions Fabric`);
-    assert.match(data.CHANGELOG[5][lang], /1\.8\.9/, `2.8.0 (${lang}) : la 1.8.9`);
+    assert.match(byVersion('ATTACK Client 3.7.0')[lang], /1\.21\.1 (et|and) 26\.3/, `3.7.0 (${lang}) : les deux versions Fabric`);
+    assert.match(byVersion('ATTACK Client 2.8.0')[lang], /1\.8\.9/, `2.8.0 (${lang}) : la 1.8.9`);
     // la refonte du design (0.8.1, 3.7.0, 2.8.0) ne touche pas la 1.7.10
-    for (const entry of data.CHANGELOG.slice(3, 6)) assert.equal(/1\.7\.10/.test(entry[lang]), false, `${entry.version} (${lang}) : la 1.7.10 n'a pas la refonte`);
+    for (const entry of ['Launcher 0.8.1', 'ATTACK Client 3.7.0', 'ATTACK Client 2.8.0'].map(byVersion)) assert.equal(/1\.7\.10/.test(entry[lang]), false, `${entry.version} (${lang}) : la 1.7.10 n'a pas la refonte`);
   }
   // 0.8.0 : le profil 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.0.0 qu'il installe (même date), puis de la 0.7.0
   const from080 = data.CHANGELOG.findIndex((e) => e.version === 'Launcher 0.8.0');
