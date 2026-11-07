@@ -15,6 +15,10 @@ vérifiée dans le code ; les références sont de la forme `fichier:ligne` (les
   de Modrinth (`cdn.modrinth.com`) et GitHub** : la liste est fixe et codée en dur.
 - Il **ne contacte pas l'API ATTACK** ni **l'API de Modrinth** (aucune des deux n'est dans la liste des hôtes autorisés) :
   les mods du pack sont des adresses et des hash écrits dans le dépôt.
+- Depuis la 0.8.4, il **donne au jeu l'adresse de l'API ATTACK** (`-Dattack.api=https://device-126.neurotrichini-chameleon.ts.net:10000`,
+  `ATTACK_API_URL` dans `src/main/constants.js`) sans la contacter : ce sont les mods qui l'appellent (capes, cosmétiques, amis). Le port 443 du
+  même nom sert un site web depuis le 07/11/2026. Les arguments Java des Réglages ne peuvent pas changer cette adresse, et une adresse déjà
+  fixée par `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS` ou `JDK_JAVA_OPTIONS` (les essais mettent une adresse morte) est laissée telle quelle.
 - Il **ne télécharge jamais OptiFine** (sa licence l'interdit), en 1.8.9 comme en 1.7.10 : il copie seulement la copie que tu as récupérée toi-même (avec l'assistant, il surveille ton dossier Téléchargements pendant 10 minutes au plus, sans accès réseau, et ne retient que les jars de la version de Minecraft du profil), après
   l'avoir validée ; le lien optifine.net s'ouvre dans ton navigateur, le launcher n'y fait aucune requête.
 - **WalksyLib** (mod PvP du pack Fabric) interroge `api.modrinth.com` au démarrage du jeu pour chercher des mises à jour, avec

@@ -102,6 +102,24 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.8.4', date: '2026-11-07',
+      title_fr: 'Mods 1.7.10 et 1.8.9, nouvelle adresse du serveur', title_en: '1.7.10 and 1.8.9 mods, new server address', tag: 'fix',
+      fr: 'Cette version installe le mod ATTACK Client 1.7.10 1.2.0 et le mod 1.8.9 2.8.1, détaillés ci-dessous ; les mods 1.21.1 et 26.3 ne changent pas. Pour recevoir le nouveau mod, clique sur « Vérifier / réparer l’installation » du profil : l’installation remplace le jar du mod. Le serveur ATTACK (capes, cosmétiques, amis) change d’adresse : le launcher la donne maintenant au jeu, pour toutes les versions du mod, même anciennes. Redémarre le launcher quand il propose sa mise à jour : avec une version plus ancienne, les cosmétiques partagés et les amis pourraient ne plus répondre.',
+      en: 'This version installs ATTACK Client 1.7.10 1.2.0 and the 1.8.9 mod 2.8.1, described below; the 1.21.1 and 26.3 mods do not change. To get the new mod, click “Verify / repair installation” on the profile: the installation replaces the mod jar. The ATTACK server (capes, cosmetics, friends) moves to a new address: the launcher now passes it to the game, for every version of the mod, even old ones. Restart the launcher when it offers its update: with an older version, shared cosmetics and friends might stop answering.',
+    },
+    {
+      version: 'ATTACK Client 1.7.10 1.2.0', date: '2026-11-07',
+      title_fr: 'TCP NoDelay et correctifs en 1.7.10', title_en: 'TCP NoDelay and fixes on 1.7.10', tag: 'new',
+      fr: 'En 1.7.10 : TCP NoDelay, comme Minecraft 1.8.9. Tes coups et tes mouvements partent tout de suite au lieu d’attendre la réponse au paquet précédent ; rien ne change pour les coups que tu reçois. Le flou revient après un changement de pack, F3+T ou un changement de langue (il restait éteint). Le viseur n’est plus remplacé par un carré quand le flou ou la saturation sont allumés avec certains packs. Les quatre réglages d’Animations que le jeu 1.7.10 fait déjà (blockhit, coup en mangeant, pas de redescente, armure rouge) et la touche Mouse Delay Fix ne sont plus affichés. Motion Blur et Color Saturation ensemble passent de 4 à 3 passes, et chaque cape à physique est dessinée en une fois, avec la même image. Sur un fond gris, le viseur de Minecraft reste peu visible : c’est le jeu lui-même, et le module Crosshair d’ATTACK reste lisible.',
+      en: 'On 1.7.10: TCP NoDelay, like Minecraft 1.8.9. Your hits and movements are sent right away instead of waiting for the reply to the previous packet; nothing changes for the hits you take. Motion blur comes back after a resource pack change, F3+T or a language change (it stayed off). The crosshair is no longer replaced by a square when blur or saturation is on with some packs. The four Animations settings that 1.7.10 already does on its own (blockhit, swing while eating, no re-equip, red armor) and the Mouse Delay Fix key are no longer shown. Motion Blur and Color Saturation together go from 4 to 3 passes, and each physics cape is drawn in one go, with the same picture. On a grey background, Minecraft’s crosshair stays hard to see: that is the game itself, and ATTACK’s Crosshair module stays readable.',
+    },
+    {
+      version: 'ATTACK Client 2.8.1', date: '2026-11-07',
+      title_fr: 'Flou et viseur corrigés en 1.8.9', title_en: 'Blur and crosshair fixes on 1.8.9', tag: 'fix',
+      fr: 'En 1.8.9 : avec un pack « FPS » qui remplace les shaders de Minecraft, Motion Blur et Color Saturation ne rendent plus l’image noire, car le mod utilise maintenant ses propres programmes. La touche F4 de Minecraft ne coupe plus le flou tant que le module est allumé. Le viseur du module Crosshair reste affiché en vue F5. Sur un fond gris, le viseur de Minecraft reste peu visible : c’est le jeu lui-même, et le module Crosshair d’ATTACK reste lisible.',
+      en: 'On 1.8.9: with an “FPS” pack that replaces Minecraft’s shaders, Motion Blur and Color Saturation no longer turn the picture black, because the mod now uses its own programs. Minecraft’s F4 key no longer turns the blur off while the module is on. The Crosshair module’s crosshair stays visible in F5 view. On a grey background, Minecraft’s crosshair stays hard to see: that is the game itself, and ATTACK’s Crosshair module stays readable.',
+    },
+    {
       version: 'Launcher 0.8.3', date: '2026-11-07',
       title_fr: 'VSync coupée en 1.7.10', title_en: 'VSync off on 1.7.10', tag: 'perf',
       fr: 'En 1.7.10, la VSync est coupée une seule fois si elle est encore à la valeur de Minecraft, et la limite de FPS est débridée, comme pour Fabric. Un réglage différent de celui de Minecraft n’est jamais modifié ; si tu avais toi-même mis la VSync ou 120 FPS, c’est la même valeur que celle de Minecraft : elle est remplacée une fois, tu peux la remettre. Un nouveau dossier de jeu démarre déjà sans VSync. Le profil 1.8.9 n’est pas touché.',

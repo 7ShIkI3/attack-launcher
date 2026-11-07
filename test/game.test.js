@@ -119,6 +119,35 @@ test('ligne de commande Java : arguments, classpath, -Xmx, log4j ; jeton masqué
   assert.match(cmd.redacted, /--username Raphou/);
 });
 
+test('API ATTACK : -Dattack.api vers le port 10000, sauf si le joueur ou un essai a déjà fixé l’adresse', async () => {
+  const { ATTACK_API_URL } = require('../src/main/constants');
+  assert.equal(ATTACK_API_URL, 'https://device-126.neurotrichini-chameleon.ts.net:10000', 'le port 443 sert le site web depuis le 07/11/2026');
+  const version = await game.resolveVersion(MC, FORGE.id, read);
+  const { classpath } = game.libraryPlan(version, MC, WIN64);
+  const build = (extra) => game.buildCommand({
+    java: 'C:\\rt\\bin\\javaw.exe', version, minecraftDir: MC, gameDir: 'C:\\g', nativesDir: 'C:\\natives', classpath,
+    identity: IDENTITY, ramMb: 3072, launcherVersion: '0.8.4', platform: 'win32', ...extra,
+  }).args;
+  const api = (args) => args.filter((x) => x.startsWith('-Dattack.api='));
+  // par défaut : une seule fois, avant -cp (argument Java, pas du jeu)
+  const a = build({ env: {} });
+  assert.deepEqual(api(a), [`-Dattack.api=${ATTACK_API_URL}`]);
+  assert.ok(a.indexOf(`-Dattack.api=${ATTACK_API_URL}`) < a.indexOf('-cp'));
+  // une variable sans attack.api ne bloque rien
+  assert.deepEqual(api(build({ env: { JAVA_TOOL_OPTIONS: '-Dfoo=1 -Xss2m' } })), [`-Dattack.api=${ATTACK_API_URL}`]);
+  // les arguments Java du joueur (Réglages) ne peuvent pas détourner l'adresse : la propriété y est refusée
+  assert.throws(() => build({ env: {}, jvmArgs: '-Dattack.api=https://exemple.test:9000' }), /propriété non autorisée/);
+  // un essai (selftest, launch-test) met une adresse morte par variable d'environnement : un -D en ligne de commande l'emporterait sur
+  // JAVA_TOOL_OPTIONS et enverrait l'essai vers la vraie API, donc rien n'est ajouté
+  for (const name of ['JAVA_TOOL_OPTIONS', '_JAVA_OPTIONS', 'JDK_JAVA_OPTIONS']) {
+    assert.deepEqual(api(build({ env: { [name]: '-Xss1m -Dattack.api=http://127.0.0.1:1' } })), [], name);
+    assert.deepEqual(api(build({ env: { [name]: '-Dattack.api=http://127.0.0.1:1' } })), [], `${name} (en tête)`);
+  }
+  assert.deepEqual(game.apiArgs({ JAVA_TOOL_OPTIONS: '-Dattack.apix=1' }), [`-Dattack.api=${ATTACK_API_URL}`], 'seulement la propriété exacte');
+  // la commande moderne (Fabric 1.21.1 et 26.3) l'a aussi, une seule fois
+  assert.equal(game.apiArgs({}).length, 1);
+});
+
 test('masquage : le jeton est retiré même s’il apparaît ailleurs', () => {
   const text = game.redact(['java', '--accessToken', 'ABCDEFGH', '-Dx=ABCDEFGH', 'C:\\Program Files\\x'], 'ABCDEFGH');
   assert.equal(text, 'java --accessToken <masqué> -Dx=<masqué> "C:\\Program Files\\x"');

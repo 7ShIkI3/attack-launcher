@@ -72,12 +72,19 @@ const AUTH = {
   profile: 'https://api.minecraftservices.com/minecraft/profile',
 };
 
+/**
+ * Adresse de l'API ATTACK (capes, cosmétiques, amis), transmise au jeu par -Dattack.api (les mods 1.7.10, 1.8.9 et Fabric la lisent
+ * avant leur adresse intégrée). Depuis le 07/11/2026, l'API est sur le port 10000 : le port 443 du même nom sert un site web.
+ */
+const ATTACK_API_URL = 'https://device-126.neurotrichini-chameleon.ts.net:10000';
+
 /** Arguments Java par défaut du launcher officiel ; seul -Xmx est réglé par le launcher ATTACK. */
 const DEFAULT_JVM_ARGS =
   '-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 ' +
   '-XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M';
 
 module.exports = {
+  ATTACK_API_URL,
   MC_VERSION,
   FORGE_VERSION,
   FORGE_VERSION_ID,

@@ -10,10 +10,22 @@ const mojang = require('./mojang');
 const catalog = require('./catalog');
 const { mavenPath, safeJoin } = require('./maven');
 const { readEntries, readEntry } = require('./zip');
-const { DEFAULT_JVM_ARGS } = require('./constants');
+const { DEFAULT_JVM_ARGS, ATTACK_API_URL } = require('./constants');
 const jvmargs = require('./jvmargs');
 
 const HIDDEN = '<masqué>';
+
+/**
+ * -Dattack.api : l'adresse de l'API ATTACK, lue par les mods 1.7.10, 1.8.9 et Fabric avant leur adresse intégrée (toutes les versions
+ * publiées). Les arguments Java du joueur ne peuvent pas la changer (jvmargs n'autorise que quelques propriétés). Rien n'est ajouté si
+ * JAVA_TOOL_OPTIONS, _JAVA_OPTIONS ou JDK_JAVA_OPTIONS la fixent déjà : les essais (selftest, launch-test) y mettent une adresse morte
+ * (http://127.0.0.1:1), et un -D en ligne de commande l'emporterait sur JAVA_TOOL_OPTIONS, ce qui enverrait l'essai vers la vraie API.
+ */
+function apiArgs(env = process.env) {
+  const set = (text) => /(^|\s)-Dattack\.api=/.test(text || '');
+  if (['JAVA_TOOL_OPTIONS', '_JAVA_OPTIONS', 'JDK_JAVA_OPTIONS'].some((name) => set(env[name]))) return [];
+  return [`-Dattack.api=${ATTACK_API_URL}`];
+}
 
 async function readVersion(minecraftDir, id) {
   const file = safeJoin(minecraftDir, `versions/${id}/${id}.json`);
@@ -136,7 +148,7 @@ function nativesSubdirs(version) {
 }
 
 /** Ligne de commande du format moderne (`arguments`) : le JSON de version fournit -cp, java.library.path et la marque. */
-function modernCommand({ java, version, minecraftDir, nativesDir, classpath, identity, ramMb, extraJvmArgs, launcherVersion, platform, values, assetsDir }) {
+function modernCommand({ java, version, minecraftDir, nativesDir, classpath, identity, ramMb, extraJvmArgs, launcherVersion, platform, values, assetsDir, processEnv = process.env }) {
   const env = mojang.currentEnv(platform);
   const modernValues = {
     ...values,
@@ -153,7 +165,7 @@ function modernCommand({ java, version, minecraftDir, nativesDir, classpath, ide
     resolution_height: '',
   };
   const fromJson = expandArguments(version.arguments.jvm, modernValues, env);
-  const jvmArgs = [`-Xmx${ramMb}M`, ...jvmargs.baseArgs(DEFAULT_JVM_ARGS, extraJvmArgs), ...extraJvmArgs, ...fromJson];
+  const jvmArgs = [`-Xmx${ramMb}M`, ...jvmargs.baseArgs(DEFAULT_JVM_ARGS, extraJvmArgs), ...extraJvmArgs, ...apiArgs(processEnv), ...fromJson];
   // ajoutés seulement s'ils manquent : jamais deux fois
   if (!fromJson.some((a) => a === '-cp' || a === '-classpath' || a === '--class-path')) jvmArgs.push('-cp', modernValues.classpath);
   if (!fromJson.some((a) => a.startsWith('-Djava.library.path='))) jvmArgs.push(`-Djava.library.path=${nativesDir}`);
@@ -176,7 +188,7 @@ function modernCommand({ java, version, minecraftDir, nativesDir, classpath, ide
  * Deux formats de JSON de version : `minecraftArguments` (1.8.9 + Forge) et `arguments` avec règles (Fabric 1.21.1 / 26.3).
  * `jvmArgs` : arguments Java ajoutés par le joueur (Réglages), placés après ceux par défaut ; ils sont revérifiés ici.
  */
-function buildCommand({ java, version, minecraftDir, gameDir, nativesDir, classpath, identity, ramMb, jvmArgs: extra = '', launcherVersion = '0', platform = process.platform }) {
+function buildCommand({ java, version, minecraftDir, gameDir, nativesDir, classpath, identity, ramMb, jvmArgs: extra = '', launcherVersion = '0', platform = process.platform, env = process.env }) {
   const parsed = jvmargs.parseJvmArgs(extra);
   if (!parsed.ok) throw new Error(jvmargs.describe(parsed));
   const extraJvmArgs = parsed.args;
@@ -200,12 +212,12 @@ function buildCommand({ java, version, minecraftDir, gameDir, nativesDir, classp
     version_type: 'release',
   };
   if (version.arguments) {
-    return modernCommand({ java, version, minecraftDir, gameDir, nativesDir, classpath, identity, ramMb, extraJvmArgs, launcherVersion, platform, values, assetsDir });
+    return modernCommand({ java, version, minecraftDir, gameDir, nativesDir, classpath, identity, ramMb, extraJvmArgs, launcherVersion, platform, values, assetsDir, processEnv: env });
   }
   const gameArgs = version.minecraftArguments.split(' ').filter(Boolean)
     .map((arg) => arg.replace(/\$\{(\w+)\}/g, (match, key) => (key in values ? values[key] : match)));
 
-  const jvmArgs = [`-Xmx${ramMb}M`, ...jvmargs.baseArgs(DEFAULT_JVM_ARGS, extraJvmArgs), ...extraJvmArgs];
+  const jvmArgs = [`-Xmx${ramMb}M`, ...jvmargs.baseArgs(DEFAULT_JVM_ARGS, extraJvmArgs), ...extraJvmArgs, ...apiArgs(env)];
   if (platform === 'win32') jvmArgs.push('-XX:HeapDumpPath=MojangTricksIntelDriversForPerformance_javaw.exe_minecraft.exe.heapdump');
   jvmArgs.push(
     `-Djava.library.path=${nativesDir}`,
@@ -331,6 +343,6 @@ function gameBlocksInstall(gameDir, ownGameDirs = [], commandLines = []) {
 }
 
 module.exports = {
-  HIDDEN, readVersion, resolveVersion, javaComponent, libraryPlan, extractNatives, expandArguments, nativesSubdirs, buildCommand, redact, launchGame,
+  HIDDEN, apiArgs, readVersion, resolveVersion, javaComponent, libraryPlan, extractNatives, expandArguments, nativesSubdirs, buildCommand, redact, launchGame,
   JAVA_PROCESSES_PS, gameCommandLines, isGameCommandLine, runningGameLines, detectRunningGame, gameDirOfCommandLine, gameBlocksInstall,
 };
