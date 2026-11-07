@@ -102,6 +102,12 @@
 
   const CHANGELOG = [
     {
+      version: 'Launcher 0.8.5', date: '2026-11-07',
+      title_fr: 'Connexions lentes', title_en: 'Slow connections', tag: 'fix',
+      fr: 'Sur une connexion lente, la connexion du compte ou l’installation pouvait échouer avec « Vérifie ta connexion Internet » (« fetch failed » pendant l’installation), alors qu’Internet marchait. Le launcher abandonnait une connexion vers les serveurs de Minecraft si elle mettait plus d’un quart de seconde à s’ouvrir ; il attend maintenant jusqu’à 2,5 secondes. Mesuré sur un PC lent : 5 téléchargements sur 12 échouaient, plus aucun ensuite. Les mods ne changent pas.',
+      en: 'On a slow connection, signing in or installing could fail with “Cannot reach the server: check your Internet connection” (“fetch failed” during the installation), even though the Internet worked. The launcher gave up on a connection to Minecraft’s servers if it took more than a quarter of a second to open; it now waits up to 2.5 seconds. Measured on a slow PC: 5 downloads out of 12 failed before, none after. The mods do not change.',
+    },
+    {
       version: 'Launcher 0.8.4', date: '2026-11-07',
       title_fr: 'Mods 1.7.10 et 1.8.9, nouvelle adresse du serveur', title_en: '1.7.10 and 1.8.9 mods, new server address', tag: 'fix',
       fr: 'Cette version installe le mod ATTACK Client 1.7.10 1.2.0 et le mod 1.8.9 2.8.1, détaillés ci-dessous ; les mods 1.21.1 et 26.3 ne changent pas. Pour recevoir le nouveau mod, clique sur « Vérifier / réparer l’installation » du profil : l’installation remplace le jar du mod. Le serveur ATTACK (capes, cosmétiques, amis) change d’adresse : le launcher la donne maintenant au jeu, pour toutes les versions du mod, même anciennes. Redémarre le launcher quand il propose sa mise à jour : avec une version plus ancienne, les cosmétiques partagés et les amis pourraient ne plus répondre.',
