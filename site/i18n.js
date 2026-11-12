@@ -90,6 +90,8 @@ const fr = {
     clientSearch: 'La recherche trouve les modules et leurs réglages dès la frappe (ici « Épaisseur »).',
     clientFavorites: 'Les favoris (étoile) passent en premier et ont leur onglet.',
     clientHud: 'L’éditeur de HUD : glisse un élément pour le placer, molette pour sa taille.',
+    clientTitle: 'L’écran titre d’ATTACK Client (Minecraft 1.7.10) : Solo, Multijoueur et une rangée de boutons d’icônes.',
+    clientCosmetics: 'Les cosmétiques (Minecraft 1.7.10) : capes, ailes et auréole, réparties par catégorie.',
   },
   alt: {
     'launcher-home': 'Fenêtre d’ATTACK Launcher, page Accueil : profil 1.8.9 (PvP classique) choisi, gros bouton JOUER, ligne « Tout est prêt », nouveautés à droite et carte « Profil actuel ».',
@@ -103,6 +105,8 @@ const fr = {
     'client-search': 'Menu ATTACK en 1.8.9 : la recherche « Épaisseur » trouve trois résultats (Contour de bloc, Viseur, Hitboxes), avec le réglage qui correspond.',
     'client-favorites': 'Menu ATTACK en 1.8.9, onglet Favoris : le module Viseur, marqué d’une étoile.',
     'client-hud-editor': 'Éditeur de HUD en 1.8.9 : les HUD FPS, CPS et touches affichés à l’écran, un message « 22 HUD désactivé(s) » et les boutons Terminé et Réinitialiser.',
+    'client-title': 'Écran titre d’ATTACK Client, Minecraft 1.7.10 (Forge) : logo ATTACK et « CLIENT · 1.7.10 » sur un décor de jeu flouté, boutons SOLO (rouge) et MULTIJOUEUR, six boutons d’icônes en dessous, et en bas « ATTACK Client 1.2.0 », « Minecraft 1.7.10 · Forge » et la mention « Non officiel : ni approuvé par Mojang ou Microsoft, ni associé à eux ».',
+    'client-cosmetics': 'Écran Cosmétiques d’ATTACK Client, Minecraft 1.7.10 : aperçu du personnage à gauche (« Rejoins un monde pour voir ton personnage avec tes cosmétiques »), onglets Capes, Ailes et Auréole, catégories ATTACK, Ciné culte, Éléments, Rangs PvP et Saisons, grille de capes (Aucune, Classique, Noir, Dégradé sélectionnée), et « Serveur ATTACK injoignable » avec le bouton Recharger.',
   },
   features: {
     title: 'Ce que fait le launcher',
@@ -139,7 +143,7 @@ const fr = {
     k6: { t: 'Environ 60 modules', p: 'FPS, CPS, Touches, Armure, Effets de potion, Coordonnées, Ping, Sprint continu / Sprint auto… Active-les et règle-les en jeu, depuis le menu ATTACK.' },
     snap: '<strong>Un module à connaître : Snap Tap.</strong> Quand tu tiens deux touches opposées, la dernière pressée gagne. Il est <strong>coupé par défaut</strong>. Il est interdit sur certains serveurs et il n’est pas invisible : le serveur voit le déplacement qui en résulte. À tes risques.',
     risk: '<strong>En 1.8.9 et en 1.7.10, Saut sans délai (No Jump Delay) et Coups sans délai (No Hit Delay) sont actifs par défaut</strong>, sur tous les serveurs. Ils sont interdits et détectés sur beaucoup de serveurs publics (Hypixel par exemple) : coupe-les là-bas depuis le menu ATTACK, sinon ton compte risque un bannissement. <strong>Perspective</strong> est interdit sur Hypixel et sur beaucoup d’autres serveurs.',
-    shotsNote: 'Captures prises en 1.8.9 (ATTACK Client 2.6.0). Le menu en jeu a été refait de la même façon en 1.8.9, 1.21.1 et 26.3.',
+    shotsNote: 'Captures prises en 1.8.9 (ATTACK Client 2.6.0), sauf l’écran titre et les cosmétiques, pris en 1.7.10. L’écran titre et le menu en jeu sont les mêmes en 1.7.10, 1.8.9, 1.21.1 et 26.3.',
     shotsRegion: 'Captures d’ATTACK Client en jeu',
   },
   perf: {
@@ -360,6 +364,8 @@ const en = {
     clientSearch: 'Search finds modules and their settings as you type (here “Thickness”).',
     clientFavorites: 'Favourites (star) come first and have their own tab.',
     clientHud: 'The HUD editor: drag an element to place it, mouse wheel to resize it.',
+    clientTitle: 'The ATTACK Client title screen (26.3): Singleplayer, Multiplayer and a row of icon buttons.',
+    clientCosmetics: 'Cosmetics (1.21.1): capes, wings and halo, sorted by category, with a preview of your player.',
   },
   alt: {
     'launcher-home': 'ATTACK Launcher window, Home page: 1.8.9 profile (Classic PvP) selected, a large PLAY button, an “All set” line, news on the right and a “Current profile” card.',
@@ -373,6 +379,8 @@ const en = {
     'client-search': 'ATTACK menu on 26.3: searching “Thickness” finds one result, Crosshair.',
     'client-favorites': 'ATTACK menu on 26.3, Favorites tab: the Crosshair module, marked with a star.',
     'client-hud-editor': 'HUD editor on 26.3: many HUD elements (FPS, CPS, coordinates, keystrokes, a potion effect) laid over the game view, a “2 disabled HUD(s)” message and the Done and Reset buttons.',
+    'client-title': 'ATTACK Client title screen, Minecraft 26.3 (Fabric): ATTACK logo and “CLIENT · 26.3” over a blurred game background, SINGLEPLAYER (red) and MULTIPLAYER buttons, six icon buttons below, and at the bottom “ATTACK Client 3.7.0”, “Minecraft 26.3 · Fabric” and the notice “Not official: not approved by or associated with Mojang or Microsoft”.',
+    'client-cosmetics': 'ATTACK Client Cosmetics screen, Minecraft 1.21.1: a 3D preview of the player “Player238” with wings and a cape (“Drag to rotate”), Capes, Wings and Halo tabs, categories Attack, Cult Cinema, Elements, PvP Ranks and Seasons, a grid of capes (None, Classic, Noir, Gradient) and an Animated effect row (None, Shine, Sparkles, Flames, Glow selected).',
   },
   features: {
     title: 'What the launcher does',
@@ -409,7 +417,7 @@ const en = {
     k6: { t: 'About 60 modules', p: 'FPS, CPS, Keystrokes, Armor Status, Potion Effects, Coordinates, Ping, ToggleSprint… Switch them on and tune them in game, from the ATTACK menu.' },
     snap: '<strong>One module to know about: Snap Tap.</strong> When you hold two opposite keys, the last one pressed wins. It is <strong>off by default</strong>. It is banned on some servers and it is not invisible: the server sees the movement it produces. At your own risk.',
     risk: '<strong>On 1.8.9 and on 1.7.10, No Jump Delay and No Hit Delay are on by default</strong>, on every server. They are banned and detected on many public servers (Hypixel for one): switch them off there from the ATTACK menu, or your account risks a ban. <strong>Perspective</strong> is banned on Hypixel and on many other servers.',
-    shotsNote: 'Screenshots taken on 26.3 (ATTACK Client 3.5.0). The in-game menu was redesigned the same way on 1.8.9, 1.21.1 and 26.3.',
+    shotsNote: 'Screenshots taken on 26.3 (ATTACK Client 3.5.0, and 3.7.0 for the title screen), except the cosmetics screen, taken on 1.21.1. The title screen and the in-game menu are the same on 1.7.10, 1.8.9, 1.21.1 and 26.3.',
     shotsRegion: 'ATTACK Client in-game screenshots',
   },
   perf: {

@@ -43,6 +43,8 @@ const KEYS = {
   'client-search': { widths: CLIENT_WIDTHS },
   'client-favorites': { widths: CLIENT_WIDTHS },
   'client-hud-editor': { widths: CLIENT_WIDTHS },
+  'client-title': { widths: CLIENT_WIDTHS },
+  'client-cosmetics': { widths: CLIENT_WIDTHS },
 };
 
 function argValue(name) {
