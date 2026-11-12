@@ -22,11 +22,11 @@ const fr = {
   },
   pages: {
     home: {
-      title: 'ATTACK Launcher : Minecraft PvP en un clic pour Windows',
+      title: 'ATTACK Launcher : Minecraft PvP 1.7.10, 1.8.9 et Fabric',
       description: 'Launcher Windows gratuit pour ATTACK Client : Minecraft PvP en un clic, en 1.7.10, 1.8.9, 1.21.1 et 26.3 (Forge, Fabric). Aucune télémétrie dans le launcher.',
     },
     download: {
-      title: 'Télécharger ATTACK Launcher pour Windows (installateur, portable)',
+      title: 'Télécharger ATTACK Launcher (installateur, portable)',
       description: 'Télécharge ATTACK Launcher pour Windows 10 et 11 : installateur (mises à jour automatiques) ou version portable, SHA-256 à vérifier, aide si SmartScreen bloque.',
     },
     guide: {
@@ -144,7 +144,7 @@ const fr = {
   },
   perf: {
     title: 'Performances',
-    lead: 'Ce que le launcher installe et règle pour tes FPS, plus une seule mesure, avec ses conditions.',
+    lead: 'Ce que le launcher installe et règle pour tes FPS, et une seule mesure, avec ses conditions.',
     p1: { t: 'Un pack de mods de performance', p: 'En 1.21.1 et 26.3 : Sodium, Lithium, FerriteCore, ImmediatelyFast, Entity Culling, More Culling, BadOptimizations, Krypton et Reflex AntiLag, plus ModernFix en 1.21.1 (il n’existe pas en 26.3). En 1.8.9, Phosphor Legacy apporte un moteur d’éclairage plus rapide : moins de saccades quand la lumière change.' },
     p2: { t: 'Des réglages de départ', p: 'Un nouveau dossier de jeu Fabric démarre sans VSync ni limite de FPS, sans ombres d’entités, avec une distance d’affichage de 10. Dans un dossier existant, seules deux valeurs d’origine de Minecraft (VSync activée, limite à 120 FPS) sont remplacées, une seule fois, par « sans VSync, sans limite ». Un choix que tu as fait n’est jamais modifié.' },
     p3: { t: 'Le Java officiel, adapté au profil', p: 'Le launcher installe le Java officiel de Mojang du profil (Java 8, 21 ou 25) et lance le jeu avec. Côté mémoire, 2 à 3 Go suffisent en 1.8.9 et en 1.7.10, et 3 à 4 Go conviennent en 1.21.1 et 26.3 avec le pack : plus n’augmente pas les FPS.' },
@@ -292,7 +292,7 @@ const en = {
   },
   pages: {
     home: {
-      title: 'ATTACK Launcher: one-click Minecraft PvP launcher for Windows',
+      title: 'ATTACK Launcher: Minecraft PvP for 1.7.10, 1.8.9 and Fabric',
       description: 'Free Windows launcher for ATTACK Client: Minecraft PvP in one click, on 1.7.10, 1.8.9, 1.21.1 and 26.3 (Forge, Fabric). No telemetry in the launcher.',
     },
     download: {
@@ -406,7 +406,7 @@ const en = {
     k3: { t: 'HUD editor', p: 'Drag an element to place it, mouse wheel to change its size. Disabled HUDs are no longer drawn, and “Reset” asks for confirmation.' },
     k4: { t: 'Cosmetics', p: 'Capes, wings and effects. Other ATTACK players see yours on any server, and you see theirs; sharing can be switched off in the options.' },
     k5: { t: 'Friends', p: 'Add a friend by username if they use ATTACK Client, see who is online and chat with them. Messages are deleted from the server 24 h after they are sent.' },
-    k6: { t: 'About 60 modules', p: 'FPS, CPS, Keystrokes, Armor Status, Potion Effects, Coordinates, Ping, ToggleSprint… You switch them on and tune them in game, from the ATTACK menu.' },
+    k6: { t: 'About 60 modules', p: 'FPS, CPS, Keystrokes, Armor Status, Potion Effects, Coordinates, Ping, ToggleSprint… Switch them on and tune them in game, from the ATTACK menu.' },
     snap: '<strong>One module to know about: Snap Tap.</strong> When you hold two opposite keys, the last one pressed wins. It is <strong>off by default</strong>. It is banned on some servers and it is not invisible: the server sees the movement it produces. At your own risk.',
     risk: '<strong>On 1.8.9 and on 1.7.10, No Jump Delay and No Hit Delay are on by default</strong>, on every server. They are banned and detected on many public servers (Hypixel for one): switch them off there from the ATTACK menu, or your account risks a ban. <strong>Perspective</strong> is banned on Hypixel and on many other servers.',
     shotsNote: 'Screenshots taken on 26.3 (ATTACK Client 3.5.0). The in-game menu was redesigned the same way on 1.8.9, 1.21.1 and 26.3.',
