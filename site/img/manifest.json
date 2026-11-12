@@ -471,6 +471,58 @@
       "sourceWidth": 854,
       "sourceHeight": 480,
       "sourceSha256": "de386af9fe6cae1451042b5ef455918d099903ff82c10d9884462cba0f868a71"
+    },
+    {
+      "key": "client-title",
+      "lang": "en",
+      "width": 854,
+      "height": 480,
+      "file": "client-title-en-854.webp",
+      "bytes": 16024,
+      "quality": 0.86,
+      "source": "sources/client-title-en.png",
+      "sourceWidth": 854,
+      "sourceHeight": 480,
+      "sourceSha256": "2320c0bdc7b348bdd15973eb918874bad767cf3c37c3a01e913071dcc1e1cd87"
+    },
+    {
+      "key": "client-title",
+      "lang": "fr",
+      "width": 854,
+      "height": 480,
+      "file": "client-title-fr-854.webp",
+      "bytes": 14536,
+      "quality": 0.86,
+      "source": "sources/client-title-fr.png",
+      "sourceWidth": 854,
+      "sourceHeight": 480,
+      "sourceSha256": "28dcb959c6e08ccbc5b98357782d48fb700908daf7919a3a1d56c06cefb474d8"
+    },
+    {
+      "key": "client-cosmetics",
+      "lang": "en",
+      "width": 854,
+      "height": 480,
+      "file": "client-cosmetics-en-854.webp",
+      "bytes": 24576,
+      "quality": 0.86,
+      "source": "sources/client-cosmetics-en.png",
+      "sourceWidth": 854,
+      "sourceHeight": 480,
+      "sourceSha256": "982433f8891ac8357547bb210e35b9ca01b30ae97b7953f32b92ed1012569a5b"
+    },
+    {
+      "key": "client-cosmetics",
+      "lang": "fr",
+      "width": 854,
+      "height": 480,
+      "file": "client-cosmetics-fr-854.webp",
+      "bytes": 27566,
+      "quality": 0.86,
+      "source": "sources/client-cosmetics-fr.png",
+      "sourceWidth": 854,
+      "sourceHeight": 480,
+      "sourceSha256": "f5ac04ddb0429b0d134b1ac4f38b2a05b7a6d63e213e633edfc308af35d8cfee"
     }
   ]
 }

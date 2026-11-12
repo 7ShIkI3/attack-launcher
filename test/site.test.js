@@ -24,7 +24,7 @@ const HAVE_SRC = ['template.html', '404.template.html', 'i18n.js', 'styles.css']
 const NEED_SRC = HAVE_SRC ? false : 'site/template.html pas encore écrit : lancer avec SITE_SRC=<dossier de sources du site>';
 const EXPECTED_CSP = "default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; script-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none'";
 const KEYS = ['launcher-home', 'launcher-home-fabric', 'launcher-mods', 'launcher-mods-fabric', 'launcher-settings', 'launcher-account', 'launcher-changelog',
-  'client-menu', 'client-search', 'client-favorites', 'client-hud-editor'];
+  'client-menu', 'client-search', 'client-favorites', 'client-hud-editor', 'client-title', 'client-cosmetics'];
 const ALLOWED_HOSTS = new Set(['github.com', 'modrinth.com', 'optifine.net', 'minecraft.net', 'www.minecraft.net', 'openfontlicense.org', '7shiki3.github.io',
   'learn.microsoft.com', 'support.microsoft.com', 'electronjs.org', 'www.electronjs.org', 'threejs.org', 'bs-community.github.io']);
 
