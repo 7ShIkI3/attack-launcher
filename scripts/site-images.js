@@ -1,12 +1,17 @@
 'use strict';
 // Convertit les captures PNG du site en WebP : site/img/<clé>-<fr|en>-<largeur>.webp, site/img/manifest.json, site/img/og.png et site/img/og-en.png.
-//   npm run site:images -- --sources <dossier>      (ou SITE_IMAGES_SOURCES=<dossier>)
+//   npm run site:images -- --sources <dossier> [--only <clé1,clé2>]      (ou SITE_IMAGES_SOURCES=<dossier>)
 // --sources est OBLIGATOIRE : le dossier contient des PNG nommés <clé>-<fr|en>.png (launcher-home-fr.png, client-menu-en.png…).
 // Ces PNG ne sont pas dans le dépôt (seuls les WebP et le manifeste sont versionnés) : sans eux, la commande refuse de
 // travailler au lieu d'effacer les images déjà produites. Une langue absente n'est pas une erreur (le générateur,
 // scripts/build-site.js, reprend alors l'autre langue) ; une clé absente dans les deux langues en est une.
+// --only <clé1,clé2> : sans --only, les sources de TOUTES les clés sont exigées. Avec --only, seules ces clés sont lues et
+// encodées (les autres n'ont pas besoin de source) : leurs entrées du manifeste site/img/manifest.json et leurs WebP sont gardés
+// tels quels, seuls les WebP des clés traitées sont remplacés. Une clé inconnue est refusée avant toute écriture, et le manifeste
+// existant doit être lisible. Pour ajouter une capture sans retrouver les sources des anciennes.
 // Tout est d'abord encodé dans un dossier d'attente ; site/img/ n'est modifié qu'une fois toutes les images produites.
-// og.png et og-en.png (images de partage) sont les captures d'accueil française et anglaise des sources, sans réencodage.
+// og.png et og-en.png (images de partage) sont les captures d'accueil française et anglaise des sources, sans réencodage ;
+// avec --only, ils ne changent que si launcher-home fait partie des clés.
 // Une capture plus étroite que la plus grande largeur prévue (1120 px pour le launcher, 854 px pour le client) est refusée
 // (« capture trop étroite ») et rien n'est remplacé : jamais d'agrandissement, jamais de largeur silencieusement manquante.
 // Se lance avec Electron (encodeur WebP de Chromium) : aucune dépendance de plus. À refaire seulement quand une capture change.
@@ -38,6 +43,8 @@ const KEYS = {
   'client-search': { widths: CLIENT_WIDTHS },
   'client-favorites': { widths: CLIENT_WIDTHS },
   'client-hud-editor': { widths: CLIENT_WIDTHS },
+  'client-title': { widths: CLIENT_WIDTHS },
+  'client-cosmetics': { widths: CLIENT_WIDTHS },
 };
 
 function argValue(name) {
@@ -48,6 +55,30 @@ function argValue(name) {
 function pngSize(buffer) {
   if (buffer.length < 24 || buffer.readUInt32BE(0) !== 0x89504e47) throw new Error('pas un fichier PNG');
   return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+}
+
+/** Clés à traiter : toutes si `only` est null (pas de --only) ; sinon la liste donnée (« a,b »), refusée si vide, en double ou inconnue (avant toute écriture). */
+function selectKeys(only, known = Object.keys(KEYS)) {
+  if (only === null) return [...known];
+  const wanted = String(only).split(',').map((key) => key.trim());
+  if (!wanted.length || wanted.some((key) => !key)) throw new Error('--only attend des clés séparées par des virgules (client-title,client-cosmetics). Rien n’a été modifié.');
+  const unknown = wanted.filter((key) => !known.includes(key));
+  if (unknown.length) throw new Error(`--only : clé inconnue : ${unknown.join(', ')} (clés connues : ${known.join(', ')}). Rien n’a été modifié.`);
+  if (new Set(wanted).size !== wanted.length) throw new Error('--only : une clé est donnée deux fois. Rien n’a été modifié.');
+  return known.filter((key) => wanted.includes(key));
+}
+
+/** Manifeste final : les entrées des clés non traitées de `previous` telles quelles, plus les entrées neuves, dans l'ordre de `order`. */
+function mergeManifest(previous, fresh, processed, order = Object.keys(KEYS)) {
+  const rank = (key) => (order.includes(key) ? order.indexOf(key) : order.length);
+  const kept = (previous || []).filter((entry) => !processed.includes(entry.key));
+  return [...kept, ...fresh].sort((a, b) => rank(a.key) - rank(b.key) || a.lang.localeCompare(b.lang) || a.width - b.width);
+}
+
+/** Fichiers de site/img à retirer : tous les WebP et le manifeste (toutes les clés), ou seulement les WebP <clé>-<fr|en>-<largeur>.webp des clés traitées. */
+function filesToRemove(files, processed, all) {
+  if (all) return files.filter((file) => file.endsWith('.webp') || file === 'manifest.json');
+  return files.filter((file) => processed.some((key) => file.startsWith(`${key}-`) && /^(fr|en)-\d+\.webp$/.test(file.slice(key.length + 1))));
 }
 
 /** Refuse une capture trop basse pour sa coupe ou plus étroite que la plus grande largeur prévue (jamais d'agrandissement). */
@@ -87,8 +118,19 @@ async function run() {
   }
   if (!fs.existsSync(sourcesDir) || !fs.statSync(sourcesDir).isDirectory()) throw new Error(`Dossier de sources introuvable : ${sourcesDir}. Rien n’a été modifié.`);
 
+  const partial = process.argv.includes('--only');
+  const processed = selectKeys(partial ? argValue('--only') ?? '' : null);
+  let previousImages = [];
+  if (partial) {
+    const manifestFile = path.join(OUT, 'manifest.json');
+    if (!fs.existsSync(manifestFile)) throw new Error(`--only demande un manifeste existant (${path.relative(ROOT, manifestFile)}) : sans lui, lancer sans --only avec toutes les sources. Rien n’a été modifié.`);
+    previousImages = JSON.parse(fs.readFileSync(manifestFile, 'utf8')).images;
+    if (!Array.isArray(previousImages)) throw new Error(`${path.relative(ROOT, manifestFile)} illisible (pas de liste « images »). Rien n’a été modifié.`);
+  }
+
   const jobs = [];
-  for (const [key, spec] of Object.entries(KEYS)) {
+  for (const key of processed) {
+    const spec = KEYS[key];
     const found = [];
     for (const lang of ['fr', 'en']) {
       const file = path.resolve(sourcesDir, `${key}-${lang}.png`);
@@ -128,17 +170,16 @@ async function run() {
       // images de partage (og:image) : l'accueil du launcher dans chaque langue, sans réencodage
       if (job.key === 'launcher-home') og[job.lang] = png;
     }
-    const order = Object.keys(KEYS);
-    images.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key) || a.lang.localeCompare(b.lang) || a.width - b.width);
-    fs.writeFileSync(path.join(STAGING, 'manifest.json'), `${JSON.stringify({ images }, null, 2)}\n`);
+    const manifest = mergeManifest(partial ? previousImages : [], images, processed);
+    fs.writeFileSync(path.join(STAGING, 'manifest.json'), `${JSON.stringify({ images: manifest }, null, 2)}\n`);
     if (og.fr) fs.writeFileSync(path.join(STAGING, 'og.png'), og.fr);
     if (og.en) fs.writeFileSync(path.join(STAGING, 'og-en.png'), og.en);
 
     // tout est encodé : on remplace (les anciens WebP et le manifeste ne sont retirés qu'ici)
     fs.mkdirSync(OUT, { recursive: true });
-    for (const file of fs.readdirSync(OUT)) if (file.endsWith('.webp') || file === 'manifest.json') fs.rmSync(path.join(OUT, file));
+    for (const file of filesToRemove(fs.readdirSync(OUT), processed, !partial)) fs.rmSync(path.join(OUT, file));
     for (const file of fs.readdirSync(STAGING)) fs.renameSync(path.join(STAGING, file), path.join(OUT, file));
-    console.log(`${images.length} images, manifeste écrit dans ${path.relative(ROOT, path.join(OUT, 'manifest.json'))}${og.fr ? ', og.png remplacé' : ', og.png inchangé (pas de launcher-home-fr.png)'}${og.en ? ', og-en.png remplacé' : ', og-en.png inchangé (pas de launcher-home-en.png)'}`);
+    console.log(`${images.length} images${partial ? ` (${processed.join(', ')}), ${manifest.length - images.length} gardées` : ''}, manifeste écrit dans ${path.relative(ROOT, path.join(OUT, 'manifest.json'))}${og.fr ? ', og.png remplacé' : ', og.png inchangé (pas de launcher-home-fr.png)'}${og.en ? ', og-en.png remplacé' : ', og-en.png inchangé (pas de launcher-home-en.png)'}`);
   } finally {
     fs.rmSync(STAGING, { recursive: true, force: true });
   }
@@ -159,4 +200,4 @@ if (process.versions.electron) {
     });
 }
 
-module.exports = { KEYS, LAUNCHER_WIDTHS, CLIENT_WIDTHS, pngSize, checkSource };
+module.exports = { KEYS, LAUNCHER_WIDTHS, CLIENT_WIDTHS, pngSize, checkSource, selectKeys, mergeManifest, filesToRemove };
