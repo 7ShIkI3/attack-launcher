@@ -16,19 +16,21 @@ function typo(value) {
 
 const fr = {
   meta: {
+    ogLocale: 'fr_FR',
+    ogLocaleAlt: 'en_US',
     ogImage: '{{url.fr}}og.png', // image de partage : l'accueil du launcher, à la racine du site (la page française en est la racine)
   },
   pages: {
     home: {
-      title: 'ATTACK Launcher : Minecraft PvP en un clic, en 1.7.10, 1.8.9, 1.21.1 et 26.3',
-      description: 'Le launcher Windows d’ATTACK Client : Minecraft PvP installé et lancé en un clic, en 1.7.10, 1.8.9, 1.21.1 et 26.3. Fichiers vérifiés par hash, aucune télémétrie dans le launcher.',
+      title: 'ATTACK Launcher : Minecraft PvP 1.7.10, 1.8.9 et Fabric',
+      description: 'Launcher Windows gratuit pour ATTACK Client : Minecraft PvP en un clic, en 1.7.10, 1.8.9, 1.21.1 et 26.3 (Forge, Fabric). Aucune télémétrie dans le launcher.',
     },
     download: {
-      title: 'Télécharger ATTACK Launcher pour Windows : installateur ou version portable',
-      description: 'Télécharge ATTACK Launcher pour Windows : installateur avec mises à jour automatiques ou version portable, empreinte SHA-256 à vérifier et marche à suivre si SmartScreen bloque.',
+      title: 'Télécharger ATTACK Launcher (installateur, portable)',
+      description: 'Télécharge ATTACK Launcher pour Windows 10 et 11 : installateur (mises à jour automatiques) ou version portable, SHA-256 à vérifier, aide si SmartScreen bloque.',
     },
     guide: {
-      title: 'Guide d’ATTACK Launcher : installation, compte, OptiFine, dépannage',
+      title: 'Guide d’ATTACK Launcher : installation, OptiFine, dépannage',
       description: 'Le guide d’ATTACK Launcher : premier lancement, compte Microsoft, OptiFine en 1.8.9 et en 1.7.10, mods et groupes, dépannage et questions fréquentes.',
     },
   },
@@ -129,12 +131,12 @@ const fr = {
   client: {
     title: 'ATTACK Client, en jeu',
     lead: 'Le launcher installe ATTACK Client, un mod de PvP (Forge en 1.7.10 et 1.8.9, Fabric en 1.21.1 et 26.3) avec environ 60 modules : HUD, PvP, visuel et divers. La version 1.7.10 a les mêmes modules que la 1.8.9, sauf Titles (impossible en 1.7.10) et Mouse Delay Fix (inutile en 1.7.10 : le jeu vise déjà là où tu regardes). Ouvre son menu avec <kbd>Maj droite</kbd> ou avec le bouton « ATTACK Mods » du menu Échap.',
-    k1: { t: 'Un menu qui se parcourt vite', p: 'Barre latérale, cartes à interrupteur en trois densités, favoris et filtres Actifs / Inactifs. Les noms des modules et les valeurs des listes suivent la langue du jeu (français ou anglais).' },
+    k1: { t: 'Le menu ATTACK', p: 'Barre latérale, cartes à interrupteur en trois densités, favoris et filtres Actifs / Inactifs. Les noms des modules et les valeurs des listes suivent la langue du jeu (français ou anglais).' },
     k2: { t: 'Recherche dès la frappe', p: 'La recherche trouve tous les modules et tous les réglages dès que tu tapes.' },
     k3: { t: 'Éditeur de HUD', p: 'Glisse un élément pour le placer, molette pour changer sa taille. Les HUD désactivés ne sont plus dessinés, et « Réinitialiser » demande confirmation.' },
     k4: { t: 'Cosmétiques', p: 'Capes, ailes et effets. Les autres joueurs ATTACK voient les tiens sur n’importe quel serveur, et tu vois les leurs ; le partage se coupe dans les options.' },
     k5: { t: 'Amis', p: 'Ajoute un ami par son pseudo s’il utilise ATTACK Client, vois qui est en ligne et discute avec lui. Les messages sont effacés du serveur 24 h après leur envoi.' },
-    k6: { t: 'Environ 60 modules', p: 'FPS, CPS, Touches, Armure, Effets de potion, Coordonnées, Ping, Sprint continu / Sprint auto… On les active et on les règle en jeu, depuis le menu ATTACK.' },
+    k6: { t: 'Environ 60 modules', p: 'FPS, CPS, Touches, Armure, Effets de potion, Coordonnées, Ping, Sprint continu / Sprint auto… Active-les et règle-les en jeu, depuis le menu ATTACK.' },
     snap: '<strong>Un module à connaître : Snap Tap.</strong> Quand tu tiens deux touches opposées, la dernière pressée gagne. Il est <strong>coupé par défaut</strong>. Il est interdit sur certains serveurs et il n’est pas invisible : le serveur voit le déplacement qui en résulte. À tes risques.',
     risk: '<strong>En 1.8.9 et en 1.7.10, Saut sans délai (No Jump Delay) et Coups sans délai (No Hit Delay) sont actifs par défaut</strong>, sur tous les serveurs. Ils sont interdits et détectés sur beaucoup de serveurs publics (Hypixel par exemple) : coupe-les là-bas depuis le menu ATTACK, sinon ton compte risque un bannissement. <strong>Perspective</strong> est interdit sur Hypixel et sur beaucoup d’autres serveurs.',
     shotsNote: 'Captures prises en 1.8.9 (ATTACK Client 2.6.0). Le menu en jeu a été refait de la même façon en 1.8.9, 1.21.1 et 26.3.',
@@ -142,7 +144,7 @@ const fr = {
   },
   perf: {
     title: 'Performances',
-    lead: 'Ce que le launcher installe et règle pour tes FPS, avec une seule mesure, et son contexte exact.',
+    lead: 'Ce que le launcher installe et règle pour tes FPS, et une seule mesure, avec ses conditions.',
     p1: { t: 'Un pack de mods de performance', p: 'En 1.21.1 et 26.3 : Sodium, Lithium, FerriteCore, ImmediatelyFast, Entity Culling, More Culling, BadOptimizations, Krypton et Reflex AntiLag, plus ModernFix en 1.21.1 (il n’existe pas en 26.3). En 1.8.9, Phosphor Legacy apporte un moteur d’éclairage plus rapide : moins de saccades quand la lumière change.' },
     p2: { t: 'Des réglages de départ', p: 'Un nouveau dossier de jeu Fabric démarre sans VSync ni limite de FPS, sans ombres d’entités, avec une distance d’affichage de 10. Dans un dossier existant, seules deux valeurs d’origine de Minecraft (VSync activée, limite à 120 FPS) sont remplacées, une seule fois, par « sans VSync, sans limite ». Un choix que tu as fait n’est jamais modifié.' },
     p3: { t: 'Le Java officiel, adapté au profil', p: 'Le launcher installe le Java officiel de Mojang du profil (Java 8, 21 ou 25) et lance le jeu avec. Côté mémoire, 2 à 3 Go suffisent en 1.8.9 et en 1.7.10, et 3 à 4 Go conviennent en 1.21.1 et 26.3 avec le pack : plus n’augmente pas les FPS.' },
@@ -240,7 +242,7 @@ const fr = {
     more: 'Autres versions',
   },
   guide: {
-    title: 'Guide',
+    title: 'Guide d’ATTACK Launcher',
     lead: 'De la première installation au dépannage. Le détail technique, avec les références au code, est dans le wiki.',
     toc: 'Sommaire',
     start: {
@@ -284,19 +286,21 @@ const fr = {
 
 const en = {
   meta: {
+    ogLocale: 'en_US',
+    ogLocaleAlt: 'fr_FR',
     ogImage: '{{url.fr}}og-en.png', // share image: the English launcher home, at the site root (the French page is the root)
   },
   pages: {
     home: {
-      title: 'ATTACK Launcher: Minecraft PvP in one click, on 1.7.10, 1.8.9, 1.21.1 and 26.3',
-      description: 'The Windows launcher for ATTACK Client: Minecraft PvP installed and launched in one click, on 1.7.10, 1.8.9, 1.21.1 and 26.3. Files checked by hash, no telemetry in the launcher.',
+      title: 'ATTACK Launcher: Minecraft PvP for 1.7.10, 1.8.9 and Fabric',
+      description: 'Free Windows launcher for ATTACK Client: Minecraft PvP in one click, on 1.7.10, 1.8.9, 1.21.1 and 26.3 (Forge, Fabric). No telemetry in the launcher.',
     },
     download: {
-      title: 'Download ATTACK Launcher for Windows: installer or portable version',
-      description: 'Download ATTACK Launcher for Windows: installer with automatic updates or portable version, a SHA-256 hash to check, and what to do if SmartScreen blocks it.',
+      title: 'Download ATTACK Launcher for Windows (installer, portable)',
+      description: 'Download ATTACK Launcher for Windows 10 and 11: installer with automatic updates or portable version, SHA-256 to check, help if SmartScreen blocks it.',
     },
     guide: {
-      title: 'ATTACK Launcher guide: install, account, OptiFine, troubleshooting',
+      title: 'ATTACK Launcher guide: install, OptiFine, troubleshooting',
       description: 'The ATTACK Launcher guide: first launch, Microsoft account, OptiFine on 1.8.9 and on 1.7.10, mods and groups, troubleshooting and frequently asked questions.',
     },
   },
@@ -397,12 +401,12 @@ const en = {
   client: {
     title: 'ATTACK Client, in game',
     lead: 'The launcher installs ATTACK Client, a PvP mod (Forge on 1.7.10 and 1.8.9, Fabric on 1.21.1 and 26.3) with about 60 modules: HUD, PvP, visual and misc. The 1.7.10 version has the same modules as 1.8.9, except Titles (impossible on 1.7.10) and Mouse Delay Fix (not needed on 1.7.10: the game already aims where you look). Open its menu with <kbd>Right Shift</kbd> or with the “ATTACK Mods” button of the pause menu.',
-    k1: { t: 'A menu that is quick to browse', p: 'Sidebar, toggle cards in three densities, favourites and Enabled / Disabled filters. Module names and list values follow the game language (French or English).' },
+    k1: { t: 'The ATTACK menu', p: 'Sidebar, toggle cards in three densities, favourites and Enabled / Disabled filters. Module names and list values follow the game language (French or English).' },
     k2: { t: 'Search as you type', p: 'Search finds every module and every setting as you type.' },
     k3: { t: 'HUD editor', p: 'Drag an element to place it, mouse wheel to change its size. Disabled HUDs are no longer drawn, and “Reset” asks for confirmation.' },
     k4: { t: 'Cosmetics', p: 'Capes, wings and effects. Other ATTACK players see yours on any server, and you see theirs; sharing can be switched off in the options.' },
     k5: { t: 'Friends', p: 'Add a friend by username if they use ATTACK Client, see who is online and chat with them. Messages are deleted from the server 24 h after they are sent.' },
-    k6: { t: 'About 60 modules', p: 'FPS, CPS, Keystrokes, Armor Status, Potion Effects, Coordinates, Ping, ToggleSprint… You switch them on and tune them in game, from the ATTACK menu.' },
+    k6: { t: 'About 60 modules', p: 'FPS, CPS, Keystrokes, Armor Status, Potion Effects, Coordinates, Ping, ToggleSprint… Switch them on and tune them in game, from the ATTACK menu.' },
     snap: '<strong>One module to know about: Snap Tap.</strong> When you hold two opposite keys, the last one pressed wins. It is <strong>off by default</strong>. It is banned on some servers and it is not invisible: the server sees the movement it produces. At your own risk.',
     risk: '<strong>On 1.8.9 and on 1.7.10, No Jump Delay and No Hit Delay are on by default</strong>, on every server. They are banned and detected on many public servers (Hypixel for one): switch them off there from the ATTACK menu, or your account risks a ban. <strong>Perspective</strong> is banned on Hypixel and on many other servers.',
     shotsNote: 'Screenshots taken on 26.3 (ATTACK Client 3.5.0). The in-game menu was redesigned the same way on 1.8.9, 1.21.1 and 26.3.',
@@ -410,7 +414,7 @@ const en = {
   },
   perf: {
     title: 'Performance',
-    lead: 'What the launcher installs and sets up for your FPS, with a single measurement and its exact context.',
+    lead: 'What the launcher installs and sets up for your FPS, and a single measurement, with its conditions.',
     p1: { t: 'A performance mod pack', p: 'On 1.21.1 and 26.3: Sodium, Lithium, FerriteCore, ImmediatelyFast, Entity Culling, More Culling, BadOptimizations, Krypton and Reflex AntiLag, plus ModernFix on 1.21.1 (it does not exist for 26.3). On 1.8.9, Phosphor Legacy brings a faster lighting engine: fewer stutters when light changes.' },
     p2: { t: 'Starting settings', p: 'A new Fabric game folder starts without VSync or an FPS cap, without entity shadows, with a render distance of 10. In an existing folder, only two original Minecraft values (VSync on, 120 FPS cap) are replaced, once, by “no VSync, no cap”. A choice you made is never changed.' },
     p3: { t: 'Official Java, suited to the profile', p: 'The launcher installs the profile’s official Mojang Java (Java 8, 21 or 25) and starts the game with it. For memory, 2 to 3 GB is enough on 1.8.9 and on 1.7.10, and 3 to 4 GB suits 1.21.1 and 26.3 with the pack: more does not raise FPS.' },
@@ -508,7 +512,7 @@ const en = {
     more: 'Other versions',
   },
   guide: {
-    title: 'Guide',
+    title: 'ATTACK Launcher guide',
     lead: 'From the first install to troubleshooting. The technical detail, with references to the code, is in the wiki (in French).',
     toc: 'Contents',
     start: {
