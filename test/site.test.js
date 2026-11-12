@@ -1393,7 +1393,7 @@ test('captures : plus de recadrage CSS, et la commande site:images exige --sourc
   assert.match(code, /--sources <dossier> est obligatoire/);
   assert.ok(!code.includes('docs/images') && !/'docs'/.test(code), 'docs/images n’est plus une source des images du site');
   const encoded = code.indexOf("fs.writeFileSync(path.join(STAGING, 'manifest.json')");
-  const removed = code.indexOf("file.endsWith('.webp')");
+  const removed = code.indexOf('filesToRemove(fs.readdirSync(OUT)');
   assert.ok(encoded > 0 && removed > encoded, 'les anciens WebP ne sont retirés qu’après l’encodage de toutes les images');
   assert.ok(code.includes("path.join(STAGING, 'og.png')") && !code.includes("path.join(OUT, 'og.png'), png"), 'og.png vient des sources, via le dossier d’attente');
   assert.ok(code.includes("path.join(STAGING, 'og-en.png')") && !code.includes("path.join(OUT, 'og-en.png')"), 'og-en.png (accueil anglais) vient lui aussi des sources, via le dossier d’attente');
@@ -1414,6 +1414,46 @@ test('captures : plus de recadrage CSS, et la commande site:images exige --sourc
   const account = { origin: 'sources/launcher-account-fr.png', widths: images.LAUNCHER_WIDTHS, cropHeight: images.KEYS['launcher-account'].cropHeight };
   assert.throws(() => images.checkSource(account, { width: 1120, height: 617 }), /moins que la coupe prévue \(618 px\)/);
   assert.doesNotThrow(() => images.checkSource(account, { width: 1120, height: 618 }));
+});
+
+test('site:images --only : clés choisies avant toute écriture, entrées et WebP des autres clés gardés, og.png seulement avec launcher-home', () => {
+  const images = require(path.join(ROOT, 'scripts', 'site-images.js'));
+  const all = Object.keys(images.KEYS);
+  // sans --only : toutes les clés, dans l'ordre de KEYS
+  assert.deepEqual(images.selectKeys(null), all);
+  // avec --only : seulement ces clés, dans l'ordre de KEYS (pas celui de la ligne de commande)
+  assert.deepEqual(images.selectKeys('client-menu,launcher-home'), ['launcher-home', 'client-menu']);
+  assert.deepEqual(images.selectKeys(' client-menu , launcher-home '), ['launcher-home', 'client-menu'], 'espaces autour des clés ignorés');
+  // clé inconnue, liste vide, virgule en trop ou clé en double : refusé (la commande échoue avant d'écrire quoi que ce soit)
+  assert.throws(() => images.selectKeys('client-menu,client-inconnu'), /clé inconnue : client-inconnu/);
+  assert.throws(() => images.selectKeys(''), /--only attend des clés/);
+  assert.throws(() => images.selectKeys('client-menu,'), /--only attend des clés/);
+  assert.throws(() => images.selectKeys('client-menu,client-menu'), /donnée deux fois/);
+  const code = fs.readFileSync(path.join(ROOT, 'scripts', 'site-images.js'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(code.indexOf('selectKeys(partial') > 0 && code.indexOf('selectKeys(partial') < code.indexOf('fs.rmSync(STAGING'), 'les clés sont contrôlées avant le dossier d’attente et avant site/img');
+
+  // manifeste : les entrées des clés non traitées sont gardées telles quelles (même champs, même ordre), les entrées des clés traitées remplacées
+  const entry = (key, lang, width, extra = {}) => ({ key, lang, width, height: 100, file: `${key}-${lang}-${width}.webp`, bytes: 1000, quality: 0.86, source: `sources/${key}-${lang}.png`, ...extra });
+  const previous = [entry('launcher-home', 'fr', 560), entry('launcher-home', 'fr', 1120), entry('client-menu', 'en', 854, { cropHeight: 7 }), entry('client-menu', 'fr', 854), entry('ancienne-cle', 'fr', 854)];
+  const fresh = [entry('client-search', 'fr', 854, { bytes: 4321 }), entry('client-search', 'en', 854), entry('client-menu', 'fr', 854, { bytes: 2222 })];
+  const merged = images.mergeManifest(previous, fresh, ['client-menu', 'client-search']);
+  assert.deepEqual(merged.map((i) => i.file), ['launcher-home-fr-560.webp', 'launcher-home-fr-1120.webp', 'client-menu-fr-854.webp', 'client-search-en-854.webp', 'client-search-fr-854.webp', 'ancienne-cle-fr-854.webp'],
+    'ordre de KEYS ; une clé qui n’est plus dans KEYS passe à la fin, sans être perdue');
+  assert.strictEqual(merged[0], previous[0], 'entrée gardée : le même objet, aucun champ changé');
+  assert.equal(merged.find((i) => i.file === 'client-menu-fr-854.webp').bytes, 2222, 'entrée d’une clé traitée : remplacée');
+  assert.ok(!merged.some((i) => i.key === 'client-menu' && i.lang === 'en'), 'une langue absente des sources d’une clé traitée n’est pas gardée de l’ancien manifeste');
+  assert.deepEqual(images.mergeManifest([], fresh, all).map((i) => i.file), ['client-menu-fr-854.webp', 'client-search-en-854.webp', 'client-search-fr-854.webp'], 'sans --only le manifeste ne contient que les entrées neuves');
+
+  // WebP : sans --only tout part ; avec --only, seuls <clé>-<fr|en>-<largeur>.webp des clés traitées (launcher-home ne touche pas launcher-home-fabric)
+  const files = ['launcher-home-fr-560.webp', 'launcher-home-fabric-fr-560.webp', 'client-menu-en-854.webp', 'client-search-fr-854.webp', 'manifest.json', 'og.png', 'og-en.png'];
+  assert.deepEqual(images.filesToRemove(files, ['launcher-home'], false), ['launcher-home-fr-560.webp']);
+  assert.deepEqual(images.filesToRemove(files, ['client-search', 'client-menu'], false), ['client-menu-en-854.webp', 'client-search-fr-854.webp']);
+  assert.deepEqual(images.filesToRemove(files, all, true), ['launcher-home-fr-560.webp', 'launcher-home-fabric-fr-560.webp', 'client-menu-en-854.webp', 'client-search-fr-854.webp', 'manifest.json']);
+  assert.ok(!images.filesToRemove(files, ['launcher-home'], false).some((f) => f.startsWith('og') || f === 'manifest.json'), 'avec --only, ni le manifeste ni og.png ne sont retirés ici (le manifeste fusionné les remplace)');
+  // le manifeste écrit est bien le manifeste fusionné (et plus la liste des seules images encodées, qui effacerait les autres entrées)
+  assert.ok(code.includes('mergeManifest(partial ? previousImages : [], images, processed)') && code.includes('{ images: manifest }') && !code.includes('images.sort('), 'run() écrit le manifeste fusionné');
+  // og.png / og-en.png : produits seulement par un job launcher-home, donc seulement si cette clé est dans la liste
+  assert.ok(/if \(job\.key === 'launcher-home'\) og\[job\.lang\] = png/.test(code), 'og.png et og-en.png viennent du job launcher-home');
 });
 
 test('profil 1.7.10 : le mod a tout le contenu du mod 1.8.9, OptiFine avec la copie du joueur, plus de « lite » ni de modules interdits en classé absents, l’avertissement Snap Tap reste', { skip: NEED_SRC }, async () => {
