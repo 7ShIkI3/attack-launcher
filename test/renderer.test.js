@@ -103,13 +103,18 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     assert.ok(entry.date === '' || /^\d{4}-\d{2}-\d{2}$/.test(entry.date), `${entry.version} : date`);
   }
   assert.equal(new Set(data.CHANGELOG.map((e) => e.version)).size, data.CHANGELOG.length, 'versions uniques');
+  // 0.8.6 : livre les mods 1.7.10 1.3.0, 1.8.9 2.9.0 et Fabric 3.8.0 (même date, le jour de la publication, 13/11), qui suivent son entrée.
   // 0.8.5 : correctif des connexions lentes (même jour que la 0.8.4).
   // 0.8.4 : les mods 1.7.10 1.2.0 et 1.8.9 2.8.1 qu'elle livre suivent son entrée (même date, le jour de la publication, 07/11).
   // Puis 0.8.3 : la VSync du profil 1.7.10 (datée du jour de sa publication, 07/11).
   // Puis 0.8.2 : OptiFine en 1.7.10 ; son entrée est suivie de celle du mod ATTACK 1.7.10 1.1.0 qu'elle exige avec OptiFine (même date : le jour des
   // mesures, 05/11 ; à remettre au jour de la publication, voir « Publier une version »).
   // Puis 0.8.1 : la refonte du design, suivie des deux versions d'ATTACK Client qu'elle livre (même date) : Fabric (3.7.0) d'abord, puis la 1.8.9 (2.8.0).
-  assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 11), (e) => [e.version, e.date, e.tag]), [
+  assert.deepEqual(Array.from(data.CHANGELOG.slice(0, 15), (e) => [e.version, e.date, e.tag]), [
+    ['Launcher 0.8.6', '2026-11-13', 'new'],
+    ['ATTACK Client 1.7.10 1.3.0', '2026-11-13', 'new'],
+    ['ATTACK Client 2.9.0', '2026-11-13', 'new'],
+    ['ATTACK Client 3.8.0', '2026-11-13', 'new'],
     ['Launcher 0.8.5', '2026-11-07', 'fix'],
     ['Launcher 0.8.4', '2026-11-07', 'fix'],
     ['ATTACK Client 1.7.10 1.2.0', '2026-11-07', 'new'],
@@ -131,6 +136,19 @@ test('historique : chaque entrée a son titre FR/EN et une étiquette connue ; l
     for (const lang of ['fr', 'en']) assert.ok(entry[lang].length <= 1100, `${entry.version} (${lang}) : ${entry[lang].length} caractères, 1 100 au plus`);
   }
   const byVersion = (v) => data.CHANGELOG.find((e) => e.version === v);
+  const [launcher086, mod130, mod290, mod380] = ['Launcher 0.8.6', 'ATTACK Client 1.7.10 1.3.0', 'ATTACK Client 2.9.0', 'ATTACK Client 3.8.0'].map(byVersion);
+  for (const lang of ['fr', 'en']) {
+    // 0.8.6 : livre les trois mods, dit comment les recevoir (bouton de réparation), launcher inchangé
+    for (const needle of ['1.7.10 1.3.0', '2.9.0', '3.8.0', '1.21.1', '26.3']) assert.ok(launcher086[lang].includes(needle), `0.8.6 (${lang}) : ${needle}`);
+    assert.match(launcher086[lang], lang === 'fr' ? /« Vérifier \/ réparer l’installation »/ : /“Verify \/ repair installation”/, `0.8.6 (${lang}) : le bouton qui installe le nouveau mod`);
+    // mods : le pseudo au-dessus de l'auréole n'est pas déclaré vu en partie (mesuré par l'auto-test seulement)
+    for (const mod of [mod130, mod290]) assert.match(mod[lang], lang === 'fr' ? /pas encore regardé en partie/ : /not yet watched in a real game/, `${mod.version} (${lang}) : limite du pseudo au-dessus de l'auréole`);
+    // 1.7.10 1.3.0 : essayé avec OptiFine E7 ; 2.9.0 : l'écran noir de Fast Render n'est mesuré qu'en 1.7.10, et le point décimal est dit
+    assert.ok(mod130[lang].includes('HD U E7'), `mod 1.3.0 (${lang}) : OptiFine HD U E7`);
+    assert.match(mod290[lang], lang === 'fr' ? /mesuré qu’en 1\.7\.10/ : /only measured on 1\.7\.10/, `mod 2.9.0 (${lang}) : Fast Render mesuré en 1.7.10 seulement`);
+    assert.ok(mod290[lang].includes('20.0'), `mod 2.9.0 (${lang}) : point décimal`);
+    assert.ok(mod380[lang].includes('1.21.1') && mod380[lang].includes('26.3'), `mod 3.8.0 (${lang}) : versions Fabric`);
+  }
   const [launcher085, launcher084, mod120, mod281] = ['Launcher 0.8.5', 'Launcher 0.8.4', 'ATTACK Client 1.7.10 1.2.0', 'ATTACK Client 2.8.1'].map(byVersion);
   for (const lang of ['fr', 'en']) {
     // 0.8.5 : connexions lentes (2,5 s par tentative au lieu de 250 ms), les deux messages que voyait le joueur, mods inchangés
